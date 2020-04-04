@@ -127,3 +127,7 @@ dmypy.json
 
 # Pyre type checker
 .pyre/
+
+# Addon dependencies and packed addon
+io_import_vmf/deps
+io_import_vmf.zip
