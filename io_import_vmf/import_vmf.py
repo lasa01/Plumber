@@ -95,8 +95,8 @@ class VMFImporter():
         if self._qc_importer is not None:
             self._qc_importer.__exit__(exc_type, exc_value, traceback)
 
-    def load(self, file_path: str, data_dir: str = None) -> None:
-        if bpy.context.mode != 'OBJECT':
+    def load(self, file_path: str, context: bpy.types.Context, data_dir: str = None) -> None:
+        if context.mode != 'OBJECT':
             bpy.ops.object.mode_set(mode='OBJECT')
         print("Loading VMF...")
         start = time.time()
@@ -114,7 +114,7 @@ class VMFImporter():
         success_lights = 0
         failed_lights = 0
         map_collection = bpy.data.collections.new(path.splitext(path.basename(file_path))[0])
-        bpy.context.collection.children.link(map_collection)
+        context.collection.children.link(map_collection)
         if self.import_solids:
             print("Building geometry...")
             world_collection = bpy.data.collections.new(vmf.world.classname)
@@ -176,7 +176,7 @@ class VMFImporter():
             map_collection.children.link(light_collection)
             if vmf.env_light_entity is not None:
                 try:
-                    self._load_env_light(vmf.env_light_entity, light_collection)
+                    self._load_env_light(vmf.env_light_entity, context, light_collection)
                 except Exception as err:
                     print(f"ERROR LOADING ENVIRONMENT LIGHT: {err}")
                     if self.verbose:
@@ -252,7 +252,8 @@ class VMFImporter():
             radians(vmf_light.angles[1])
         )))
 
-    def _load_env_light(self, vmf_light: vmfpy.VMFEnvLightEntity, collection: bpy.types.Collection) -> None:
+    def _load_env_light(self, vmf_light: vmfpy.VMFEnvLightEntity,
+                        context: bpy.types.Context, collection: bpy.types.Collection) -> None:
         light: bpy.types.SunLight = bpy.data.lights.new(vmf_light.classname, 'SUN')
         light.cycles.use_multiple_importance_sampling = True
         light.angle = radians(vmf_light.sun_spread_angle)
@@ -272,8 +273,8 @@ class VMFImporter():
             radians(vmf_light.angles[1])
         )))
 
-        bpy.context.scene.world.use_nodes = True
-        nt = bpy.context.scene.world.node_tree
+        context.scene.world.use_nodes = True
+        nt = context.scene.world.node_tree
         nt.nodes.clear()
         out_node: bpy.types.Node = nt.nodes.new('ShaderNodeOutputWorld')
         out_node.location = (0, 0)
