@@ -474,7 +474,7 @@ _SUPPORTED_PARAMS = frozenset((
     "$envmap", "$basealphaenvmapmask", "$basealphaenvmask", "$normalmapalphaenvmapmask",
     "$envmapmask", "$envmapmasktransform", "$envmaptint",
     "$selfillum_envmapmask_alpha", "$selfillum", "$selfillummask",
-    "$blendmodulatetexture", "$blendmodulatetransform", "$masks1", "$metalness",
+    "$blendmodulatetexture", "$blendmodulatetransform", "$masks1", "$metalness", "%compilewater", "$normalmap",
     # ignored parameters
     "%keywords", "%compilepassbullets", "%compilenonsolid", "%tooltexture",
     "$surfaceprop", "$surfaceprop2", "$nocull", "$model",
@@ -489,10 +489,48 @@ class _MaterialBuilder():
         self.width = 1
         self.height = 1
         self.nodraw = False
+        self.water = False
         self.blend_method = 'OPAQUE'
         self.shadow_method = 'OPAQUE'
         self.alpha_reference = 0.3
-        self._shader_dict: Dict[str, _MaterialNodePath] = {
+        params = vmt_data.parameters
+
+        # flags that imply nodraw
+        if any(p in _NODRAW_PARAMS and vmt_data.param_as_bool(p) for p in params):
+            self.blend_method = 'CLIP'
+            self.shadow_method = 'CLIP'
+            self.nodraw = True
+            return
+
+        texture_inputs: DefaultDict[str, _TextureInputBase] = defaultdict(lambda: _TextureInput())
+
+        unsupported_params = [p for p in params if p not in _SUPPORTED_PARAMS]
+        if len(unsupported_params) != 0:
+            print(f"WARNING: UNSUPPORTED MATERIAL PARAMS: {', '.join(unsupported_params)} in {name}")
+
+        if vmt_data.param_flag("%compilewater"):
+            self.water = True
+            self.blend_method = 'BLEND'
+            self.shadow_method = 'NONE'
+            self._shader_dict: Dict[str, _MaterialNodePath] = {
+                'Normal': _MaterialNodePath()
+            }
+            if "$normalmap" in params:
+                image = self._vtf_importer.load(params["$normalmap"], vmt_data.param_open_texture("$normalmap"))
+                image.colorspace_settings.name = 'Non-Color'
+                self.width, self.height = image.size
+                if "$bumptransform" in params:
+                    transform = vmt_data.param_as_transform("$bumptransform")
+                    if transform.scale != (1, 1) or transform.rotate != 0 or transform.translate != (0, 0):
+                        texture_inputs["$bumpmap"] = _TransformedTextureInput(
+                            transform.scale, transform.rotate, transform.translate
+                        )
+                texture_inputs["$normalmap"].setimage(image)
+                self._shader_dict['Normal'].input = texture_inputs["$normalmap"].color
+                self._shader_dict['Normal'].append(_NormalMapMaterialNode())
+            return
+
+        self._shader_dict = {
             'Base Color': _MaterialNodePath(0),
             'Metallic': _MaterialNodePath(-150),
             'Specular': _MaterialNodePath(-160),
@@ -502,16 +540,8 @@ class _MaterialBuilder():
             'Alpha': _MaterialNodePath(-410),
             'Normal': _MaterialNodePath(-420),
         }
-        texture_inputs: DefaultDict[str, _TextureInputBase] = defaultdict(lambda: _TextureInput())
-        vertex_col_input = _VertexColorInput()
-        params = vmt_data.parameters
 
-        # flags that imply nodraw
-        if any(p in _NODRAW_PARAMS and vmt_data.param_as_bool(p) for p in params):
-            self.blend_method = 'CLIP'
-            self.shadow_method = 'CLIP'
-            self.nodraw = True
-            return
+        vertex_col_input = _VertexColorInput()
         blend_input = vertex_col_input.alpha
 
         if "$basetexture" in params:
@@ -779,10 +809,6 @@ class _MaterialBuilder():
             elif not self.simple:
                 self._shader_dict['Emission'].input = texture_inputs["$basetexture"].alpha
 
-        unsupported_params = [p for p in params if p not in _SUPPORTED_PARAMS]
-        if len(unsupported_params) != 0:
-            print(f"WARNING: UNSUPPORTED MATERIAL PARAMS: {', '.join(unsupported_params)} in {name}")
-
     def build(self) -> bpy.types.Material:
         material: bpy.types.Material = bpy.data.materials.new(self.name)
         material.use_nodes = True
@@ -797,13 +823,30 @@ class _MaterialBuilder():
         pos_ref.x -= 300
         if self.nodraw:
             shader_node: Node = nt.nodes.new('ShaderNodeBsdfTransparent')
+            shader_node.location = pos_ref.loc()
+            pos_ref.x -= 100
+            nt.links.new(shader_node.outputs['BSDF'], out_node.inputs['Surface'])
+            return material
+        elif self.water:
+            mix_node = nt.nodes.new('ShaderNodeMixShader')
+            mix_node.location = pos_ref.loc()
+            mix_node.inputs[0].default_value = 0.2
+            pos_ref.x -= 200
+            glass_node: Node = nt.nodes.new('ShaderNodeBsdfGlass')
+            glass_node.inputs['IOR'].default_value = 1.333
+            glass_node.location = pos_ref.loc()
+            nt.links.new(glass_node.outputs['BSDF'], mix_node.inputs[1])
+            trans_node: Node = nt.nodes.new('ShaderNodeBsdfTransparent')
+            trans_node.location = pos_ref.loc(0, -200)
+            nt.links.new(trans_node.outputs['BSDF'], mix_node.inputs[2])
+            pos_ref.x -= 100
+            nt.links.new(mix_node.outputs['Shader'], out_node.inputs['Surface'])
+            shader_node = glass_node
         else:
             shader_node = nt.nodes.new('ShaderNodeBsdfPrincipled')
-        shader_node.location = pos_ref.loc()
-        pos_ref.x -= 100
-        nt.links.new(shader_node.outputs['BSDF'], out_node.inputs['Surface'])
-        if self.nodraw:
-            return material
+            shader_node.location = pos_ref.loc()
+            pos_ref.x -= 100
+            nt.links.new(shader_node.outputs['BSDF'], out_node.inputs['Surface'])
         required_inputs: Dict[_MaterialInputBase, None] = {}  # Waiting for ordered sets
         paths_pos_ref = pos_ref.copy()
         path_end_pos_x = 0
