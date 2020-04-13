@@ -490,6 +490,7 @@ class _MaterialBuilder():
         self.nodraw = False
         self.blend_method = 'OPAQUE'
         self.shadow_method = 'OPAQUE'
+        self.alpha_reference = 0.3
         self._shader_dict: Dict[str, _MaterialNodePath] = {
             'Base Color': _MaterialNodePath(0),
             'Metallic': _MaterialNodePath(-150),
@@ -684,9 +685,7 @@ class _MaterialBuilder():
             self.shadow_method = 'CLIP'
             self._shader_dict['Alpha'].input = texture_inputs["$basetexture"].alpha
             if "$alphatestreference" in params:
-                self._shader_dict['Alpha'].append(
-                    _SubtractMaterialNode(1 - vmt_data.param_as_float("$alphatestreference"))
-                )
+                self.alpha_reference = 1 - vmt_data.param_as_float("$alphatestreference")
         elif vmt_data.param_flag("$vertexalpha"):
             self.blend_method = 'BLEND'
             self.shadow_method = 'HASHED'
@@ -786,6 +785,7 @@ class _MaterialBuilder():
         material.use_nodes = True
         material.blend_method = self.blend_method
         material.shadow_method = self.shadow_method
+        material.alpha_threshold = self.alpha_reference
         nt = material.node_tree
         nt.nodes.clear()
         pos_ref = _PosRef()
