@@ -7,3 +7,5 @@ with ZipFile("io_import_vmf.zip", 'w') as zip:
         zip.write(filename)
     for filename in glob.iglob("io_import_vmf/**/*.dll", recursive=True):
         zip.write(filename)
+    for filename in glob.iglob("io_import_vmf/bin/*.exe"):
+        zip.write(filename)

@@ -40,7 +40,7 @@ def _tuple_lerp(a: Tuple[float, float], b: Tuple[float, float], amount: float) -
 
 
 class VMFImporter():
-    def __init__(self, data_dirs: Iterable[str], data_paks: Iterable[str],
+    def __init__(self, data_dirs: Iterable[str], data_paks: Iterable[str], dec_models_path: str = None,
                  import_solids: bool = True, import_overlays: bool = True,
                  import_props: bool = True, import_materials: bool = True, import_lights: bool = True,
                  scale: float = 0.01, epsilon: float = 0.001,
@@ -62,6 +62,7 @@ class VMFImporter():
         start = time.time()
         self._vmf_fs = vmfpy.fs.VMFFileSystem(data_dirs, data_paks, index_files=True)
         print(f"Indexing done in {time.time() - start} s")
+        self.dec_models_path = "" if dec_models_path is None else dec_models_path
         self._vmt_importer: Optional['import_vmt.VMTImporter']
         if import_overlays:
             self._side_vertices: Dict[int, List[Vector]] = {}
@@ -73,12 +74,17 @@ class VMFImporter():
         else:
             self._vmt_importer = None
         self._fallback_materials: Dict[str, bpy.types.Material] = {}
-        self._qc_importer: Optional['import_qc.QCImporter']
+        # self._mdl_importer = None
+        self._qc_importer = None
         if import_props:
+            # try:
+            #     from . import import_mdl
+            #     self._mdl_importer = import_mdl.MDLImporter(self._vmf_fs, self._vmt_importer, self.verbose)
+            # except ImportError:
             from . import import_qc
-            self._qc_importer = import_qc.QCImporter(self._vmf_fs, self._vmt_importer, self.verbose)
-        else:
-            self._qc_importer = None
+            self._qc_importer = import_qc.QCImporter(
+                self.dec_models_path, self._vmf_fs, self._vmt_importer, self.verbose
+            )
 
     def __enter__(self) -> 'VMFImporter':
         if self._qc_importer is not None:
@@ -89,7 +95,7 @@ class VMFImporter():
         if self._qc_importer is not None:
             self._qc_importer.__exit__(exc_type, exc_value, traceback)
 
-    def load(self, file_path: str, data_dir: str = None, dec_models_path: str = None) -> None:
+    def load(self, file_path: str, data_dir: str = None) -> None:
         if bpy.context.mode != 'OBJECT':
             bpy.ops.object.mode_set(mode='OBJECT')
         print("Loading VMF...")
@@ -97,8 +103,6 @@ class VMFImporter():
         if data_dir is not None:
             print("Indexing map files...")
             self._vmf_fs.index_dir(data_dir)
-        if dec_models_path is None:
-            dec_models_path = "" if data_dir is None else data_dir
         print("Parsing map...")
         vmf = vmfpy.VMF(open(file_path, encoding="utf-8"), self._vmf_fs)
         success_solids = 0
@@ -158,7 +162,7 @@ class VMFImporter():
             map_collection.children.link(prop_collection)
             for prop_entity in vmf.prop_entities:
                 try:
-                    self._load_prop(prop_entity, prop_collection, dec_models_path)
+                    self._load_prop(prop_entity, prop_collection)
                 except Exception as err:
                     print(f"ERROR LOADING PROP: {err}")
                     if self.verbose:
@@ -648,14 +652,19 @@ class VMFImporter():
         if is_tool:
             obj.display_type = 'WIRE'
 
-    def _load_prop(self, prop: vmfpy.VMFPropEntity, collection: bpy.types.Collection, dec_models_path: str) -> None:
+    def _load_prop(self, prop: vmfpy.VMFPropEntity, collection: bpy.types.Collection) -> None:
         name = path.splitext(prop.model)[0]
-        model_path = path.join(dec_models_path, name + ".qc")
-        assert self._qc_importer is not None
-        obj: bpy.types.Object = self._qc_importer.load(name, model_path, collection)
-        obj.scale = (self.scale, self.scale, self.scale)
+        # if self._mdl_importer is not None:
+        #     obj: bpy.types.Object = self._mdl_importer.load(name, name + ".mdl", collection)
+        #     obj.rotation_euler = Euler((0, 0, radians(90)))
+        if self._qc_importer is not None:
+            obj = self._qc_importer.load(name, collection)
+            obj.rotation_euler = Euler((0, 0, radians(90)))
+        else:
+            raise ImportError("QC importer not found")
+        scale = prop.scale * self.scale
+        obj.scale = (scale, scale, scale)
         obj.location = (prop.origin.x * self.scale, prop.origin.y * self.scale, prop.origin.z * self.scale)
-        obj.rotation_euler = Euler((0, 0, radians(90)))
         obj.rotation_euler.rotate(Euler((radians(prop.angles[2]), radians(prop.angles[0]), radians(prop.angles[1]))))
 
     def _load_overlay(self, overlay: vmfpy.VMFOverlayEntity, collection: bpy.types.Collection) -> None:

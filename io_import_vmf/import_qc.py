@@ -4,9 +4,12 @@ from vmfpy.vmt import VMT, VMTParseException
 import re
 from typing import Dict, Any, Tuple, Set, Optional, TYPE_CHECKING
 import bpy
-from os.path import splitext, basename
+import os
+from os.path import splitext, basename, dirname, isfile, join
+import subprocess
 
 
+_CROWBARCMD_PATH = join(dirname(__file__), "bin/CrowbarCommandLineDecomp.exe")
 _CDMATERIALS_REGEX = re.compile(r'\$CDMaterials[ \t]+"([^"\n]+)"', re.IGNORECASE)
 
 
@@ -93,10 +96,12 @@ class SmdImporterWrapper(import_smd.SmdImporter):
 
 
 class QCImporter():
-    def __init__(self, vmf_fs: Optional[VMFFileSystem], vmt_importer: Optional['import_vmt.VMTImporter'],
-                 verbose: bool = False):
+    def __init__(self, dec_models_path: str, vmf_fs: VMFFileSystem = VMFFileSystem(),
+                 vmt_importer: Optional['import_vmt.VMTImporter'] = None, verbose: bool = False):
         self._cache: Dict[str, bpy.types.Object] = {}
         self.verbose = verbose
+        self.dec_models_path = dec_models_path
+        self.vmf_fs = vmf_fs
         SmdImporterWrapper.vmt_importer = vmt_importer
         SmdImporterWrapper.vmf_fs = vmf_fs
 
@@ -107,7 +112,7 @@ class QCImporter():
     def __exit__(self, exc_type: Any, exc_value: Any, traceback: Any) -> None:
         bpy.utils.unregister_class(SmdImporterWrapper)
 
-    def load(self, name: str, path: str, collection: bpy.types.Collection = bpy.context.collection) -> bpy.types.Object:
+    def load(self, name: str, collection: bpy.types.Collection) -> bpy.types.Object:
         if name in self._cache:
             if self.verbose:
                 print(f"Prop {name} already imported, copying...")
@@ -120,6 +125,36 @@ class QCImporter():
                 collection.objects.link(twin)
             return copy
         SmdImporterWrapper.collection = collection
+        path = join(self.dec_models_path, name + ".qc")
+        if not isfile(path):
+            mdl_path = vmf_path(name)
+            mdl_dir = mdl_path.parent
+            mdl_name = mdl_path.stem
+            # decompiled model doesn't exist, decompile it
+            # save required files
+            try:
+                for filename in self.vmf_fs.tree[mdl_dir].files:
+                    if not filename.startswith(mdl_name):
+                        continue
+                    file_out_path = join(self.dec_models_path, mdl_dir, filename)
+                    os.makedirs(dirname(file_out_path), exist_ok=True)
+                    with self.vmf_fs[mdl_dir / filename] as in_f:
+                        with open(file_out_path, 'wb') as out_f:
+                            for line in in_f:
+                                out_f.write(line)
+            except KeyError:
+                print(f"ERROR: MODEL {mdl_path} NOT FOUND")
+                raise FileNotFoundError(mdl_path)
+            else:
+                # call the decompiler
+                subprocess.run(
+                    (
+                        _CROWBARCMD_PATH,
+                        "-p", str(self.dec_models_path / mdl_path.with_suffix(".mdl")),
+                        "-o", str(self.dec_models_path / mdl_dir)
+                    ),
+                    check=True
+                )
         bpy.ops.import_scene._io_import_vmf_smd_wrapper(filepath=path)
         smd = SmdImporterWrapper.smd
         self._cache[name] = smd.a
