@@ -123,6 +123,7 @@ class QCImporter():
         bpy.ops.import_scene._io_import_vmf_smd_wrapper(filepath=path)
         smd = SmdImporterWrapper.smd
         self._cache[name] = smd.a
-        collection.objects.link(smd.a)
+        if smd.a.name not in collection.objects:
+            collection.objects.link(smd.a)
         bpy.context.scene.collection.objects.unlink(smd.a)
         return smd.a
