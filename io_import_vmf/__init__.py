@@ -326,6 +326,12 @@ class ImportSceneVMF(_VMFOperator, _VMFOperatorProps):
         default=True,
     )
 
+    simple_materials: bpy.props.BoolProperty(  # type: ignore
+        name="Simple materials",
+        description="Import simple, exporter-friendly versions of materials.",
+        default=False,
+    )
+
     global_scale: bpy.props.FloatProperty(  # type: ignore
         name="Scale",
         description="Scale everything by this value",
@@ -373,7 +379,9 @@ class ImportSceneVMF(_VMFOperator, _VMFOperatorProps):
         importer = import_vmf.VMFImporter(self.data_dirs, self.data_paks, dec_models_path,
                                           import_solids=self.import_solids, import_overlays=self.import_overlays,
                                           import_props=self.import_props,
-                                          import_materials=self.import_materials, import_lights=self.import_lights,
+                                          import_materials=self.import_materials,
+                                          simple_materials=self.simple_materials,
+                                          import_lights=self.import_lights,
                                           scale=self.global_scale, epsilon=self.epsilon,
                                           light_factor=self.light_factor, sun_factor=self.sun_factor,
                                           ambient_factor=self.ambient_factor,
@@ -416,6 +424,9 @@ class ImportSceneVMF(_VMFOperator, _VMFOperatorProps):
             col.label(text="Blender Source tools must be installed to import props.")
         if self.import_solids or self.import_props:
             layout.prop(self, "import_materials")
+            if self.import_materials:
+                box = layout.box()
+                box.prop(self, "simple_materials")
         layout.prop(self, "import_lights")
         if self.import_lights:
             box = layout.box()
@@ -551,6 +562,12 @@ class ImportSceneVMT(_ValveGameOperator, _ValveGameOperatorProps):
     filepath: bpy.props.StringProperty(subtype='FILE_PATH', options={'HIDDEN'})  # type: ignore
     filter_glob: bpy.props.StringProperty(default="*.vmt", options={'HIDDEN'})  # type: ignore
 
+    simple_materials: bpy.props.BoolProperty(  # type: ignore
+        name="Simple materials",
+        description="Import simple, exporter-friendly versions of materials.",
+        default=False,
+    )
+
     verbose: bpy.props.BoolProperty(  # type: ignore
         name="Verbose",
         description="Enable to print more info into console",
@@ -567,13 +584,14 @@ class ImportSceneVMT(_ValveGameOperator, _ValveGameOperatorProps):
         print("Indexing game files...")
         fs = VMFFileSystem(self.data_dirs, self.data_paks, index_files=True)
         print("Loading material...")
-        importer = import_vmt.VMTImporter(self.verbose)
+        importer = import_vmt.VMTImporter(self.verbose, self.simple_materials)
         importer.load(splitext(basename(self.filepath))[0], lambda: VMT(open(self.filepath, encoding='utf-8'), fs))
         return {'FINISHED'}
 
     def draw(self, context: bpy.types.Context) -> None:
         layout: bpy.types.UILayout = self.layout
         super().draw(context)
+        layout.prop(self, "simple_materials")
         layout.prop(self, "verbose")
 
 

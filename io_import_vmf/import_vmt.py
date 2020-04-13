@@ -482,9 +482,10 @@ _SUPPORTED_PARAMS = frozenset((
 
 
 class _MaterialBuilder():
-    def __init__(self, vtf_importer: import_vtf.VTFImporter, name: str, vmt_data: vmt.VMT):
+    def __init__(self, vtf_importer: import_vtf.VTFImporter, name: str, vmt_data: vmt.VMT, simple: bool = False):
         self._vtf_importer = vtf_importer
         self.name = name
+        self.simple = simple
         self.width = 1
         self.height = 1
         self.nodraw = False
@@ -525,7 +526,7 @@ class _MaterialBuilder():
                     )
             texture_inputs["$basetexture"].setimage(image)
             self.width, self.height = image.size
-            if "$blendmodulatetexture" in params:
+            if not self.simple and "$blendmodulatetexture" in params:
                 bimage = self._vtf_importer.load(
                     params["$blendmodulatetexture"], vmt_data.param_open_texture("$blendmodulatetexture")
                 )
@@ -540,8 +541,8 @@ class _MaterialBuilder():
                 blend_input = _ModulatedBlendFactorInput(
                     texture_inputs["$blendmodulatetexture"].channels, vertex_col_input.alpha
                 ).fac
-            if "$detail" in params and ("$detailblendmode" not in params
-                                        or vmt_data.param_as_int("$detailblendmode") == 0):  # TODO: other blend modes
+            if not self.simple and "$detail" in params and ("$detailblendmode" not in params  # TODO: other blend modes
+                                                            or vmt_data.param_as_int("$detailblendmode") == 0):
                 dimage = self._vtf_importer.load(params["$detail"], vmt_data.param_open_texture("$detail"))
                 dimage.colorspace_settings.name = 'Non-Color'
                 scale = (1, 1)
@@ -569,7 +570,7 @@ class _MaterialBuilder():
                 texture_inputs["$basetexture"] = _DetailedTextureInput(
                     texture_inputs["$basetexture"], texture_inputs["$detail"], blend_fac
                 )
-            if "$basetexture2" in params:
+            if not self.simple and "$basetexture2" in params:
                 image2 = self._vtf_importer.load(params["$basetexture2"], vmt_data.param_open_texture("$basetexture2"))
                 image2.alpha_mode = 'CHANNEL_PACKED'
                 image2.colorspace_settings.name = 'sRGB'
@@ -617,10 +618,10 @@ class _MaterialBuilder():
                 self._shader_dict['Base Color'].append(_MultiplyRGBMaterialNode(vmt_data.param_as_color("$color")))
         elif "$color" in params:
             self._shader_dict['Base Color'].const = vmt_data.param_as_color("$color") + (1,)
-        elif vmt_data.param_flag("$vertexcolor"):
+        elif not self.simple and vmt_data.param_flag("$vertexcolor"):
             self._shader_dict['Base Color'].input = vertex_col_input.color
 
-        if "$bumpmap" in params:
+        if "$bumpmap" in params and (not self.simple or not vmt_data.param_flag("$ssbump")):
             image = self._vtf_importer.load(params["$bumpmap"], vmt_data.param_open_texture("$bumpmap"))
             image.colorspace_settings.name = 'Non-Color'
             if "$bumptransform" in params:
@@ -630,7 +631,7 @@ class _MaterialBuilder():
                         transform.scale, transform.rotate, transform.translate
                     )
             texture_inputs["$bumpmap"].setimage(image)
-            if "$bumpmap2" in params:
+            if not self.simple and "$bumpmap2" in params:
                 image2 = self._vtf_importer.load(params["$bumpmap2"], vmt_data.param_open_texture("$bumpmap2"))
                 image2.colorspace_settings.name = 'Non-Color'
                 if "$bumptransform2" in params:
@@ -647,7 +648,8 @@ class _MaterialBuilder():
                 self._shader_dict['Normal'].append(_SsbumpToNormalMaterialNode())
             else:
                 self._shader_dict['Normal'].append(_NormalMapMaterialNode())
-        elif "$detail" in params and "$detailblendmode" in params and vmt_data.param_as_int("$detailblendmode") == 10:
+        elif not self.simple and ("$detail" in params and "$detailblendmode" in params
+                                  and vmt_data.param_as_int("$detailblendmode") == 10):
             dimage = self._vtf_importer.load(params["$detail"], vmt_data.param_open_texture("$detail"))
             dimage.colorspace_settings.name = 'Non-Color'
             scale = (1, 1)
@@ -686,7 +688,7 @@ class _MaterialBuilder():
             self._shader_dict['Alpha'].input = texture_inputs["$basetexture"].alpha
             if "$alphatestreference" in params:
                 self.alpha_reference = 1 - vmt_data.param_as_float("$alphatestreference")
-        elif vmt_data.param_flag("$vertexalpha"):
+        elif not self.simple and vmt_data.param_flag("$vertexalpha"):
             self.blend_method = 'BLEND'
             self.shadow_method = 'HASHED'
             self._shader_dict['Alpha'].input = vertex_col_input.alpha
@@ -702,14 +704,14 @@ class _MaterialBuilder():
         if vmt_data.param_flag("$phong") or vmt_data.shader == "character":
             if vmt_data.param_flag("$basemapluminancephongmask"):
                 self._shader_dict['Specular'].input = texture_inputs["$basetexture"].color
-            elif vmt_data.param_flag("$basemapalphaphongmask"):
+            elif not self.simple and vmt_data.param_flag("$basemapalphaphongmask"):
                 self._shader_dict['Specular'].input = texture_inputs["$basetexture"].alpha
-            elif masks1:
+            elif not self.simple and masks1:
                 self._shader_dict['Specular'].input = texture_inputs["$masks1"].channels.g
-            else:
+            elif not self.simple:
                 self._shader_dict['Specular'].input = texture_inputs["$bumpmap"].alpha
             if "$phongexponent" in params:
-                if "$phongexponent2" in params:
+                if not self.simple and "$phongexponent2" in params:
                     self._shader_dict['Roughness'].input = _BlendedConstantInput(
                         blend_input,
                         ((150 - vmt_data.param_as_float("$phongexponent")) / 150) * 0.5,
@@ -719,7 +721,7 @@ class _MaterialBuilder():
                     self._shader_dict['Roughness'].const = (
                         (150 - vmt_data.param_as_float("$phongexponent")) / 150
                     ) * 0.5
-            elif "$phongexponenttexture" in params:
+            elif not self.simple and "$phongexponenttexture" in params:
                 image = self._vtf_importer.load(
                     params["$phongexponenttexture"],
                     vmt_data.param_open_texture("$phongexponenttexture")
@@ -734,10 +736,11 @@ class _MaterialBuilder():
             else:
                 self._shader_dict['Roughness'].const = 0.3
         elif "$envmap" in params:
-            if vmt_data.param_flag("$basealphaenvmapmask") or vmt_data.param_flag("$basealphaenvmask"):
+            if not self.simple and (vmt_data.param_flag("$basealphaenvmapmask")
+                                    or vmt_data.param_flag("$basealphaenvmask")):
                 self._shader_dict['Specular'].input = texture_inputs["$basetexture"].alpha
                 self._shader_dict['Specular'].append(_InvertMaterialNode())
-            elif vmt_data.param_flag("$normalmapalphaenvmapmask"):
+            elif not self.simple and vmt_data.param_flag("$normalmapalphaenvmapmask"):
                 self._shader_dict['Specular'].input = texture_inputs["$bumpmap"].alpha
             elif "$envmapmask" in params:
                 image = self._vtf_importer.load(params["$envmapmask"], vmt_data.param_open_texture("$envmapmask"))
@@ -750,7 +753,7 @@ class _MaterialBuilder():
                         )
                 texture_inputs["$envmapmask"].setimage(image)
                 self._shader_dict['Specular'].input = texture_inputs["$envmapmask"].color
-                if "$envmaptint" in params:
+                if not self.simple and "$envmaptint" in params:
                     tint = vmt_data.param_as_vec3("$envmaptint")
                     self._shader_dict['Specular'].append(_MultiplyMaterialNode(sum(tint) / 3))
             elif "$envmaptint" in params:
@@ -760,12 +763,12 @@ class _MaterialBuilder():
                 self._shader_dict['Specular'].const = 0.8
             self._shader_dict['Roughness'].const = 0.1
 
-        if masks1:
+        if not self.simple and masks1:
             self._shader_dict['Metallic'].input = texture_inputs["$masks1"].channels.b
         elif "$metalness" in params:
             self._shader_dict['Metallic'].const = vmt_data.param_as_float("$metalness")
 
-        if vmt_data.param_flag("$selfillum_envmapmask_alpha"):
+        if not self.simple and vmt_data.param_flag("$selfillum_envmapmask_alpha"):
             self._shader_dict['Emission'].input = texture_inputs["$envmapmask"].alpha
         elif vmt_data.param_flag("$selfillum"):
             if "$selfillummask" in params:
@@ -773,7 +776,7 @@ class _MaterialBuilder():
                 image.colorspace_settings.name = 'Non-Color'
                 texture_inputs["$selfillummask"].setimage(image)
                 self._shader_dict['Emission'].input = texture_inputs["$selfillummask"].color
-            else:
+            elif not self.simple:
                 self._shader_dict['Emission'].input = texture_inputs["$basetexture"].alpha
 
         unsupported_params = [p for p in params if p not in _SUPPORTED_PARAMS]
@@ -829,8 +832,9 @@ class _MaterialBuilder():
 
 
 class VMTImporter():
-    def __init__(self, verbose: bool = False) -> None:
+    def __init__(self, verbose: bool = False, simple: bool = False) -> None:
         self.verbose = verbose
+        self.simple = simple
         self._cache: Dict[str, VMTData] = {}
         self._vtf_importer = import_vtf.VTFImporter()
 
@@ -840,7 +844,7 @@ class VMTImporter():
             return self._cache[material_name]
         if self.verbose:
             print(f"Building material {material_name}...")
-        builder = _MaterialBuilder(self._vtf_importer, material_name, vmt_data())
+        builder = _MaterialBuilder(self._vtf_importer, material_name, vmt_data(), simple=self.simple)
         material = builder.build()
         data = VMTData(builder.width, builder.height, material)
         self._cache[material_name] = data
