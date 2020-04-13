@@ -1,47 +1,175 @@
 import bpy
 import sys
 import os
-from os.path import join, abspath, dirname, basename, splitext, isdir, isfile, expanduser
+from os.path import join, relpath, abspath, dirname, basename, splitext, isdir
+from shutil import rmtree
+import glob
 from pathlib import PurePosixPath
-from typing import Set, Optional, Tuple
+from typing import Set, Optional, Tuple, List
 sys.path.append(join(dirname(abspath(__file__)), "deps"))
 
 
 bl_info = {
-    "name": "io_import_vmf",
+    "name": "Import Valve Map Format / Valve Material Type",
     "author": "Lassi Säike",
-    "description": "Import Valve Map Format (VMF) and Valve Material Type (VMT) files into Blender",
+    "description": "Import Valve Map Format (VMF) and Valve Material Type (VMT) files.",
     "blender": (2, 82, 0),
     "version": (0, 0, 1),
-    "location": "File > Import > Valve Map Format (.vmf)",
+    "location": "File > Import",
     "warning": "",
     "tracker_url": "https://github.com/lasa01/io_import_vmf",
     "category": "Import-Export"
 }
 
 
-_PAKFILE_WIN = r"C:\Program Files (x86)\Steam\steamapps\common\Counter-Strike Global Offensive\csgo\pak01_dir.vpk"
-_PAKFILE_LINUX = "~/.steam/steam/SteamApps/common/Counter-Strike Global Offensive/csgo/pak01_dir.vpk"
+class ValveGameSettings(bpy.types.PropertyGroup):
+    name: bpy.props.StringProperty(name="Name", default="Source Game")  # type: ignore
+
+    def get_gamedir_path(self) -> str:
+        return self.get("gamedir_path", "")
+
+    def set_gamedir_path(self, value: str) -> None:
+        value = value.rstrip("\\/")
+        self["gamedir_path"] = value
+        pak_candidates = glob.glob(join(value, "*_dir.vpk"))
+        if len(pak_candidates) != 0:
+            game = basename(value)
+            for candidate in pak_candidates:
+                candidate_f = basename(candidate)
+                if "pak01" in candidate_f or game in candidate_f:
+                    self.pakfile_path = candidate
+                    break
+            else:
+                self.pakfile_path = pak_candidates[0]
+        self.name = basename(dirname(value))
+
+    gamedir_path: bpy.props.StringProperty(name="Game directory path", subtype='DIR_PATH',  # type: ignore
+                                           get=get_gamedir_path, set=set_gamedir_path)
+    pakfile_path: bpy.props.StringProperty(name="Game VPK path", subtype='FILE_PATH')  # type: ignore
+
+
+class ValveGameSettingsList(bpy.types.UIList):
+    bl_idname = "IO_IMPORT_VMF_UL_valvegameslist"
+
+    def draw_item(self, context: bpy.types.Context, layout: bpy.types.UILayout,
+                  data: 'ValveGameAddonPreferences', item: ValveGameSettings,
+                  icon: int, active_data: int, active_propname: str) -> None:
+        if self.layout_type in {'DEFAULT', 'COMPACT'}:
+            layout.prop(item, "name", text="", emboss=False, icon_value=icon)
+        elif self.layout_type in {'GRID'}:
+            layout.alignment = 'CENTER'
+            layout.label(text=item.name, icon_value=icon)
+
+
+class AddValveGameOperator(bpy.types.Operator):
+    bl_idname = "io_import_vmf.valvegame_add"
+    bl_label = "Add a Valve game definition"
+    bl_options = {'REGISTER', 'UNDO'}
+
+    def execute(self, context: bpy.types.Context) -> Set[str]:
+        preferences: ValveGameAddonPreferences = context.preferences.addons[__package__].preferences
+        preferences.games.add()
+        preferences.game_index = len(preferences.games) - 1
+        return {'FINISHED'}
+
+
+class RemoveValveGameOperator(bpy.types.Operator):
+    bl_idname = "io_import_vmf.valvegame_remove"
+    bl_label = "Remove a Valve game definition"
+    bl_options = {'REGISTER', 'UNDO'}
+
+    @classmethod
+    def poll(cls, context: bpy.types.Context) -> bool:
+        return bool(context.preferences.addons[__package__].preferences.games)
+
+    def execute(self, context: bpy.types.Context) -> Set[str]:
+        preferences: ValveGameAddonPreferences = context.preferences.addons[__package__].preferences
+        preferences.games.remove(preferences.game_index)
+        preferences.game_index = min(max(0, preferences.game_index - 1), len(preferences.games) - 1)
+        return {'FINISHED'}
+
+
+class ValveGameAddonPreferences(bpy.types.AddonPreferences):
+    bl_idname = __package__
+
+    games: bpy.props.CollectionProperty(type=ValveGameSettings)  # type: ignore
+    game_index: bpy.props.IntProperty(name="Game definition")  # type: ignore
+
+    dec_models_path: bpy.props.StringProperty(  # type: ignore
+        name="Models path",
+        default="",
+        description="Path to the directory for decompiled models.",
+        subtype='DIR_PATH'
+    )
+
+    @staticmethod
+    def game_enum_items(self: bpy.types.EnumProperty, context: bpy.types.Context) -> List[Tuple[str, str, str]]:
+        preferences: ValveGameAddonPreferences = context.preferences.addons[__package__].preferences
+        items = [(str(i), game.name, "") for i, game in enumerate(preferences.games.values())]
+        items.append(('NONE', "None", ""))
+        return items
+
+    def draw(self, context: bpy.types.Context) -> None:
+        layout: bpy.types.UILayout = self.layout
+        layout.label(text="Valve game definitions:")
+        row = layout.row()
+        row.template_list("IO_IMPORT_VMF_UL_valvegameslist", "", self, "games", self, "game_index")
+        col = row.column()
+        col.operator("io_import_vmf.valvegame_add", text="", icon='ADD')
+        col.operator("io_import_vmf.valvegame_remove", text="", icon='REMOVE')
+        if self.games:
+            box = layout.box()
+            game = self.games[self.game_index]
+            box.prop(game, "gamedir_path")
+            box.prop(game, "pakfile_path")
+        layout.separator_spacer()
+        layout.prop(self, "dec_models_path")
+        layout.label(text="Specifies a persistent path to save decompiled models to.", icon='INFO')
+
+
+class ValveGameOpenPreferencesOperator(bpy.types.Operator):
+    bl_idname = "io_import_vmf.open_preferences"
+    bl_label = "Open Valve game definition preferences"
+    bl_options = {'INTERNAL'}
+
+    def execute(self, context: bpy.types.Context) -> Set[str]:
+        bpy.ops.preferences.addon_show('INVOKE_SCREEN', module=__package__)
+        return {'FINISHED'}
 
 
 class _ValveGameOperatorProps():
-    pakfile_path: bpy.props.StringProperty(name="Game VPK path",  # type: ignore
-                                           default=_PAKFILE_WIN if os.name == 'nt' else expanduser(_PAKFILE_LINUX))
+    game: bpy.props.EnumProperty(items=ValveGameAddonPreferences.game_enum_items,  # type: ignore
+                                 name="Game definition", description="Used for searching files")
 
 
 class _ValveGameOperator(bpy.types.Operator, _ValveGameOperatorProps):
-    data_dirs: Tuple[str, ...] = ()
+    data_dirs: Tuple[str, ...]
     data_paks: Tuple[str, ...]
 
-    def invoke(self, context: bpy.types.Context, event: bpy.types.Event) -> set:
+    def invoke(self, context: bpy.types.Context, event: bpy.types.Event) -> Set[str]:
         context.window_manager.fileselect_add(self)
         return {'RUNNING_MODAL'}
 
-    def _check_valve_props(self) -> Optional[set]:
-        if not isfile(self.pakfile_path):
-            self.report({'ERROR_INVALID_INPUT'}, "Game VPK file doesn't exist")
-            return {'CANCELLED'}
-        self.data_paks = (self.pakfile_path,)
+    def draw(self, context: bpy.types.Context) -> None:
+        layout: bpy.types.UILayout = self.layout
+        layout.alignment = 'RIGHT'
+        preferences: ValveGameAddonPreferences = context.preferences.addons[__package__].preferences
+        layout.prop(self, "game")
+        if not preferences.games:
+            box = layout.box()
+            row = box.row()
+            row.label(text="Open preferences to add game definitions.", icon='INFO')
+            row.operator("io_import_vmf.open_preferences", text="", icon='PREFERENCES')
+
+    def _check_valve_props(self, context: bpy.types.Context) -> Optional[Set[str]]:
+        if self.game != 'NONE':
+            preferences: ValveGameAddonPreferences = context.preferences.addons[__package__].preferences
+            game_def: ValveGameSettings = preferences.games[int(self.game)]
+            self.data_paks = (game_def.pakfile_path,)
+            self.data_dirs = (game_def.gamedir_path,)
+        else:
+            self.data_paks = ()
+            self.data_dirs = ()
         return None
 
 
@@ -49,22 +177,22 @@ class _VMFOperatorProps(_ValveGameOperatorProps):
     filepath: bpy.props.StringProperty(subtype='FILE_PATH', options={'HIDDEN'})  # type: ignore
     filter_glob: bpy.props.StringProperty(default="*.vmf", options={'HIDDEN'})  # type: ignore
 
-    map_data_path_prop: bpy.props.StringProperty(name="Map data directory path", default="",  # type: ignore
+    map_data_path_prop: bpy.props.StringProperty(name="Embedded files path", default="",  # type: ignore
                                                  description="Leave empty to auto-detect")
 
 
 class _VMFOperator(_ValveGameOperator, _VMFOperatorProps):
     map_data_path: Optional[str]
 
+    def draw(self, context: bpy.types.Context) -> None:
+        layout: bpy.types.UILayout = self.layout
+        super().draw(context)
+        layout.prop(self, "map_data_path_prop", icon='FILE_FOLDER')
+
     def _check_vmf_props(self) -> None:
         self.map_data_path = self.map_data_path_prop
         if self.map_data_path == "":
-            filename = splitext(self.filepath)[0]
-            # if map is decompiled, strip the suffix
-            if filename.endswith("_d"):
-                self.map_data_path = filename[:-2]
-            else:
-                self.map_data_path = filename
+            self.map_data_path = splitext(self.filepath)[0]
         if not isdir(self.map_data_path):  # type: ignore
             self.map_data_path = None
 
@@ -73,28 +201,25 @@ class ExportVMFMDLs(_VMFOperator, _VMFOperatorProps):
     """Export required MDL files for a VMF."""
     bl_idname = "export.vmf_mdls"
     bl_label = "Export VMF MDLs for decompilation"
-    bl_options = {'UNDO'}
+    bl_options: Set[str] = set()
 
     out_path: bpy.props.StringProperty(name="Output directory", default="",  # type: ignore
-                                       description="Leave empty to use a directory next to current blend file")
+                                       description="Leave empty to use a directory next to input file")
 
-    def execute(self, context: bpy.types.Context) -> set:
-        result = self._check_valve_props()
+    def execute(self, context: bpy.types.Context) -> Set[str]:
+        result = self._check_valve_props(context)
         if result is not None:
             return result
         self._check_vmf_props()
         if self.out_path == "":
-            if bpy.data.filepath == "":
-                self.report({'ERROR_INVALID_INPUT'}, "Output directory not specified and no current blend file")
-                return {'CANCELLED'}
-            self.out_path = join(dirname(bpy.data.filepath), "vmf_out")
+            self.out_path = join(dirname(self.filepath), f"{splitext(basename(self.filepath))[0]}_models")
         os.makedirs(self.out_path, exist_ok=True)
         print(f"Output path: {self.out_path}")
         print(f"Map data path: {self.map_data_path}")
         print("Loading VMF...")
         import vmfpy
         print("Indexing game files...")
-        vmf_fs = vmfpy.VMFFileSystem(self.data_dirs, self.data_paks, index_files=True)
+        vmf_fs = vmfpy.VMFFileSystem(self.data_dirs + (self.map_data_path,), self.data_paks, index_files=True)
         vmf = vmfpy.VMF(open(self.filepath, encoding="utf-8"), vmf_fs)
         print("Saving model files...")
         saved: Set[PurePosixPath] = set()
@@ -126,6 +251,11 @@ class ExportVMFMDLs(_VMFOperator, _VMFOperatorProps):
         print(f"Not found: {len(not_found)}")
         return {'FINISHED'}
 
+    def draw(self, context: bpy.types.Context) -> None:
+        layout: bpy.types.UILayout = self.layout
+        super().draw(context)
+        layout.prop(self, "out_path", icon='FILE_FOLDER')
+
 
 class ImportSceneVMF(_VMFOperator, _VMFOperatorProps):
     bl_idname = "import_scene.vmf"
@@ -145,6 +275,12 @@ class ImportSceneVMF(_VMFOperator, _VMFOperatorProps):
         default=0.001, precision=4,
     )
 
+    skip_tools: bpy.props.BoolProperty(  # type: ignore
+        name="Skip tools (invisible brushes)",
+        description="Skip importing brushes containing only tool textures",
+        default=True,
+    )
+
     import_overlays: bpy.props.BoolProperty(  # type: ignore
         name="Import overlays",
         default=True,
@@ -153,17 +289,7 @@ class ImportSceneVMF(_VMFOperator, _VMFOperatorProps):
     import_props: bpy.props.BoolProperty(  # type: ignore
         name="Import props",
         default=True,
-    )
-
-    dec_models_path: bpy.props.StringProperty(  # type: ignore
-        name="Models directory",
-        default="",
-        description="Path to the directory for decompiled models (leave empty to use map data directory)"
-    )
-
-    import_materials: bpy.props.BoolProperty(  # type: ignore
-        name="Import materials",
-        default=True,
+        description="SourceIO or Blender Source Tools must be installed for this to work.",
     )
 
     import_lights: bpy.props.BoolProperty(  # type: ignore
@@ -195,6 +321,11 @@ class ImportSceneVMF(_VMFOperator, _VMFOperatorProps):
         default=0.001, precision=4,
     )
 
+    import_materials: bpy.props.BoolProperty(  # type: ignore
+        name="Import materials",
+        default=True,
+    )
+
     global_scale: bpy.props.FloatProperty(  # type: ignore
         name="Scale",
         description="Scale everything by this value",
@@ -209,25 +340,37 @@ class ImportSceneVMF(_VMFOperator, _VMFOperatorProps):
         default=False,
     )
 
-    skip_tools: bpy.props.BoolProperty(  # type: ignore
-        name="Skip tools",
-        description="Skip importing brushes containing only tool textures",
-        default=False,
-    )
+    # mdl_available = False
+    qc_available = False
 
-    def execute(self, context: bpy.types.Context) -> set:
-        result = self._check_valve_props()
+    def invoke(self, context: bpy.types.Context, event: bpy.types.Event) -> Set[str]:
+        # try:
+        #     from . import import_mdl  # noqa: F401
+        # except ImportError:
+        #     self.mdl_available = False
+        # else:
+        #     self.mdl_available = True
+        try:
+            from . import import_qc  # noqa: F401
+        except ImportError:
+            self.qc_available = False
+        else:
+            self.qc_available = True
+        return super().invoke(context, event)
+
+    def execute(self, context: bpy.types.Context) -> Set[str]:
+        result = self._check_valve_props(context)
         if result is not None:
             return result
         self._check_vmf_props()
-        dec_models_path = self.dec_models_path
+        preferences: ValveGameAddonPreferences = context.preferences.addons[__package__].preferences
+        dec_models_path = preferences.dec_models_path
+        delete_files = False
         if dec_models_path == "":
-            dec_models_path = None
-            if self.import_props:
-                self.report({'ERROR_INVALID_INPUT'}, "Decompiled models path must be specified when importing props")
-                return {'CANCELLED'}
+            delete_files = True
+            dec_models_path = join(context.preferences.filepaths.temporary_directory, "blender_io_import_vmf_models")
         from . import import_vmf
-        importer = import_vmf.VMFImporter(self.data_dirs, self.data_paks,
+        importer = import_vmf.VMFImporter(self.data_dirs, self.data_paks, dec_models_path,
                                           import_solids=self.import_solids, import_overlays=self.import_overlays,
                                           import_props=self.import_props,
                                           import_materials=self.import_materials, import_lights=self.import_lights,
@@ -236,13 +379,69 @@ class ImportSceneVMF(_VMFOperator, _VMFOperatorProps):
                                           ambient_factor=self.ambient_factor,
                                           verbose=self.verbose, skip_tools=self.skip_tools)
         with importer:
-            importer.load(self.filepath, self.map_data_path, dec_models_path)
+            importer.load(self.filepath, context, self.map_data_path)
+        if delete_files:
+            rmtree(dec_models_path, ignore_errors=True)
         return {'FINISHED'}
+
+    def draw(self, context: bpy.types.Context) -> None:
+        layout: bpy.types.UILayout = self.layout
+        super().draw(context)
+        layout.separator_spacer()
+        layout.prop(self, "import_solids")
+        if self.import_solids:
+            box = layout.box()
+            box.prop(self, "epsilon")
+            box.prop(self, "skip_tools")
+            box.prop(self, "import_overlays")
+        col = layout.column()
+        col.prop(self, "import_props")
+        if self.import_props:
+            box = col.box()
+            # if self.mdl_available:
+            #     box.label(text="Models will be imported using SourceIO.")
+            if self.qc_available:
+                box.label(text="Models will be imported using Blender Source Tools.")
+                preferences: ValveGameAddonPreferences = context.preferences.addons[__package__].preferences
+                if not preferences.dec_models_path:
+                    box.label(text="They will be decompiled into a temp directory and deleted.")
+                    row = box.row()
+                    row.label(text="You can specify a persistent path for decompiled models.", icon='INFO')
+                    row.operator("io_import_vmf.open_preferences", text="", icon='PREFERENCES')
+                else:
+                    box.label(text="Missing models will be decompiled.")
+        if not self.qc_available:
+            self.import_props = False
+            col.enabled = False
+            col.label(text="Blender Source tools must be installed to import props.")
+        if self.import_solids or self.import_props:
+            layout.prop(self, "import_materials")
+        layout.prop(self, "import_lights")
+        if self.import_lights:
+            box = layout.box()
+            box.prop(self, "light_factor")
+            box.prop(self, "sun_factor")
+            box.prop(self, "ambient_factor")
+        layout.separator_spacer()
+        layout.prop(self, "global_scale")
+        layout.prop(self, "verbose")
+
+
+def _get_source_path_root(path: str) -> str:
+    fallback_dirname = dirname(path)
+    while True:
+        new_path = dirname(path)
+        if new_path == path:
+            return fallback_dirname
+        path = new_path
+        if basename(path) == "models":
+            break
+    return dirname(path)
 
 
 class ImportSceneQC(_ValveGameOperator, _ValveGameOperatorProps):
-    bl_idname = "import_scene.qc"
-    bl_label = "Import QC with materials"
+    bl_idname = "import_scene.qc_enhanced"
+    bl_label = "Import QC (enhanced)"
     bl_options = {'UNDO', 'PRESET'}
 
     filepath: bpy.props.StringProperty(subtype='FILE_PATH', options={'HIDDEN'})  # type: ignore
@@ -259,11 +458,15 @@ class ImportSceneQC(_ValveGameOperator, _ValveGameOperatorProps):
         default=False,
     )
 
-    def execute(self, context: bpy.types.Context) -> set:
-        result = self._check_valve_props()
+    def execute(self, context: bpy.types.Context) -> Set[str]:
+        try:
+            from . import import_qc
+        except ImportError:
+            self.report({'ERROR'}, "Blender Source Tools must be installed for importing QC files")
+            return {'CANCELLED'}
+        result = self._check_valve_props(context)
         if result is not None:
             return result
-        from . import import_qc
         if self.import_materials:
             from . import import_vmt
             from vmfpy.fs import VMFFileSystem
@@ -272,14 +475,72 @@ class ImportSceneQC(_ValveGameOperator, _ValveGameOperatorProps):
         else:
             fs = None
         print("Importing model...")
+        root = _get_source_path_root(self.filepath)
         importer = import_qc.QCImporter(
+            root,
             fs,
             import_vmt.VMTImporter(self.verbose) if self.import_materials else None,
             self.verbose,
         )
         with importer:
-            importer.load(os.path.basename(self.filepath), self.filepath)
+            importer.load(splitext(relpath(self.filepath, root))[0], context.collection)
         return {'FINISHED'}
+
+    def draw(self, context: bpy.types.Context) -> None:
+        layout: bpy.types.UILayout = self.layout
+        super().draw(context)
+        layout.prop(self, "import_materials")
+        layout.prop(self, "verbose")
+
+
+# NOTE: Imports invalid rotation, disabled
+class ImportSceneMDL(_ValveGameOperator, _ValveGameOperatorProps):
+    bl_idname = "import_scene.mdl_enhanced"
+    bl_label = "Import MDL (enhanced)"
+    bl_options = {'UNDO', 'PRESET'}
+
+    filepath: bpy.props.StringProperty(subtype='FILE_PATH', options={'HIDDEN'})  # type: ignore
+    filter_glob: bpy.props.StringProperty(default="*.mdl", options={'HIDDEN'})  # type: ignore
+
+    import_materials: bpy.props.BoolProperty(  # type: ignore
+        name="Import materials",
+        default=True,
+    )
+
+    verbose: bpy.props.BoolProperty(  # type: ignore
+        name="Verbose",
+        description="Enable to print more info into console",
+        default=False,
+    )
+
+    def execute(self, context: bpy.types.Context) -> Set[str]:
+        try:
+            from . import import_mdl
+        except ImportError:
+            self.report({'ERROR'}, "SourceIO must be installed for importing MDL files")
+            return {'CANCELLED'}
+        result = self._check_valve_props(context)
+        if result is not None:
+            return result
+        from . import import_vmt
+        from vmfpy.fs import VMFFileSystem
+        root = _get_source_path_root(self.filepath)
+        print("Indexing game files...")
+        fs = VMFFileSystem(self.data_dirs, self.data_paks, index_files=True)
+        print("Importing model...")
+        importer = import_mdl.MDLImporter(
+            fs,
+            import_vmt.VMTImporter(self.verbose) if self.import_materials else None,
+            self.verbose,
+        )
+        importer.load(splitext(relpath(self.filepath, root))[0], self.filepath, context.collection)
+        return {'FINISHED'}
+
+    def draw(self, context: bpy.types.Context) -> None:
+        layout: bpy.types.UILayout = self.layout
+        super().draw(context)
+        layout.prop(self, "import_materials")
+        layout.prop(self, "verbose")
 
 
 class ImportSceneVMT(_ValveGameOperator, _ValveGameOperatorProps):
@@ -296,8 +557,8 @@ class ImportSceneVMT(_ValveGameOperator, _ValveGameOperatorProps):
         default=False,
     )
 
-    def execute(self, context: bpy.types.Context) -> set:
-        result = self._check_valve_props()
+    def execute(self, context: bpy.types.Context) -> Set[str]:
+        result = self._check_valve_props(context)
         if result is not None:
             return result
         from . import import_vmt
@@ -310,11 +571,23 @@ class ImportSceneVMT(_ValveGameOperator, _ValveGameOperatorProps):
         importer.load(splitext(basename(self.filepath))[0], lambda: VMT(open(self.filepath, encoding='utf-8'), fs))
         return {'FINISHED'}
 
+    def draw(self, context: bpy.types.Context) -> None:
+        layout: bpy.types.UILayout = self.layout
+        super().draw(context)
+        layout.prop(self, "verbose")
+
 
 classes = (
+    ValveGameSettings,
+    ValveGameSettingsList,
+    AddValveGameOperator,
+    RemoveValveGameOperator,
+    ValveGameAddonPreferences,
+    ValveGameOpenPreferencesOperator,
     ExportVMFMDLs,
     ImportSceneVMF,
     ImportSceneQC,
+    # ImportSceneMDL,
     ImportSceneVMT,
 )
 
@@ -322,7 +595,8 @@ classes = (
 def import_menu_func(self: bpy.types.Menu, context: bpy.types.Context) -> None:
     self.layout.operator(ImportSceneVMF.bl_idname, text="Valve Map Format (.vmf)")
     self.layout.operator(ImportSceneVMT.bl_idname, text="Valve Material Type (.vmt)")
-    self.layout.operator(ImportSceneQC.bl_idname, text="Source Engine Model with materials (.qc)")
+    self.layout.operator(ImportSceneQC.bl_idname, text="Source Engine Model (enhanced) (.qc)")
+    # self.layout.operator(ImportSceneMDL.bl_idname, text="Source Engine Model (enhanced) (.mdl)")
 
 
 def register() -> None:
