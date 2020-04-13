@@ -58,11 +58,8 @@ class VMFImporter():
         self.scale = scale
         self.verbose = verbose
         self.skip_tools = skip_tools
-        print("Indexing game files...")
-        start = time.time()
-        self._vmf_fs = vmfpy.fs.VMFFileSystem(data_dirs, data_paks, index_files=True)
-        print(f"Indexing done in {time.time() - start} s")
         self.dec_models_path = "" if dec_models_path is None else dec_models_path
+        self._vmf_fs = vmfpy.fs.VMFFileSystem(data_dirs, data_paks, index_files=False)
         self._vmt_importer: Optional['import_vmt.VMTImporter']
         if import_overlays:
             self._side_vertices: Dict[int, List[Vector]] = {}
@@ -85,6 +82,12 @@ class VMFImporter():
             self._qc_importer = import_qc.QCImporter(
                 self.dec_models_path, self._vmf_fs, self._vmt_importer, self.verbose
             )
+        self.need_files = import_materials or import_props
+        if self.need_files:
+            print("Indexing game files...")
+            start = time.time()
+            self._vmf_fs.index_all()
+            print(f"Indexing done in {time.time() - start} s")
 
     def __enter__(self) -> 'VMFImporter':
         if self._qc_importer is not None:
@@ -100,7 +103,7 @@ class VMFImporter():
             bpy.ops.object.mode_set(mode='OBJECT')
         print("Loading VMF...")
         start = time.time()
-        if data_dir is not None:
+        if data_dir is not None and self.need_files:
             print("Indexing map files...")
             self._vmf_fs.index_dir(data_dir)
         print("Parsing map...")
