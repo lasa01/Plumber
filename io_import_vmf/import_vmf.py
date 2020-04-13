@@ -746,7 +746,7 @@ class VMFImporter():
             # mark them for removal
             remove_vertices |= outside_vertices
             # cut faces inside uv border
-            for face_vert_idxs in face_vertices:  # FIXME: some created vertices that are outside are kept
+            for face_vert_idxs in face_vertices:
                 if (all(v_idx not in outside_vertices for v_idx in face_vert_idxs)
                         or all(v_idx in outside_vertices for v_idx in face_vert_idxs)):
                     # skip faces completely on either side
