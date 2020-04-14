@@ -302,7 +302,8 @@ class _SplitTextureInput(_MaterialInputBase):
 
 
 class _BlendedTextureInput(_TextureInputBase):
-    def __init__(self, fac_inp: _MaterialInputSocket, a_inp: _TextureInputBase, b_inp: _TextureInputBase) -> None:
+    def __init__(self, fac_inp: Union[_MaterialInputSocket, float],
+                 a_inp: _TextureInputBase, b_inp: _TextureInputBase) -> None:
         super().__init__()
         self.input1 = a_inp
         self.input2 = b_inp
@@ -348,8 +349,12 @@ class _DetailedTextureInput(_TextureInputBase):
 
 
 class _BlendedColorInput(_MaterialInputBase):
-    def __init__(self, fac_inp: _MaterialInputSocket, a_inp: _MaterialInputSocket, b_inp: _MaterialInputSocket):
-        super().__init__((fac_inp.primary_input, a_inp.primary_input, b_inp.primary_input))
+    def __init__(self, fac_inp: Union[_MaterialInputSocket, float],
+                 a_inp: _MaterialInputSocket, b_inp: _MaterialInputSocket):
+        if isinstance(fac_inp, _MaterialInputSocket):
+            super().__init__((fac_inp.primary_input, a_inp.primary_input, b_inp.primary_input))
+        else:
+            super().__init__((a_inp.primary_input, b_inp.primary_input))
         self.fac_inp = fac_inp
         self.a_inp = a_inp
         self.b_inp = b_inp
@@ -361,14 +366,21 @@ class _BlendedColorInput(_MaterialInputBase):
         self.node: Node = node_tree.nodes.new('ShaderNodeMixRGB')
         self.node.location = pos.loc()
         self.node.blend_type = 'MIX'
-        self.fac_inp.connect(node_tree, self.node.inputs['Fac'])
+        if isinstance(self.fac_inp, _MaterialInputSocket):
+            self.fac_inp.connect(node_tree, self.node.inputs['Fac'])
+        else:
+            self.node.inputs['Fac'].default_value = self.fac_inp
         self.a_inp.connect(node_tree, self.node.inputs['Color1'])
         self.b_inp.connect(node_tree, self.node.inputs['Color2'])
 
 
 class _BlendedValueInput(_MaterialInputBase):
-    def __init__(self, fac_inp: _MaterialInputSocket, a_inp: _MaterialInputSocket, b_inp: _MaterialInputSocket):
-        super().__init__((fac_inp.primary_input, a_inp.primary_input, b_inp.primary_input))
+    def __init__(self, fac_inp: Union[_MaterialInputSocket, float],
+                 a_inp: _MaterialInputSocket, b_inp: _MaterialInputSocket):
+        if isinstance(fac_inp, _MaterialInputSocket):
+            super().__init__((fac_inp.primary_input, a_inp.primary_input, b_inp.primary_input))
+        else:
+            super().__init__((a_inp.primary_input, b_inp.primary_input))
         self.fac_inp = fac_inp
         self.a_inp = a_inp
         self.b_inp = b_inp
@@ -384,7 +396,10 @@ class _BlendedValueInput(_MaterialInputBase):
         self.node.clamp = False
         self.a_inp.connect(node_tree, self.node.inputs['To Min'])
         self.b_inp.connect(node_tree, self.node.inputs['To Max'])
-        self.fac_inp.connect(node_tree, self.node.inputs['Value'])
+        if isinstance(self.fac_inp, _MaterialInputSocket):
+            self.fac_inp.connect(node_tree, self.node.inputs['Value'])
+        else:
+            self.node.inputs['Value'].default_value = self.fac_inp
 
 
 class _BlendedConstantInput(_MaterialInputBase):
@@ -466,6 +481,7 @@ _NODRAW_PARAMS = frozenset((
 _SUPPORTED_PARAMS = frozenset((
     "$basetexture", "$basetexturetransform", "$basetexture2", "$basetexturetransform2", "$vertexcolor", "$color",
     "$bumpmap", "$bumptransform", "$bumpmap2", "$bumptransform2", "$ssbump",
+    "$addbumpmaps", "$bumpdetailscale1", "$bumpdetailscale2",
     "$translucent", "$alphatest", "$alphatestreference", "$allowalphatocoverage", "$alpha", "$vertexalpha",
     "$phong", "$basemapalphaphongmask", "$basemapluminancephongmask", "$phongexponent", "$phongexponent2",
     "$phongexponenttexture", "$phongalbedotint",
@@ -671,7 +687,20 @@ class _MaterialBuilder():
                             transform.scale, transform.rotate, transform.translate
                         )
                 texture_inputs["$bumpmap2"].setimage(image2)
-                blended = _BlendedTextureInput(blend_input, texture_inputs["$bumpmap"], texture_inputs["$bumpmap2"])
+                if vmt_data.param_flag("$addbumpmaps"):
+                    # FIXME: mixing textures is not a correct way of combining normal maps
+                    if "$bumpdetailscale1" in params:
+                        bumpamount1 = vmt_data.param_as_float("$bumpdetailscale1")
+                    else:
+                        bumpamount1 = 1
+                    if "$bumpdetailscale2" in params:
+                        bumpamount2 = vmt_data.param_as_float("$bumpdetailscale2")
+                    else:
+                        bumpamount2 = 1
+                    blend_fac = bumpamount2 / (bumpamount1 + bumpamount2)
+                    blended = _BlendedTextureInput(blend_fac, texture_inputs["$bumpmap"], texture_inputs["$bumpmap2"])
+                else:
+                    blended = _BlendedTextureInput(blend_input, texture_inputs["$bumpmap"], texture_inputs["$bumpmap2"])
                 texture_inputs["$bumpmap"] = blended
             self._shader_dict['Normal'].input = texture_inputs["$bumpmap"].color
             if vmt_data.param_flag("$ssbump"):
