@@ -9,7 +9,8 @@ class VTFImporter():
     def __init__(self) -> None:
         self._cache: Dict[str, bpy.types.Image] = {}
 
-    def load(self, image_name: str, file: AnyBinaryIO) -> bpy.types.Image:
+    def load(self, image_name: str, file: AnyBinaryIO,
+             colorspace: str = 'sRGB', alpha_mode: str = 'CHANNEL_PACKED') -> bpy.types.Image:
         if image_name in self._cache:
             return self._cache[image_name]
         with VTFLib() as vtflib:
@@ -26,5 +27,7 @@ class VTFImporter():
         image.pixels = pixels
         image.file_format = 'PNG'
         image.pack()
+        image.colorspace_settings.name = colorspace
+        image.alpha_mode = alpha_mode
         self._cache[image_name] = image
         return image
