@@ -316,84 +316,47 @@ class VMFImporter():
         if self.verbose:
             print(f"Building {name}...")
         side_planes: List[VectorPair] = [_plane_from_points(*side.plane) for side in solid.sides]
-        if self.verbose:
-            print("\nSource planes:")
-            for idx, plane in enumerate(side_planes):
-                print(f"    {idx}: Point on plane: {tuple(plane[0])}, Normal: Vector({tuple(plane[1])})")
         vertices: List[Vector] = []  # all vertices for this solid
         materials: List[bpy.types.Material] = []
         # vertices for each face: face_vertices[face_index] = list of indices to vertices
         face_vertices: List[List[int]] = [[] for _ in range(len(side_planes))]
         face_materials: List[int] = []
         face_loop_uvs: List[List[Tuple[float, float]]] = [[] for _ in range(len(side_planes))]
-        if self.verbose:
-            print("\nPlane intersection:")
         # intersect every combination of 3 planes to get possible vertices
         idx_a: int
         idx_b: int
         idx_c: int
         for idx_a, idx_b, idx_c in combinations(range(len(side_planes)), 3):
-            if self.verbose:
-                print(f"    Intersecting planes {idx_a}, {idx_b}, {idx_c}")
             point = _intersect_planes(side_planes[idx_a], side_planes[idx_b], side_planes[idx_c])
             if point is None:
-                if self.verbose:
-                    print(f"        Planes don't intersect, continuing")
                 continue
             # check that the point is not outside the brush (cut off by any other plane)
-            if self.verbose:
-                print(f"        Intersection point: {tuple(point)}")
-                print("        Checking if point is cut off by other planes")
             for idx, side_plane in enumerate(side_planes):
                 if idx == idx_a or idx == idx_b or idx == idx_c:
                     continue
                 dist = geometry.distance_point_to_plane(point, *side_plane)
                 if dist > _CUT_EPSILON:
-                    if self.verbose:
-                        print(f"            Plane {idx}: Point is cut off, ignoring")
                     break
-                if self.verbose:
-                    print(f"             Plane {idx}: Point is not cut off")
             else:
-                if self.verbose:
-                    print("        Comparing point to other points on the side planes")
                 # check if the point is close enough to any other vertice on the planes to be within error margin
                 plane_center = (side_planes[idx_a][0] + side_planes[idx_b][0] + side_planes[idx_c][0]) / 3
                 for v_idx in chain(face_vertices[idx_a], face_vertices[idx_b], face_vertices[idx_c]):
                     if _vec_isclose(vertices[v_idx], point, plane_center, self.epsilon, 0.005):
                         point_idx = v_idx
-                        if self.verbose:
-                            print(f"            Point is close enough to {v_idx} {tuple(vertices[v_idx])} "
-                                  "to be within error margin, using existing")
                         break
                 else:
-                    if self.verbose:
-                        print("            Point is new, saving point")
                     point_idx = len(vertices)
                     vertices.append(point)
                 # the point is on every face plane intersected to create it
                 if point_idx not in face_vertices[idx_a]:
-                    if self.verbose:
-                        print(f"        Adding point to vertices associated with plane {idx_a}")
                     face_vertices[idx_a].append(point_idx)
                 if point_idx not in face_vertices[idx_b]:
-                    if self.verbose:
-                        print(f"        Adding point to vertices associated with plane {idx_b}")
                     face_vertices[idx_b].append(point_idx)
                 if point_idx not in face_vertices[idx_c]:
-                    if self.verbose:
-                        print(f"        Adding point to vertices associated with plane {idx_c}")
                     face_vertices[idx_c].append(point_idx)
 
-        if self.verbose:
-            print("\nSorting face vertices:")
         # sort face vertices in clockwise order
         for face_idx, vertice_idxs in enumerate(face_vertices):
-            if self.verbose:
-                print(f"    Working on face created from plane {face_idx}")
-                print("        Face vertices:")
-                for idx in vertice_idxs:
-                    print(f"            {idx}: {tuple(vertices[idx])}")
             # TODO remove invalid faces instead of erroring?
             if len(vertice_idxs) < 3:
                 err = f"INVALID FACE IN {name}: NOT ENOUGH VERTS: {len(vertice_idxs)}"
@@ -413,14 +376,6 @@ class VMFImporter():
             face_center_vert = sum(face_vertices_2d, Vector((0, 0))) / len(face_vertices_2d)
             # start from the first vertice
             last_line = face_vertices_2d[0] - face_center_vert
-            if self.verbose:
-                print("        2D face vertices (on the plane):")
-                for idx, vert in enumerate(face_vertices_2d):
-                    print(f"            {vertice_idxs[idx]}: {tuple(vert)}")
-                print(f"        2D face center point: {tuple(face_center_vert)}")
-                print("        Sorting vertices in clockwise order based on the rotation of the direction vector")
-                print(f"            Starting from first vertice: {tuple(face_vertices_2d[0])}, "
-                      f"direction from center: Vector({tuple(last_line)})")
             for idx, vertice_idx in islice(enumerate(vertice_idxs), 1, None):
                 # gets the rotation to the last vertice, or infinity if the rotation is negative
                 def min_key(t: Tuple[int, Vector]) -> float:
@@ -431,16 +386,9 @@ class VMFImporter():
                 # skip already sorted vertices
                 next_idx, next_vertice = min(enumerate(face_vertices_2d[idx:], idx), key=min_key)
                 last_line = next_vertice - face_center_vert
-                if self.verbose:
-                    print(f"            Next vertice: {tuple(next_vertice)}, "
-                          f"direction from center: Vector({tuple(last_line)})")
                 # swap the list elements to sort them
                 vertice_idxs[idx], vertice_idxs[next_idx] = vertice_idxs[next_idx], vertice_idxs[idx]
                 face_vertices_2d[idx], face_vertices_2d[next_idx] = face_vertices_2d[next_idx], face_vertices_2d[idx]
-            if self.verbose:
-                print("        Sorted face vertices:")
-                for idx in vertice_idxs:
-                    print(f"            {idx}: {tuple(vertices[idx])}")
 
         # need to track side ids and corresponding verts and faces for overlays
         if self.import_overlays:
@@ -449,8 +397,6 @@ class VMFImporter():
                 self._side_vertices[side.id] = [vertices[i] for i in face_vertices[side_idx]]
                 self._side_normals[side.id] = side_planes[side_idx][1]
 
-        if self.verbose:
-            print("\nCalculating UV coordinates:")
         # create uvs and materials
         for side_idx, side in enumerate(solid.sides):
             texture_width, texture_height, material = self._load_material(side.material, side.get_material)
@@ -460,10 +406,6 @@ class VMFImporter():
             else:
                 material_idx = materials.index(material)
             face_materials.append(material_idx)
-            if self.verbose:
-                print(f"    Working on face created from plane {side_idx}")
-                print(f"        Texture dimensions: {texture_width} x {texture_height}")
-                print("        Original UV coordinates:")
             for vertice_idx in face_vertices[side_idx]:
                 face_loop_uvs[side_idx].append((
                     ((vertices[vertice_idx] @ Vector(side.uaxis[:3]))
@@ -471,12 +413,7 @@ class VMFImporter():
                     ((vertices[vertice_idx] @ Vector(side.vaxis[:3]))
                      / (texture_height * side.vaxis.scale) + side.vaxis.trans / texture_height) * -1,
                 ))
-                if self.verbose:
-                    print(f"            Vertice {vertice_idx} {tuple(vertices[vertice_idx])}: "
-                          f"UV {face_loop_uvs[side_idx][-1]}")
 
-            if self.verbose:
-                print(f"        Normalizing UVs")
             # normalize uvs
             nearest_u = face_loop_uvs[side_idx][0][0]
             for loop_uv in face_loop_uvs[side_idx]:
@@ -497,12 +434,6 @@ class VMFImporter():
             else:
                 nearest_v = floor(nearest_v) if nearest_v > 0 else ceil(nearest_v)
             face_loop_uvs[side_idx] = [((uv[0] - nearest_u), (uv[1] - nearest_v)) for uv in face_loop_uvs[side_idx]]
-            if self.verbose:
-                print(f"        Closest whole U: {nearest_u}, V: {nearest_v}")
-                print("        Final UV coords:")
-                for idx, vertice_idx in enumerate(face_vertices[side_idx]):
-                    print(f"            Vertice {vertice_idx} {tuple(vertices[vertice_idx])}: "
-                          f"UV {face_loop_uvs[side_idx][idx]}")
 
         is_displacement = any(side.dispinfo is not None for side in solid.sides)
 
