@@ -466,7 +466,7 @@ _NODRAW_PARAMS = frozenset((
 _SUPPORTED_PARAMS = frozenset((
     "$basetexture", "$basetexturetransform", "$basetexture2", "$basetexturetransform2", "$vertexcolor", "$color",
     "$bumpmap", "$bumptransform", "$bumpmap2", "$bumptransform2", "$ssbump",
-    "$translucent", "$alphatest", "$alphatestreference", "$alpha", "$vertexalpha",
+    "$translucent", "$alphatest", "$alphatestreference", "$allowalphatocoverage", "$alpha", "$vertexalpha",
     "$phong", "$basemapalphaphongmask", "$basemapluminancephongmask", "$phongexponent", "$phongexponent2",
     "$phongexponenttexture", "$phongalbedotint",
     "$detail", "$detailblendmode", "$detailtexturetransform", "$detail2", "$detailtexturetransform2",
@@ -706,22 +706,32 @@ class _MaterialBuilder():
             self._shader_dict['Normal'].input = texture_inputs["$detail"].color
             self._shader_dict['Normal'].append(_SsbumpToNormalMaterialNode())
 
-        if "$alpha" in params:
-            self._shader_dict['Alpha'].const = vmt_data.param_as_float("$alpha")
-        elif vmt_data.param_flag("$translucent"):
+        if vmt_data.param_flag("$translucent"):
             self.blend_method = 'BLEND'
             self.shadow_method = 'HASHED'
             self._shader_dict['Alpha'].input = texture_inputs["$basetexture"].alpha
+            if not self.simple and "$alpha" in params:
+                self._shader_dict['Alpha'].append(_MultiplyMaterialNode(vmt_data.param_as_float("$alpha")))
         elif vmt_data.param_flag("$alphatest"):
             self.blend_method = 'CLIP'
             self.shadow_method = 'CLIP'
             self._shader_dict['Alpha'].input = texture_inputs["$basetexture"].alpha
             if "$alphatestreference" in params:
                 self.alpha_reference = 1 - vmt_data.param_as_float("$alphatestreference")
+            elif "$allowalphatocoverage" in params:
+                self.blend_method = 'HASHED'
+            if not self.simple and "$alpha" in params:
+                self._shader_dict['Alpha'].append(_MultiplyMaterialNode(vmt_data.param_as_float("$alpha")))
         elif not self.simple and vmt_data.param_flag("$vertexalpha"):
             self.blend_method = 'BLEND'
             self.shadow_method = 'HASHED'
             self._shader_dict['Alpha'].input = vertex_col_input.alpha
+            if not self.simple and "$alpha" in params:
+                self._shader_dict['Alpha'].append(_MultiplyMaterialNode(vmt_data.param_as_float("$alpha")))
+        elif "$alpha" in params:
+            self._shader_dict['Alpha'].const = vmt_data.param_as_float("$alpha")
+            self.blend_method = 'BLEND'
+            self.shadow_method = 'HASHED'
 
         if "$masks1" in params:
             image = self._vtf_importer.load(params["$masks1"], vmt_data.param_open_texture("$masks1"))
