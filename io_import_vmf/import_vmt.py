@@ -477,7 +477,7 @@ _SUPPORTED_PARAMS = frozenset((
     "$blendmodulatetexture", "$blendmodulatetransform", "$masks1", "$metalness", "%compilewater", "$normalmap",
     # ignored parameters
     "%keywords", "%compilepassbullets", "%compilenonsolid", "%tooltexture",
-    "$surfaceprop", "$surfaceprop2", "$nocull", "$model",
+    "$surfaceprop", "$surfaceprop2", "$nocull", "$model", "$reflectivity", "$decal", "$decalscale"
 ))
 
 
