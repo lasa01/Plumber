@@ -823,10 +823,10 @@ class _MaterialBuilder():
                 texture_inputs["$envmapmask"].setimage(image)
                 self._shader_dict['Specular'].input = texture_inputs["$envmapmask"].color
                 if not self.simple and "$envmaptint" in params:
-                    tint = vmt_data.param_as_vec3("$envmaptint")
+                    tint = vmt_data.param_as_color("$envmaptint")
                     self._shader_dict['Specular'].append(_MultiplyMaterialNode(sum(tint) / 3))
             elif "$envmaptint" in params:
-                tint = vmt_data.param_as_vec3("$envmaptint")
+                tint = vmt_data.param_as_color("$envmaptint")
                 self._shader_dict['Specular'].const = sum(tint) / 3
             else:
                 self._shader_dict['Specular'].const = 0.8
