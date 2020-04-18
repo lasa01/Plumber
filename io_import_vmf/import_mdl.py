@@ -170,6 +170,8 @@ class MDLImporter():
             for child in original.children:
                 twin = child.copy()
                 twin.parent = copy
+                if "Armature" in twin.modifiers:
+                    twin.modifiers["Armature"].object = copy
                 collection.objects.link(twin)
             return copy
         importer = Source2BlenderWrapper(name + ".mdl", path, self.vmf_fs, self.vmt_importer)

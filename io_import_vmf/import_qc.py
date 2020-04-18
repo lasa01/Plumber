@@ -128,6 +128,8 @@ class QCImporter():
             for child in original_arm.children:
                 twin = child.copy()
                 twin.parent = copy_arm
+                if "Armature" in twin.modifiers:
+                    twin.modifiers["Armature"].object = copy_arm
                 collection.objects.link(twin)
             smd.a = copy_arm
             return smd
