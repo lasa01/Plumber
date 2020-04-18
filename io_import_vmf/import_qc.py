@@ -7,6 +7,7 @@ import bpy
 import os
 from os.path import splitext, basename, dirname, isfile, join
 import subprocess
+import copy
 
 
 _CROWBARCMD_PATH = join(dirname(__file__), "bin/CrowbarCommandLineDecomp.exe")
@@ -116,18 +117,20 @@ class QCImporter():
     def __exit__(self, exc_type: Any, exc_value: Any, traceback: Any) -> None:
         bpy.utils.unregister_class(SmdImporterWrapper)
 
-    def load(self, name: str, collection: bpy.types.Collection) -> bpy.types.Object:
+    def load_return_smd(self, name: str, collection: bpy.types.Collection) -> Any:
         if name in self._cache:
             if self.verbose:
                 print(f"Prop {name} already imported, copying...")
-            original = self._cache[name]
-            copy = original.copy()
-            collection.objects.link(copy)
-            for child in original.children:
+            smd = copy.copy(self._cache[name])
+            original_arm = smd.a
+            copy_arm = original_arm.copy()
+            collection.objects.link(copy_arm)
+            for child in original_arm.children:
                 twin = child.copy()
-                twin.parent = copy
+                twin.parent = copy_arm
                 collection.objects.link(twin)
-            return copy
+            smd.a = copy_arm
+            return smd
         SmdImporterWrapper.collection = collection
         path = join(self.dec_models_path, name + ".qc")
         if not isfile(path):
@@ -161,8 +164,11 @@ class QCImporter():
                 )
         bpy.ops.import_scene._io_import_vmf_smd_wrapper(filepath=path)
         smd = SmdImporterWrapper.smd
-        self._cache[name] = smd.a
+        self._cache[name] = smd
         if smd.a.name not in collection.objects:
             collection.objects.link(smd.a)
         bpy.context.scene.collection.objects.unlink(smd.a)
-        return smd.a
+        return smd
+
+    def load(self, name: str, collection: bpy.types.Collection) -> bpy.types.Object:
+        return self.load_return_smd(name, collection).a
