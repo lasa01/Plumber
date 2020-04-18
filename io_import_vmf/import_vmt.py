@@ -511,7 +511,8 @@ _SUPPORTED_PARAMS = frozenset((
     "$envmap", "$basealphaenvmapmask", "$basealphaenvmask", "$normalmapalphaenvmapmask",
     "$envmapmask", "$envmapmasktransform", "$envmaptint",
     "$selfillum_envmapmask_alpha", "$selfillum", "$selfillummask",
-    "$blendmodulatetexture", "$blendmodulatetransform", "$masks1", "$metalness", "%compilewater", "$normalmap",
+    "$blendmodulatetexture", "$blendmodulatetransform", "$masks1", "$metalness",
+    "%compilewater", "$normalmap", "$fogenable", "$fogcolor",
     # ignored parameters
     "%keywords", "%compilepassbullets", "%compilenonsolid", "%tooltexture",
     "$surfaceprop", "$surfaceprop2", "$nocull", "$model", "$reflectivity", "$decal", "$decalscale"
@@ -548,10 +549,13 @@ class _MaterialBuilder():
         if vmt_data.param_flag("%compilewater"):
             self.water = True
             self.blend_method = 'BLEND'
-            self.shadow_method = 'NONE'
+            self.shadow_method = 'HASHED'
             self._shader_dict: Dict[str, _MaterialNodePath] = {
+                'Color': _MaterialNodePath(),
                 'Normal': _MaterialNodePath()
             }
+            if vmt_data.param_flag("$fogenable") and "$fogcolor" in params:
+                self._shader_dict['Color'].const = vmt_data.param_as_color("$fogcolor") + (1,)
             if "$normalmap" in params:
                 image = self._vtf_importer.load(
                     params["$normalmap"], vmt_data.param_open_texture("$normalmap"), 'Non-Color'
@@ -883,30 +887,18 @@ class _MaterialBuilder():
         pos_ref.x -= 300
         if self.nodraw:
             shader_node: Node = nt.nodes.new('ShaderNodeBsdfTransparent')
-            shader_node.location = pos_ref.loc()
-            pos_ref.x -= 100
-            nt.links.new(shader_node.outputs['BSDF'], out_node.inputs['Surface'])
-            return material
         elif self.water:
-            mix_node = nt.nodes.new('ShaderNodeMixShader')
-            mix_node.location = pos_ref.loc()
-            mix_node.inputs[0].default_value = 0.2
-            pos_ref.x -= 200
-            glass_node: Node = nt.nodes.new('ShaderNodeBsdfGlass')
-            glass_node.inputs['IOR'].default_value = 1.333
-            glass_node.location = pos_ref.loc()
-            nt.links.new(glass_node.outputs['BSDF'], mix_node.inputs[1])
-            trans_node: Node = nt.nodes.new('ShaderNodeBsdfTransparent')
-            trans_node.location = pos_ref.loc(0, -200)
-            nt.links.new(trans_node.outputs['BSDF'], mix_node.inputs[2])
-            pos_ref.x -= 100
-            nt.links.new(mix_node.outputs['Shader'], out_node.inputs['Surface'])
-            shader_node = glass_node
+            material.use_screen_refraction = True
+            shader_node = nt.nodes.new('ShaderNodeBsdfGlass')
+            shader_node.inputs['IOR'].default_value = 1.333
+            shader_node.inputs['Roughness'].default_value = 0.3
         else:
             shader_node = nt.nodes.new('ShaderNodeBsdfPrincipled')
-            shader_node.location = pos_ref.loc()
-            pos_ref.x -= 100
-            nt.links.new(shader_node.outputs['BSDF'], out_node.inputs['Surface'])
+        shader_node.location = pos_ref.loc()
+        pos_ref.x -= 100
+        nt.links.new(shader_node.outputs['BSDF'], out_node.inputs['Surface'])
+        if self.nodraw:
+            return material
         required_inputs: Dict[_MaterialInputBase, None] = {}  # Waiting for ordered sets
         paths_pos_ref = pos_ref.copy()
         path_end_pos_x = 0
