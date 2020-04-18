@@ -131,6 +131,27 @@ class _MaterialNodePath():
             node.connect_inputs(node_tree)
 
 
+class _DXNormalMapConverterMaterialNode(_MaterialNode):
+    def __init__(self) -> None:
+        super().__init__('ShaderNodeCombineRGB', 'Image', 'G')
+        self.dimension_x = 600
+        self.dimension_y = 200
+
+    def connect(self, node_tree: NodeTree, input_s: NodeSocket, pos: _PosRef) -> NodeSocket:
+        separate_node: Node = node_tree.nodes.new('ShaderNodeSeparateRGB')
+        separate_node.location = pos.loc()
+        invert_node: Node = node_tree.nodes.new('ShaderNodeMath')
+        invert_node.location = pos.loc(200)
+        invert_node.operation = 'SUBTRACT'
+        invert_node.inputs[0].default_value = 1.0
+        node_tree.links.new(separate_node.outputs['G'], invert_node.inputs[1])
+        g_input = super().connect(node_tree, input_s, pos.copy(400))
+        node_tree.links.new(separate_node.outputs['R'], self.node.inputs['R'])
+        node_tree.links.new(invert_node.outputs[0], g_input)
+        node_tree.links.new(separate_node.outputs['B'], self.node.inputs['B'])
+        return separate_node.inputs['Image']
+
+
 class _NormalMapMaterialNode(_MaterialNode):
     def __init__(self) -> None:
         super().__init__('ShaderNodeNormalMap', 'Normal', 'Color')
@@ -544,6 +565,8 @@ class _MaterialBuilder():
                         )
                 texture_inputs["$normalmap"].setimage(image)
                 self._shader_dict['Normal'].input = texture_inputs["$normalmap"].color
+                if not self.simple:
+                    self._shader_dict['Normal'].append(_DXNormalMapConverterMaterialNode())
                 self._shader_dict['Normal'].append(_NormalMapMaterialNode())
             return
 
@@ -702,6 +725,8 @@ class _MaterialBuilder():
             if vmt_data.param_flag("$ssbump"):
                 self._shader_dict['Normal'].append(_SsbumpToNormalMaterialNode())
             else:
+                if not self.simple:
+                    self._shader_dict['Normal'].append(_DXNormalMapConverterMaterialNode())
                 self._shader_dict['Normal'].append(_NormalMapMaterialNode())
         elif not self.simple and ("$detail" in params and "$detailblendmode" in params
                                   and vmt_data.param_as_int("$detailblendmode") == 10):
