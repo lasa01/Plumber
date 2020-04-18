@@ -595,6 +595,99 @@ class ImportSceneVMT(_ValveGameOperator, _ValveGameOperatorProps):
         layout.prop(self, "verbose")
 
 
+class ImportSceneAGREnhanced(_ValveGameOperator, _ValveGameOperatorProps):
+    bl_idname = "import_scene.agr_enhanced"
+    bl_label = "Import AGR (enhanced)"
+    bl_options = {'UNDO', 'PRESET'}
+
+    filepath: bpy.props.StringProperty(subtype='FILE_PATH', options={'HIDDEN'})  # type: ignore
+    filter_glob: bpy.props.StringProperty(default="*.agr", options={'HIDDEN'})  # type: ignore
+
+    import_materials: bpy.props.BoolProperty(  # type: ignore
+        name="Import materials",
+        default=True,
+    )
+
+    simple_materials: bpy.props.BoolProperty(  # type: ignore
+        name="Simple materials",
+        description="Import simple, exporter-friendly versions of materials.",
+        default=False,
+    )
+
+    inter_key: bpy.props.BoolProperty(  # type: ignore
+        name="Add interpolated key frames",
+        description="Create interpolated key frames for frames in-between the original key frames.",
+        default=False,
+    )
+
+    global_scale: bpy.props.FloatProperty(  # type: ignore
+        name="Scale",
+        description="Scale everything by this value (0.01 old default, 0.0254 is more accurate)",
+        min=0.000001, max=1000000.0,
+        soft_min=0.001, soft_max=1.0,
+        default=0.01,
+    )
+
+    scale_invisible_zero: bpy.props.BoolProperty(  # type: ignore
+        name="Scale invisible to zero",
+        description="If set entities will scaled to zero when not visible.",
+        default=False,
+    )
+
+    verbose: bpy.props.BoolProperty(  # type: ignore
+        name="Verbose",
+        description="Enable to print more info into console",
+        default=False,
+    )
+
+    def execute(self, context: bpy.types.Context) -> Set[str]:
+        result = self._check_valve_props(context)
+        if result is not None:
+            return result
+        preferences: ValveGameAddonPreferences = context.preferences.addons[__package__].preferences
+        dec_models_path = preferences.dec_models_path
+        delete_files = False
+        if dec_models_path == "":
+            delete_files = True
+            dec_models_path = join(context.preferences.filepaths.temporary_directory, "blender_io_import_vmf_models")
+        from . import import_agr
+        from vmfpy.fs import VMFFileSystem
+        print("Indexing game files...")
+        fs = VMFFileSystem(self.data_dirs, self.data_paks, index_files=True)
+        importer = import_agr.AgrImporter(
+            dec_models_path, fs,
+            import_materials=self.import_materials, simple_materials=self.simple_materials,
+            inter_key=self.inter_key, global_scale=self.global_scale, scale_invisible_zero=self.scale_invisible_zero,
+        )
+        with importer:
+            importer.load(self.filepath, context.collection)
+        if delete_files:
+            rmtree(dec_models_path, ignore_errors=True)
+        return {'FINISHED'}
+
+    def draw(self, context: bpy.types.Context) -> None:
+        layout: bpy.types.UILayout = self.layout
+        super().draw(context)
+        box = layout.box()
+        box.label(text="Models will be imported using Blender Source Tools.")
+        preferences: ValveGameAddonPreferences = context.preferences.addons[__package__].preferences
+        if not preferences.dec_models_path:
+            box.label(text="They will be decompiled into a temp directory and deleted.")
+            row = box.row()
+            row.label(text="You can specify a persistent path for decompiled models.", icon='INFO')
+            row.operator("io_import_vmf.open_preferences", text="", icon='PREFERENCES')
+        else:
+            box.label(text="Missing models will be decompiled.")
+        layout.prop(self, "import_materials")
+        if self.import_materials:
+            box = layout.box()
+            box.prop(self, "simple_materials")
+        layout.prop(self, "inter_key")
+        layout.prop(self, "global_scale")
+        layout.prop(self, "scale_invisible_zero")
+        layout.prop(self, "verbose")
+
+
 classes = (
     ValveGameSettings,
     ValveGameSettingsList,
@@ -607,6 +700,7 @@ classes = (
     ImportSceneQC,
     # ImportSceneMDL,
     ImportSceneVMT,
+    ImportSceneAGREnhanced,
 )
 
 
@@ -615,6 +709,7 @@ def import_menu_func(self: bpy.types.Menu, context: bpy.types.Context) -> None:
     self.layout.operator(ImportSceneVMT.bl_idname, text="Valve Material Type (.vmt)")
     self.layout.operator(ImportSceneQC.bl_idname, text="Source Engine Model (enhanced) (.qc)")
     # self.layout.operator(ImportSceneMDL.bl_idname, text="Source Engine Model (enhanced) (.mdl)")
+    self.layout.operator(ImportSceneAGREnhanced.bl_idname, text="HLAE afxGameRecord (enhanced) (.agr)")
 
 
 def register() -> None:
