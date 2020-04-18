@@ -858,6 +858,7 @@ class _MaterialBuilder():
 
         if not self.simple and masks1:
             self._shader_dict['Metallic'].input = texture_inputs["$masks1"].channels.b
+            self._shader_dict['Metallic'].append(_InvertMaterialNode())
         elif "$metalness" in params:
             self._shader_dict['Metallic'].const = vmt_data.param_as_float("$metalness")
 
