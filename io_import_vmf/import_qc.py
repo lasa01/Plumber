@@ -36,13 +36,11 @@ class SmdImporterWrapper(import_smd.SmdImporter):
         self.existingBones = []  # type: ignore
         self.num_files_imported = 0
         self._missing_materials: Set[str] = set()
+        self._cdmaterials = [vmf_path("")]
         # figure what the material dir should be for the qc
         with open(self.filepath, 'r') as fp:
-            match = _CDMATERIALS_REGEX.search(fp.read())
-            if match is not None:
-                self._cdmaterials = vmf_path(match.group(1))
-            else:
-                self._cdmaterials = vmf_path("")
+            for match in _CDMATERIALS_REGEX.finditer(fp.read()):
+                self._cdmaterials.append(vmf_path(match.group(1)))
         self.readQC(self.filepath, False, False, False, 'XYZ', outer_qc=True)
         SmdImporterWrapper.smd = self.smd
         return {'FINISHED'}
@@ -69,7 +67,17 @@ class SmdImporterWrapper(import_smd.SmdImporter):
             return super().getMeshMaterial(mat_name)
         smd = self.smd
         md: bpy.types.Mesh = smd.m.data
-        mat_path = "materials" / self._cdmaterials / vmf_path(mat_name + ".vmt")
+        # search for material file
+        mat_name_path = vmf_path(mat_name + ".vmt")
+        for mat_dir in self._cdmaterials:
+            mat_path = "materials" / mat_dir / mat_name_path
+            if mat_path in self.vmf_fs:
+                break
+        else:
+            if mat_name not in self._missing_materials:
+                print(f"WARNING: MISSING MATERIAL: {mat_path}")
+                self._missing_materials.add(mat_name)
+            return super().getMeshMaterial(mat_name)
         try:
             data = self.vmt_importer.load(
                 mat_name,
@@ -78,10 +86,6 @@ class SmdImporterWrapper(import_smd.SmdImporter):
                     self.vmf_fs
                 )
             )
-        except FileNotFoundError:
-            if mat_name not in self._missing_materials:
-                print(f"WARNING: MISSING MATERIAL: {mat_path}")
-                self._missing_materials.add(mat_name)
         except VMTParseException:
             if mat_name not in self._missing_materials:
                 print(f"WARNING: INVALID MATERIAL: {mat_path}")
