@@ -9,3 +9,4 @@ with ZipFile("io_import_vmf.zip", 'w') as zip:
         zip.write(filename)
     for filename in glob.iglob("io_import_vmf/bin/*"):
         zip.write(filename)
+    zip.write("LICENSE", "io_import_vmf/LICENSE")
