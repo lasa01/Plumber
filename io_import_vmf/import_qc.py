@@ -121,7 +121,7 @@ class QCImporter():
     def load_return_smd(self, name: str, collection: bpy.types.Collection) -> Any:
         if name in self._cache:
             if self.verbose:
-                print(f"Prop {name} already imported, copying...")
+                print(f"Model {name} already imported, copying...")
             smd = copy.copy(self._cache[name])
             original_arm = smd.a
             copy_arm = original_arm.copy()

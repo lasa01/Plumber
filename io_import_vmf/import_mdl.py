@@ -164,7 +164,7 @@ class MDLImporter():
     def load(self, name: str, path: str, collection: bpy.types.Collection) -> bpy.types.Object:
         if name in self._cache:
             if self.verbose:
-                print(f"Prop {name} already imported, copying...")
+                print(f"Model {name} already imported, copying...")
             original = self._cache[name]
             copy = original.copy()
             collection.objects.link(copy)
