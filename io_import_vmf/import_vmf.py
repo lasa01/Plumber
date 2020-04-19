@@ -3,7 +3,7 @@ import vmfpy
 from os import path
 from mathutils import geometry, Vector, Euler, Matrix
 from math import inf, radians, floor, ceil, isclose
-from itertools import chain, combinations, islice
+from itertools import chain, combinations
 import bpy
 import time
 import traceback
@@ -376,7 +376,7 @@ class VMFImporter():
             face_center_vert = sum(face_vertices_2d, Vector((0, 0))) / len(face_vertices_2d)
             # start from the first vertice
             last_line = face_vertices_2d[0] - face_center_vert
-            for idx, vertice_idx in islice(enumerate(vertice_idxs), 1, None):
+            for idx, vertice_idx in enumerate(vertice_idxs[1:], 1):
                 # gets the rotation to the last vertice, or infinity if the rotation is negative
                 def min_key(t: Tuple[int, Vector]) -> float:
                     line = t[1] - face_center_vert
