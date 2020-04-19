@@ -187,8 +187,15 @@ class _MultiplyMaterialNode(_MaterialNode):
 
 
 class _MultiplyRGBMaterialNode(_MaterialNode):
-    def __init__(self, factor: Tuple[float, float, float]) -> None:
-        super().__init__('ShaderNodeMixRGB', 'Color', 'Color1')
+    def __init__(self, color: Union[Tuple[float, float, float], _MaterialInputSocket],
+                 factor: Union[float, _MaterialInputSocket] = 1) -> None:
+        inputs = []
+        if isinstance(color, _MaterialInputSocket):
+            inputs.append(color)
+        if isinstance(factor, _MaterialInputSocket):
+            inputs.append(factor)
+        super().__init__('ShaderNodeMixRGB', 'Color', 'Color1', inputs)
+        self.color = color
         self.factor = factor
         self.dimension_x = 200
         self.dimension_y = 250
@@ -196,8 +203,17 @@ class _MultiplyRGBMaterialNode(_MaterialNode):
     def connect(self, node_tree: NodeTree, input_s: NodeSocket, pos: _PosRef) -> NodeSocket:
         input_s = super().connect(node_tree, input_s, pos)
         self.node.blend_type = 'MULTIPLY'
-        self.node.inputs['Color2'].default_value = (self.factor[0], self.factor[1], self.factor[2], 1)
+        if not isinstance(self.factor, _MaterialInputSocket):
+            self.node.inputs['Fac'].default_value = self.factor
+        if not isinstance(self.color, _MaterialInputSocket):
+            self.node.inputs['Color2'].default_value = (self.color[0], self.color[1], self.color[2], 1)
         return input_s
+
+    def connect_inputs(self, node_tree: NodeTree) -> None:
+        if isinstance(self.factor, _MaterialInputSocket):
+            self.factor.connect(node_tree, self.node.inputs['Fac'])
+        if isinstance(self.color, _MaterialInputSocket):
+            self.color.connect(node_tree, self.node.inputs['Color2'])
 
 
 class _SubtractMaterialNode(_MaterialNode):
@@ -458,6 +474,18 @@ class _VertexColorInput(_MaterialInputBase):
         self.node.location = pos.loc()
 
 
+class _ObjectColorInput(_MaterialInputBase):
+    def __init__(self) -> None:
+        super().__init__()
+        self.color = _MaterialInputSocket(self, 'Color')
+        self.dimension_x = 200
+        self.dimension_y = 200
+
+    def create(self, node_tree: NodeTree, pos: _PosRef) -> None:
+        self.node: Node = node_tree.nodes.new('ShaderNodeObjectInfo')
+        self.node.location = pos.loc()
+
+
 class _ModulatedBlendFactorInput(_MaterialInputBase):
     def __init__(self, mod_ch_input: _SplitTextureInput, vertex_alpha_inp: _MaterialInputSocket):
         super().__init__((mod_ch_input, vertex_alpha_inp.primary_input))
@@ -509,10 +537,11 @@ _SUPPORTED_PARAMS = frozenset((
     "$detail", "$detailblendmode", "$detailtexturetransform", "$detail2", "$detailtexturetransform2",
     "$detailblendfactor", "$detailblendfactor2", "$detailscale", "$detailscale2",
     "$envmap", "$basealphaenvmapmask", "$basealphaenvmask", "$normalmapalphaenvmapmask",
-    "$envmapmask", "$envmapmasktransform", "$envmaptint",
+    "$envmapmask", "$envmapmasktransform", "$envmaptint", "$envmapmaskintintmasktexture",
     "$selfillum_envmapmask_alpha", "$selfillum", "$selfillummask",
     "$blendmodulatetexture", "$blendmodulatetransform", "$masks1", "$metalness",
     "%compilewater", "$normalmap", "$fogenable", "$fogcolor",
+    "$color2", "$allowdiffusemodulation", "$notint", "$blendtintbybasealpha", "$tintmasktexture",
     # ignored parameters
     "%keywords", "%compilepassbullets", "%compilenonsolid", "%tooltexture",
     "$surfaceprop", "$surfaceprop2", "$nocull", "$model", "$reflectivity", "$decal", "$decalscale"
@@ -586,6 +615,7 @@ class _MaterialBuilder():
         }
 
         vertex_col_input = _VertexColorInput()
+        object_col_input = _ObjectColorInput()
         blend_input = vertex_col_input.alpha
 
         if "$basetexture" in params:
@@ -683,8 +713,27 @@ class _MaterialBuilder():
                 )
                 texture_inputs["$basetexture"] = blended
             self._shader_dict['Base Color'].input = texture_inputs["$basetexture"].color
-            if "$color" in params:
+            if not self.simple and "$color" in params:
                 self._shader_dict['Base Color'].append(_MultiplyRGBMaterialNode(vmt_data.param_as_color("$color")))
+            if (not self.simple and vmt_data.shader == "vertexlitgeneric"
+                    and not vmt_data.param_flag("$allowdiffusemodulation") and not vmt_data.param_flag("$notint")):
+                if "$tintmasktexture" in params:
+                    image = self._vtf_importer.load(
+                        params["$tintmasktexture"],
+                        vmt_data.param_open_texture("$tintmasktexture"),
+                        'Non-Color'
+                    )
+                    texture_inputs["$tintmasktexture"].setimage(image)
+                    factor: Union[float, _MaterialInputSocket] = texture_inputs["$tintmasktexture"].channels.g
+                elif "$blendtintbybasealpha" in params:
+                    factor = texture_inputs["$basetexture"].alpha
+                else:
+                    factor = 1.0
+                if "$color2" in params:
+                    color = vmt_data.param_as_color("$color2") + (1,)
+                else:
+                    color = object_col_input.color
+                self._shader_dict['Base Color'].append(_MultiplyRGBMaterialNode(color, factor))
         elif "$color" in params:
             self._shader_dict['Base Color'].const = vmt_data.param_as_color("$color") + (1,)
         elif not self.simple and vmt_data.param_flag("$vertexcolor"):
@@ -834,6 +883,8 @@ class _MaterialBuilder():
                 self._shader_dict['Specular'].append(_InvertMaterialNode())
             elif not self.simple and vmt_data.param_flag("$normalmapalphaenvmapmask"):
                 self._shader_dict['Specular'].input = texture_inputs["$bumpmap"].alpha
+            elif not self.simple and vmt_data.param_flag("$envmapmaskintintmasktexture"):
+                self._shader_dict['Specular'].input = texture_inputs["$tintmasktexture"].channels.r
             elif "$envmapmask" in params:
                 image = self._vtf_importer.load(
                     params["$envmapmask"], vmt_data.param_open_texture("$envmapmask"), 'Non-Color'

@@ -600,10 +600,14 @@ class VMFImporter():
             obj.rotation_euler = Euler((0, 0, radians(90)))
         else:
             raise ImportError("QC importer not found")
+        obj.name = f"{prop.classname}_{prop.id}"
         scale = prop.scale * self.scale
         obj.scale = (scale, scale, scale)
         obj.location = (prop.origin.x * self.scale, prop.origin.y * self.scale, prop.origin.z * self.scale)
         obj.rotation_euler.rotate(Euler((radians(prop.angles[2]), radians(prop.angles[0]), radians(prop.angles[1]))))
+        color = [c / 255 for c in prop.rendercolor] + [prop.renderamt / 255]
+        for child in obj.children:
+            child.color = color
 
     def _load_overlay(self, overlay: vmfpy.VMFOverlayEntity, collection: bpy.types.Collection) -> None:
         name = f"info_overlay_{overlay.id}"
