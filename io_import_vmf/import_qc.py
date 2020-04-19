@@ -84,7 +84,8 @@ class SmdImporterWrapper(import_smd.SmdImporter):
                 mat_name,
                 lambda: VMT(
                     self.vmf_fs.open_file_utf8(mat_path),
-                    self.vmf_fs
+                    self.vmf_fs,
+                    allow_patch=True,
                 )
             )
         except VMTParseException:

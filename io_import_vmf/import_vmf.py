@@ -399,7 +399,10 @@ class VMFImporter():
 
         # create uvs and materials
         for side_idx, side in enumerate(solid.sides):
-            texture_width, texture_height, material = self._load_material(side.material, side.get_material)
+            texture_width, texture_height, material = self._load_material(
+                side.material,
+                lambda: side.get_material(allow_patch=True)
+            )
             if material not in materials:
                 material_idx = len(materials)
                 materials.append(material)
@@ -796,7 +799,7 @@ class VMFImporter():
 
         mesh: bpy.types.Mesh = bpy.data.meshes.new(name)
         mesh.from_pydata([v * self.scale for v in vertices], (), face_vertices)
-        _, _, material = self._load_material(overlay.material, overlay.get_material)
+        _, _, material = self._load_material(overlay.material, lambda: overlay.get_material(allow_patch=True))
         mesh.materials.append(material)
         uv_layer: bpy.types.MeshUVLoopLayer = mesh.uv_layers.new()
         for polygon_idx, polygon in enumerate(mesh.polygons):

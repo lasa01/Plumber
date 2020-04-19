@@ -585,7 +585,10 @@ class ImportSceneVMT(_ValveGameOperator, _ValveGameOperatorProps):
         fs = VMFFileSystem(self.data_dirs, self.data_paks, index_files=True)
         print("Loading material...")
         importer = import_vmt.VMTImporter(self.verbose, self.simple_materials)
-        importer.load(splitext(basename(self.filepath))[0], lambda: VMT(open(self.filepath, encoding='utf-8'), fs))
+        importer.load(
+            splitext(basename(self.filepath))[0],
+            lambda: VMT(open(self.filepath, encoding='utf-8'), fs, allow_patch=False)
+        )
         return {'FINISHED'}
 
     def draw(self, context: bpy.types.Context) -> None:

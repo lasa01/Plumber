@@ -132,7 +132,8 @@ class Source2BlenderWrapper(mdl2model.Source2Blender):
                 mat_name,
                 lambda: VMT(
                     self.material_openers[mat_name],
-                    self.vmffs
+                    self.vmffs,
+                    allow_patch=True,
                 )
             )
         except KeyError:
