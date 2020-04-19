@@ -806,13 +806,13 @@ class _MaterialBuilder():
                 if not self.simple and "$phongexponent2" in params:
                     self._shader_dict['Roughness'].input = _BlendedConstantInput(
                         blend_input,
-                        ((150 - vmt_data.param_as_float("$phongexponent")) / 150) * 0.5,
-                        ((150 - vmt_data.param_as_float("$phongexponent2")) / 150) * 0.5,
+                        ((150 - vmt_data.param_as_float("$phongexponent")) / 150) * 0.66,
+                        ((150 - vmt_data.param_as_float("$phongexponent2")) / 150) * 0.66,
                     ).const
                 else:
                     self._shader_dict['Roughness'].const = (
                         (150 - vmt_data.param_as_float("$phongexponent")) / 150
-                    ) * 0.5
+                    ) * 0.66
             elif not self.simple and "$phongexponenttexture" in params:
                 image = self._vtf_importer.load(
                     params["$phongexponenttexture"],
@@ -822,11 +822,11 @@ class _MaterialBuilder():
                 texture_inputs["$phongexponenttexture"].setimage(image)
                 self._shader_dict['Roughness'].input = texture_inputs["$phongexponenttexture"].channels.r
                 self._shader_dict['Roughness'].append(_InvertMaterialNode())
-                self._shader_dict['Roughness'].append(_MultiplyMaterialNode(0.5))
+                self._shader_dict['Roughness'].append(_MultiplyMaterialNode(0.66))
                 if vmt_data.param_flag("$phongalbedotint"):
                     self._shader_dict['Specular Tint'].input = texture_inputs["$phongexponenttexture"].channels.g
             else:
-                self._shader_dict['Roughness'].const = 0.3
+                self._shader_dict['Roughness'].const = 0.6
         elif "$envmap" in params:
             if not self.simple and (vmt_data.param_flag("$basealphaenvmapmask")
                                     or vmt_data.param_flag("$basealphaenvmask")):
