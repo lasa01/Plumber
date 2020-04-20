@@ -39,6 +39,14 @@ def _tuple_lerp(a: Tuple[float, float], b: Tuple[float, float], amount: float) -
     return (a[0] * (1 - amount) + b[0] * amount, a[1] * (1 - amount) + b[1] * amount)
 
 
+def _srgb2lin(s: float) -> float:
+    if s <= 0.0404482362771082:
+        lin = s / 12.92
+    else:
+        lin = pow(((s + 0.055) / 1.055), 2.4)
+    return lin
+
+
 class VMFImporter():
     def __init__(self, data_dirs: Iterable[str], data_paks: Iterable[str], dec_models_path: str = None,
                  import_solids: bool = True, import_overlays: bool = True,
@@ -223,7 +231,8 @@ class VMFImporter():
         light: bpy.types.PointLight = bpy.data.lights.new(name, 'POINT')
         light.cycles.use_multiple_importance_sampling = False
         use_sdr = vmf_light.hdr_color == (-1, -1, -1)
-        light.color = [c / 255 for c in vmf_light.color] if use_sdr else [c / 255 for c in vmf_light.hdr_color]
+        light.color = ([_srgb2lin(c / 255) for c in vmf_light.color] if use_sdr
+                       else [_srgb2lin(c / 255) for c in vmf_light.hdr_color])
         light.energy = (vmf_light.brightness if use_sdr
                         else vmf_light.hdr_brightness * vmf_light.hdr_scale) * self.light_factor
         # TODO: possible to convert constant-linear-quadratic attenuation into blender?
@@ -238,7 +247,8 @@ class VMFImporter():
         light: bpy.types.SpotLight = bpy.data.lights.new(name, 'SPOT')
         light.cycles.use_multiple_importance_sampling = False
         use_sdr = vmf_light.hdr_color == (-1, -1, -1)
-        light.color = [c / 255 for c in vmf_light.color] if use_sdr else [c / 255 for c in vmf_light.hdr_color]
+        light.color = ([_srgb2lin(c / 255) for c in vmf_light.color] if use_sdr
+                       else [_srgb2lin(c / 255) for c in vmf_light.hdr_color])
         light.energy = (vmf_light.brightness if use_sdr
                         else vmf_light.hdr_brightness * vmf_light.hdr_scale) * self.light_factor
         light.spot_size = radians(vmf_light.cone)
@@ -261,7 +271,8 @@ class VMFImporter():
         light.cycles.use_multiple_importance_sampling = True
         light.angle = radians(vmf_light.sun_spread_angle)
         use_sdr = vmf_light.hdr_color == (-1, -1, -1)
-        light.color = [c / 255 for c in vmf_light.color] if use_sdr else [c / 255 for c in vmf_light.hdr_color]
+        light.color = ([_srgb2lin(c / 255) for c in vmf_light.color] if use_sdr
+                       else [_srgb2lin(c / 255) for c in vmf_light.hdr_color])
         light.energy = (vmf_light.brightness if use_sdr
                         else vmf_light.hdr_brightness * vmf_light.hdr_scale) * self.sun_factor
         obj: bpy.types.Object = bpy.data.objects.new(vmf_light.classname, object_data=light)
@@ -285,8 +296,8 @@ class VMFImporter():
         bg_node.location = (-300, 0)
         nt.links.new(bg_node.outputs['Background'], out_node.inputs['Surface'])
         use_sdr = vmf_light.amb_hdr_color == (-1, -1, -1)
-        bg_node.inputs['Color'].default_value = ([c / 255 for c in vmf_light.amb_color] + [1] if use_sdr
-                                                 else [c / 255 for c in vmf_light.amb_hdr_color] + [1])
+        bg_node.inputs['Color'].default_value = ([_srgb2lin(c / 255) for c in vmf_light.amb_color] + [1] if use_sdr
+                                                 else [_srgb2lin(c / 255) for c in vmf_light.amb_hdr_color] + [1])
         bg_node.inputs['Strength'].default_value = (vmf_light.amb_brightness if use_sdr
                                                     else vmf_light.amb_hdr_brightness
                                                     * vmf_light.amb_hdr_scale) * self.ambient_factor
@@ -605,7 +616,7 @@ class VMFImporter():
         obj.scale = (scale, scale, scale)
         obj.location = (prop.origin.x * self.scale, prop.origin.y * self.scale, prop.origin.z * self.scale)
         obj.rotation_euler.rotate(Euler((radians(prop.angles[2]), radians(prop.angles[0]), radians(prop.angles[1]))))
-        color = [c / 255 for c in prop.rendercolor] + [prop.renderamt / 255]
+        color = [_srgb2lin(c / 255) for c in prop.rendercolor] + [prop.renderamt / 255]
         for child in obj.children:
             child.color = color
 
