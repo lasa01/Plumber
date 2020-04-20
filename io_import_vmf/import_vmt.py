@@ -906,6 +906,9 @@ class _MaterialBuilder():
             else:
                 self._shader_dict['Specular'].const = 0.8
             self._shader_dict['Roughness'].const = 0.1
+        else:
+            self._shader_dict['Specular'].const = 0.1
+            self._shader_dict['Roughness'].const = 0.9
 
         if not self.simple and masks1:
             self._shader_dict['Metallic'].input = texture_inputs["$masks1"].channels.b
