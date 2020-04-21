@@ -154,20 +154,20 @@ class VMFImporter():
                         failed_solids += 1
                     else:
                         success_solids += 1
-        if self.import_overlays:
-            print("Importing overlays...")
-            collection = bpy.data.collections.new("overlay")
-            map_collection.children.link(collection)
-            for overlay_entity in vmf.overlay_entities:
-                try:
-                    self._load_overlay(overlay_entity, collection)
-                except Exception as err:
-                    print(f"ERROR LOADING OVERLAY: {err}")
-                    if self.verbose:
-                        traceback.print_exception(type(err), err, err.__traceback__)
-                    failed_overlays += 1
-                else:
-                    success_overlays += 1
+            if self.import_overlays:
+                print("Importing overlays...")
+                collection = bpy.data.collections.new("overlay")
+                map_collection.children.link(collection)
+                for overlay_entity in vmf.overlay_entities:
+                    try:
+                        self._load_overlay(overlay_entity, collection)
+                    except Exception as err:
+                        print(f"ERROR LOADING OVERLAY: {err}")
+                        if self.verbose:
+                            traceback.print_exception(type(err), err, err.__traceback__)
+                        failed_overlays += 1
+                    else:
+                        success_overlays += 1
         if self.import_props:
             print("Importing props...")
             prop_collection = bpy.data.collections.new("prop")
@@ -609,7 +609,7 @@ class VMFImporter():
         #     obj.rotation_euler = Euler((0, 0, radians(90)))
         if self._qc_importer is not None:
             obj = self._qc_importer.load(name, collection)
-            obj.rotation_euler = Euler((0, 0, radians(90)))
+            obj.rotation_euler = Euler((0, 0, radians(180)))
         else:
             raise ImportError("QC importer not found")
         obj.name = f"{prop.classname}_{prop.id}"
