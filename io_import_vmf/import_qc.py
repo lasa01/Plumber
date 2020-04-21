@@ -24,6 +24,7 @@ class SmdImporterWrapper(import_smd.SmdImporter):
     filepath: bpy.props.StringProperty()  # type: ignore
     append: bpy.props.StringProperty(default='APPEND')  # type: ignore
     boneMode: bpy.props.StringProperty(default='NONE')  # type: ignore
+    createCollections: bpy.props.BoolProperty(default=False)  # type: ignore
 
     vmt_importer: Optional['import_vmt.VMTImporter']
     vmf_fs: VMFFileSystem
@@ -166,7 +167,8 @@ class QCImporter():
         self._cache[name] = smd
         if smd.a.name not in collection.objects:
             collection.objects.link(smd.a)
-        bpy.context.scene.collection.objects.unlink(smd.a)
+        if smd.a.name in bpy.context.scene.collection.objects:
+            bpy.context.scene.collection.objects.unlink(smd.a)
         return smd
 
     def load(self, name: str, collection: bpy.types.Collection) -> bpy.types.Object:
