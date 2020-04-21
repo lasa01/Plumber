@@ -478,6 +478,24 @@ class ImportSceneQC(_ValveGameOperator, _ValveGameOperatorProps):
         default=True,
     )
 
+    simple_materials: bpy.props.BoolProperty(  # type: ignore
+        name="Simple materials",
+        description="Import simple, exporter-friendly versions of materials.",
+        default=False,
+    )
+
+    texture_interpolation: bpy.props.EnumProperty(  # type: ignore
+        name="Texture interpolation",
+        description="Interpolation type to use for image textures.",
+        items=[
+            ('Linear', "Linear", "Linear interpolation"),
+            ('Closest', "Closest", "No interpolation"),
+            ('Cubic', "Cubic", "Cubic interpolation"),
+            ('Smart', "Smart", "Bicubic when magnifying, else bilinear"),
+        ],
+        default='Linear',
+    )
+
     verbose: bpy.props.BoolProperty(  # type: ignore
         name="Verbose",
         description="Enable to print more info into console",
@@ -505,7 +523,8 @@ class ImportSceneQC(_ValveGameOperator, _ValveGameOperatorProps):
         importer = import_qc.QCImporter(
             root,
             fs,
-            import_vmt.VMTImporter(self.verbose) if self.import_materials else None,
+            import_vmt.VMTImporter(self.verbose, self.simple_materials, self.texture_interpolation)
+            if self.import_materials else None,
             self.verbose,
         )
         with importer:
@@ -516,6 +535,11 @@ class ImportSceneQC(_ValveGameOperator, _ValveGameOperatorProps):
         layout: bpy.types.UILayout = self.layout
         super().draw(context)
         layout.prop(self, "import_materials")
+        if self.import_materials:
+            box = layout.box()
+            box.alignment = 'RIGHT'
+            box.prop(self, "simple_materials")
+            box.prop(self, "texture_interpolation")
         layout.prop(self, "verbose")
 
 
@@ -531,6 +555,24 @@ class ImportSceneMDL(_ValveGameOperator, _ValveGameOperatorProps):
     import_materials: bpy.props.BoolProperty(  # type: ignore
         name="Import materials",
         default=True,
+    )
+
+    simple_materials: bpy.props.BoolProperty(  # type: ignore
+        name="Simple materials",
+        description="Import simple, exporter-friendly versions of materials.",
+        default=False,
+    )
+
+    texture_interpolation: bpy.props.EnumProperty(  # type: ignore
+        name="Texture interpolation",
+        description="Interpolation type to use for image textures.",
+        items=[
+            ('Linear', "Linear", "Linear interpolation"),
+            ('Closest', "Closest", "No interpolation"),
+            ('Cubic', "Cubic", "Cubic interpolation"),
+            ('Smart', "Smart", "Bicubic when magnifying, else bilinear"),
+        ],
+        default='Linear',
     )
 
     verbose: bpy.props.BoolProperty(  # type: ignore
@@ -556,7 +598,8 @@ class ImportSceneMDL(_ValveGameOperator, _ValveGameOperatorProps):
         print("Importing model...")
         importer = import_mdl.MDLImporter(
             fs,
-            import_vmt.VMTImporter(self.verbose) if self.import_materials else None,
+            import_vmt.VMTImporter(self.verbose, self.simple_materials, self.texture_interpolation)
+            if self.import_materials else None,
             self.verbose,
         )
         importer.load(splitext(relpath(self.filepath, root))[0], self.filepath, context.collection)
@@ -566,6 +609,11 @@ class ImportSceneMDL(_ValveGameOperator, _ValveGameOperatorProps):
         layout: bpy.types.UILayout = self.layout
         super().draw(context)
         layout.prop(self, "import_materials")
+        if self.import_materials:
+            box = layout.box()
+            box.alignment = 'RIGHT'
+            box.prop(self, "simple_materials")
+            box.prop(self, "texture_interpolation")
         layout.prop(self, "verbose")
 
 
