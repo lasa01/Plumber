@@ -332,6 +332,18 @@ class ImportSceneVMF(_VMFOperator, _VMFOperatorProps):
         default=False,
     )
 
+    texture_interpolation: bpy.props.EnumProperty(  # type: ignore
+        name="Texture interpolation",
+        description="Interpolation type to use for image textures.",
+        items=[
+            ('Linear', "Linear", "Linear interpolation"),
+            ('Closest', "Closest", "No interpolation"),
+            ('Cubic', "Cubic", "Cubic interpolation"),
+            ('Smart', "Smart", "Bicubic when magnifying, else bilinear"),
+        ],
+        default='Linear',
+    )
+
     global_scale: bpy.props.FloatProperty(  # type: ignore
         name="Scale",
         description="Scale everything by this value",
@@ -381,6 +393,7 @@ class ImportSceneVMF(_VMFOperator, _VMFOperatorProps):
                                           import_props=self.import_props,
                                           import_materials=self.import_materials,
                                           simple_materials=self.simple_materials,
+                                          texture_interpolation=self.texture_interpolation,
                                           import_lights=self.import_lights,
                                           scale=self.global_scale, epsilon=self.epsilon,
                                           light_factor=self.light_factor, sun_factor=self.sun_factor,
@@ -426,7 +439,9 @@ class ImportSceneVMF(_VMFOperator, _VMFOperatorProps):
             layout.prop(self, "import_materials")
             if self.import_materials:
                 box = layout.box()
+                box.alignment = 'RIGHT'
                 box.prop(self, "simple_materials")
+                box.prop(self, "texture_interpolation")
         layout.prop(self, "import_lights")
         if self.import_lights:
             box = layout.box()
@@ -568,6 +583,18 @@ class ImportSceneVMT(_ValveGameOperator, _ValveGameOperatorProps):
         default=False,
     )
 
+    texture_interpolation: bpy.props.EnumProperty(  # type: ignore
+        name="Texture interpolation",
+        description="Interpolation type to use for image textures.",
+        items=[
+            ('Linear', "Linear", "Linear interpolation"),
+            ('Closest', "Closest", "No interpolation"),
+            ('Cubic', "Cubic", "Cubic interpolation"),
+            ('Smart', "Smart", "Bicubic when magnifying, else bilinear"),
+        ],
+        default='Linear',
+    )
+
     verbose: bpy.props.BoolProperty(  # type: ignore
         name="Verbose",
         description="Enable to print more info into console",
@@ -584,7 +611,7 @@ class ImportSceneVMT(_ValveGameOperator, _ValveGameOperatorProps):
         print("Indexing game files...")
         fs = VMFFileSystem(self.data_dirs, self.data_paks, index_files=True)
         print("Loading material...")
-        importer = import_vmt.VMTImporter(self.verbose, self.simple_materials)
+        importer = import_vmt.VMTImporter(self.verbose, self.simple_materials, self.texture_interpolation)
         importer.load(
             splitext(basename(self.filepath))[0],
             lambda: VMT(open(self.filepath, encoding='utf-8'), fs, allow_patch=False)
@@ -595,6 +622,7 @@ class ImportSceneVMT(_ValveGameOperator, _ValveGameOperatorProps):
         layout: bpy.types.UILayout = self.layout
         super().draw(context)
         layout.prop(self, "simple_materials")
+        layout.prop(self, "texture_interpolation")
         layout.prop(self, "verbose")
 
 
@@ -615,6 +643,18 @@ class ImportSceneAGREnhanced(_ValveGameOperator, _ValveGameOperatorProps):
         name="Simple materials",
         description="Import simple, exporter-friendly versions of materials.",
         default=False,
+    )
+
+    texture_interpolation: bpy.props.EnumProperty(  # type: ignore
+        name="Texture interpolation",
+        description="Interpolation type to use for image textures.",
+        items=[
+            ('Linear', "Linear", "Linear interpolation"),
+            ('Closest', "Closest", "No interpolation"),
+            ('Cubic', "Cubic", "Cubic interpolation"),
+            ('Smart', "Smart", "Bicubic when magnifying, else bilinear"),
+        ],
+        default='Linear',
     )
 
     inter_key: bpy.props.BoolProperty(  # type: ignore
@@ -659,7 +699,8 @@ class ImportSceneAGREnhanced(_ValveGameOperator, _ValveGameOperatorProps):
         fs = VMFFileSystem(self.data_dirs, self.data_paks, index_files=True)
         importer = import_agr.AgrImporter(
             dec_models_path, fs,
-            import_materials=self.import_materials, simple_materials=self.simple_materials,
+            import_materials=self.import_materials,
+            simple_materials=self.simple_materials, texture_interpolation=self.texture_interpolation,
             inter_key=self.inter_key, global_scale=self.global_scale, scale_invisible_zero=self.scale_invisible_zero,
         )
         with importer:
@@ -684,7 +725,9 @@ class ImportSceneAGREnhanced(_ValveGameOperator, _ValveGameOperatorProps):
         layout.prop(self, "import_materials")
         if self.import_materials:
             box = layout.box()
+            box.alignment = 'RIGHT'
             box.prop(self, "simple_materials")
+            box.prop(self, "texture_interpolation")
         layout.prop(self, "inter_key")
         layout.prop(self, "global_scale")
         layout.prop(self, "scale_invisible_zero")

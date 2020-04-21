@@ -281,8 +281,9 @@ class _TextureInputBase(_MaterialInputBase):
 
 
 class _TextureInput(_TextureInputBase):
-    def __init__(self) -> None:
+    def __init__(self, interpolation: str = 'Linear') -> None:
         super().__init__()
+        self.interpolation = interpolation
         self.image: bpy.types.Image = None
         self.color = _MaterialInputSocket(self, 'Color')
         self.channels = _SplitTextureInput(self.color)
@@ -296,12 +297,14 @@ class _TextureInput(_TextureInputBase):
     def create(self, node_tree: NodeTree, pos: _PosRef) -> None:
         self.node: Node = node_tree.nodes.new('ShaderNodeTexImage')
         self.node.image = self.image
+        self.node.interpolation = self.interpolation
         self.node.location = pos.loc()
 
 
 class _TransformedTextureInput(_TextureInput):
-    def __init__(self, scale: Tuple[float, float] = (1, 1), rotate: float = 0, translate: Tuple[float, float] = (1, 1)):
-        super().__init__()
+    def __init__(self, scale: Tuple[float, float] = (1, 1), rotate: float = 0, translate: Tuple[float, float] = (1, 1),
+                 interpolation: str = 'Linear'):
+        super().__init__(interpolation)
         self.scale = scale
         self.rotate = rotate
         self.translate = translate
@@ -549,7 +552,8 @@ _SUPPORTED_PARAMS = frozenset((
 
 
 class _MaterialBuilder():
-    def __init__(self, vtf_importer: import_vtf.VTFImporter, name: str, vmt_data: vmt.VMT, simple: bool = False):
+    def __init__(self, vtf_importer: import_vtf.VTFImporter, name: str, vmt_data: vmt.VMT,
+                 simple: bool = False, interpolation: str = 'Linear'):
         self._vtf_importer = vtf_importer
         self.name = name
         self.simple = simple
@@ -569,7 +573,7 @@ class _MaterialBuilder():
             self.nodraw = True
             return
 
-        texture_inputs: DefaultDict[str, _TextureInputBase] = defaultdict(lambda: _TextureInput())
+        texture_inputs: DefaultDict[str, _TextureInputBase] = defaultdict(lambda: _TextureInput(interpolation))
 
         unsupported_params = [p for p in params if p not in _SUPPORTED_PARAMS]
         if len(unsupported_params) != 0:
@@ -594,7 +598,7 @@ class _MaterialBuilder():
                     transform = vmt_data.param_as_transform("$bumptransform")
                     if transform.scale != (1, 1) or transform.rotate != 0 or transform.translate != (0, 0):
                         texture_inputs["$bumpmap"] = _TransformedTextureInput(
-                            transform.scale, transform.rotate, transform.translate
+                            transform.scale, transform.rotate, transform.translate, interpolation
                         )
                 texture_inputs["$normalmap"].setimage(image)
                 self._shader_dict['Normal'].input = texture_inputs["$normalmap"].color
@@ -624,7 +628,7 @@ class _MaterialBuilder():
                 transform = vmt_data.param_as_transform("$basetexturetransform")
                 if transform.scale != (1, 1) or transform.rotate != 0 or transform.translate != (0, 0):
                     texture_inputs["$basetexture"] = _TransformedTextureInput(
-                        transform.scale, transform.rotate, transform.translate
+                        transform.scale, transform.rotate, transform.translate, interpolation
                     )
             texture_inputs["$basetexture"].setimage(image)
             self.width, self.height = image.size
@@ -636,7 +640,7 @@ class _MaterialBuilder():
                     transform = vmt_data.param_as_transform("$blendmodulatetransform")
                     if transform.scale != (1, 1) or transform.rotate != 0 or transform.translate != (0, 0):
                         texture_inputs["$blendmodulatetexture"] = _TransformedTextureInput(
-                            transform.scale, transform.rotate, transform.translate
+                            transform.scale, transform.rotate, transform.translate, interpolation
                         )
                 texture_inputs["$blendmodulatetexture"].setimage(bimage)
                 blend_input = _ModulatedBlendFactorInput(
@@ -664,7 +668,7 @@ class _MaterialBuilder():
                     rotate = 0
                     translate = (0, 0)
                 if scale != (1, 1) or rotate != 0 or translate != (0, 0):
-                    texture_inputs["$detail"] = _TransformedTextureInput(scale, rotate, translate)
+                    texture_inputs["$detail"] = _TransformedTextureInput(scale, rotate, translate, interpolation)
                 texture_inputs["$detail"].setimage(dimage)
                 blend_fac = vmt_data.param_as_float("$detailblendfactor") if "$detailblendfactor" in params else 1
                 texture_inputs["$basetexture"] = _DetailedTextureInput(
@@ -676,7 +680,7 @@ class _MaterialBuilder():
                     transform = vmt_data.param_as_transform("$basetexturetransform2")
                     if transform.scale != (1, 1) or transform.rotate != 0 or transform.translate != (0, 0):
                         texture_inputs["$basetexture2"] = _TransformedTextureInput(
-                            transform.scale, transform.rotate, transform.translate
+                            transform.scale, transform.rotate, transform.translate, interpolation
                         )
                 texture_inputs["$basetexture2"].setimage(image2)
                 if "$detail2" in params:
@@ -702,7 +706,7 @@ class _MaterialBuilder():
                         rotate = 0
                         translate = (0, 0)
                     if scale != (1, 1) or rotate != 0 or translate != (0, 0):
-                        texture_inputs["$detail2"] = _TransformedTextureInput(scale, rotate, translate)
+                        texture_inputs["$detail2"] = _TransformedTextureInput(scale, rotate, translate, interpolation)
                     texture_inputs["$detail2"].setimage(dimage2)
                     blend_fac = vmt_data.param_as_float("$detailblendfactor2") if "$detailblendfactor2" in params else 1
                     texture_inputs["$basetexture2"] = _DetailedTextureInput(
@@ -745,7 +749,7 @@ class _MaterialBuilder():
                 transform = vmt_data.param_as_transform("$bumptransform")
                 if transform.scale != (1, 1) or transform.rotate != 0 or transform.translate != (0, 0):
                     texture_inputs["$bumpmap"] = _TransformedTextureInput(
-                        transform.scale, transform.rotate, transform.translate
+                        transform.scale, transform.rotate, transform.translate, interpolation
                     )
             texture_inputs["$bumpmap"].setimage(image)
             if not self.simple and "$bumpmap2" in params:
@@ -756,7 +760,7 @@ class _MaterialBuilder():
                     transform = vmt_data.param_as_transform("$bumptransform2")
                     if transform.scale != (1, 1) or transform.rotate != 0 or transform.translate != (0, 0):
                         texture_inputs["$bumpmap2"] = _TransformedTextureInput(
-                            transform.scale, transform.rotate, transform.translate
+                            transform.scale, transform.rotate, transform.translate, interpolation
                         )
                 texture_inputs["$bumpmap2"].setimage(image2)
                 if vmt_data.param_flag("$addbumpmaps"):
@@ -803,7 +807,7 @@ class _MaterialBuilder():
                 rotate = 0
                 translate = (0, 0)
             if scale != (1, 1) or rotate != 0 or translate != (0, 0):
-                texture_inputs["$detail"] = _TransformedTextureInput(scale, rotate, translate)
+                texture_inputs["$detail"] = _TransformedTextureInput(scale, rotate, translate, interpolation)
             texture_inputs["$detail"].setimage(dimage)
             self._shader_dict['Normal'].input = texture_inputs["$detail"].color
             self._shader_dict['Normal'].append(_SsbumpToNormalMaterialNode())
@@ -893,7 +897,7 @@ class _MaterialBuilder():
                     transform = vmt_data.param_as_transform("$envmapmasktransform")
                     if transform.scale != (1, 1) or transform.rotate != 0 or transform.translate != (0, 0):
                         texture_inputs["$envmapmask"] = _TransformedTextureInput(
-                            transform.scale, transform.rotate, transform.translate
+                            transform.scale, transform.rotate, transform.translate, interpolation
                         )
                 texture_inputs["$envmapmask"].setimage(image)
                 self._shader_dict['Specular'].input = texture_inputs["$envmapmask"].color
@@ -982,9 +986,10 @@ class _MaterialBuilder():
 
 
 class VMTImporter():
-    def __init__(self, verbose: bool = False, simple: bool = False) -> None:
+    def __init__(self, verbose: bool = False, simple: bool = False, interpolation: str = 'Linear') -> None:
         self.verbose = verbose
         self.simple = simple
+        self.interpolation = interpolation
         self._cache: Dict[str, VMTData] = {}
         self._vtf_importer = import_vtf.VTFImporter()
 
@@ -994,7 +999,8 @@ class VMTImporter():
             return self._cache[material_name]
         if self.verbose:
             print(f"Building material {material_name}...")
-        builder = _MaterialBuilder(self._vtf_importer, material_name, vmt_data(), simple=self.simple)
+        builder = _MaterialBuilder(self._vtf_importer, material_name, vmt_data(),
+                                   simple=self.simple, interpolation=self.interpolation)
         material = builder.build()
         data = VMTData(builder.width, builder.height, material)
         self._cache[material_name] = data

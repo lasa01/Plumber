@@ -48,7 +48,7 @@ class AgrImporterWrapper(import_agr.AgrImporter):
 
 class AgrImporter():
     def __init__(self, dec_models_path: str, vmf_fs: VMFFileSystem = VMFFileSystem(),
-                 import_materials: bool = True, simple_materials: bool = False,
+                 import_materials: bool = True, simple_materials: bool = False, texture_interpolation: str = 'Linear',
                  inter_key: bool = False, global_scale: float = 0.01, scale_invisible_zero: bool = False,
                  verbose: bool = False):
         self.verbose = verbose
@@ -56,7 +56,9 @@ class AgrImporter():
         self.vmf_fs = vmf_fs
         if import_materials:
             from . import import_vmt
-            vmt_importer: Optional[import_vmt.VMTImporter] = import_vmt.VMTImporter(verbose, simple_materials)
+            vmt_importer: Optional[import_vmt.VMTImporter] = import_vmt.VMTImporter(
+                verbose, simple_materials, texture_interpolation
+            )
         else:
             vmt_importer = None
         AgrImporterWrapper.qc_importer = import_qc.QCImporter(dec_models_path, vmf_fs, vmt_importer, verbose)
