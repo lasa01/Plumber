@@ -22,11 +22,7 @@ class SmdImporterWrapper(import_smd.SmdImporter):
     bl_idname = "import_scene._io_import_vmf_smd_wrapper"
 
     filepath: bpy.props.StringProperty()  # type: ignore
-    doAnim: bpy.props.BoolProperty(default=False)  # type: ignore
-    makeCamera: bpy.props.BoolProperty(default=False)  # type: ignore
     append: bpy.props.StringProperty(default='APPEND')  # type: ignore
-    upAxis: bpy.props.StringProperty(default='Z')  # type: ignore
-    rotMode: bpy.props.StringProperty(default='XYZ')  # type: ignore
     boneMode: bpy.props.StringProperty(default='NONE')  # type: ignore
 
     vmt_importer: Optional['import_vmt.VMTImporter']
@@ -42,7 +38,7 @@ class SmdImporterWrapper(import_smd.SmdImporter):
         with open(self.filepath, 'r') as fp:
             for match in _CDMATERIALS_REGEX.finditer(fp.read()):
                 self._cdmaterials.append(vmf_path(match.group(1)))
-        self.readQC(self.filepath, False, False, False, 'XYZ', outer_qc=True)
+        self.readQC(self.filepath, False, True, False, 'XYZ', outer_qc=True)
         SmdImporterWrapper.smd = self.smd
         return {'FINISHED'}
 
