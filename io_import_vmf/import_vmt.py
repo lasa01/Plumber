@@ -559,7 +559,7 @@ class _MaterialBuilder():
         self.water = False
         self.blend_method = 'OPAQUE'
         self.shadow_method = 'OPAQUE'
-        self.alpha_reference = 0.3
+        self.alpha_reference = 0.7
         params = vmt_data.parameters
 
         # flags that imply nodraw
@@ -819,7 +819,7 @@ class _MaterialBuilder():
             self.shadow_method = 'CLIP'
             self._shader_dict['Alpha'].input = texture_inputs["$basetexture"].alpha
             if "$alphatestreference" in params:
-                self.alpha_reference = 1 - vmt_data.param_as_float("$alphatestreference")
+                self.alpha_reference = vmt_data.param_as_float("$alphatestreference")
             elif "$allowalphatocoverage" in params:
                 self.blend_method = 'HASHED'
             if not self.simple and "$alpha" in params:
