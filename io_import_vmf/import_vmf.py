@@ -785,7 +785,7 @@ class VMFImporter():
         global_to_basis = basis_to_global.inverted()
 
         # matrix for mapping basis vectors to uv coordinates
-        u1, u2, v1, v2 = overlay.startu, overlay.endu, overlay.startv, overlay.endv
+        u1, u2, v1, v2 = overlay.startu, overlay.endu, 1 - overlay.endv, 1 - overlay.startv
         coeff_matrix = Matrix((
             (u1, u1, u2),
             (v2, v1, v1),
