@@ -542,18 +542,18 @@ _SUPPORTED_PARAMS = frozenset((
     "$envmap", "$basealphaenvmapmask", "$basealphaenvmask", "$normalmapalphaenvmapmask",
     "$envmapmask", "$envmapmasktransform", "$envmaptint", "$envmapmaskintintmasktexture",
     "$selfillum_envmapmask_alpha", "$selfillum", "$selfillummask",
-    "$blendmodulatetexture", "$blendmodulatetransform", "$masks1", "$metalness",
+    "$blendmodulatetexture", "$blendmodulatetransform", "$masks1", "$metalness", "$nocull",
     "%compilewater", "$normalmap", "$fogenable", "$fogcolor",
     "$color2", "$allowdiffusemodulation", "$notint", "$blendtintbybasealpha", "$tintmasktexture",
     # ignored parameters
     "%keywords", "%compilepassbullets", "%compilenonsolid", "%tooltexture",
-    "$surfaceprop", "$surfaceprop2", "$nocull", "$model", "$reflectivity", "$decal", "$decalscale"
+    "$surfaceprop", "$surfaceprop2", "$model", "$reflectivity", "$decal", "$decalscale"
 ))
 
 
 class _MaterialBuilder():
     def __init__(self, vtf_importer: import_vtf.VTFImporter, name: str, vmt_data: vmt.VMT,
-                 simple: bool = False, interpolation: str = 'Linear'):
+                 simple: bool = False, interpolation: str = 'Linear', cull: bool = True):
         self._vtf_importer = vtf_importer
         self.name = name
         self.simple = simple
@@ -564,6 +564,7 @@ class _MaterialBuilder():
         self.blend_method = 'OPAQUE'
         self.shadow_method = 'OPAQUE'
         self.alpha_reference = 0.7
+        self.cull = cull
         params = vmt_data.parameters
 
         # flags that imply nodraw
@@ -621,6 +622,10 @@ class _MaterialBuilder():
         vertex_col_input = _VertexColorInput()
         object_col_input = _ObjectColorInput()
         blend_input = vertex_col_input.alpha
+
+        if vmt_data.param_flag("$nocull") or vmt_data.param_flag("$decal"):
+            # don't cull overlays since imported normals are wrong
+            self.cull = False
 
         if "$basetexture" in params:
             image = self._vtf_importer.load(params["$basetexture"], vmt_data.param_open_texture("$basetexture"))
@@ -938,6 +943,7 @@ class _MaterialBuilder():
         material.blend_method = self.blend_method
         material.shadow_method = self.shadow_method
         material.alpha_threshold = self.alpha_reference
+        material.use_backface_culling = self.cull
         nt = material.node_tree
         nt.nodes.clear()
         pos_ref = _PosRef()
@@ -986,7 +992,8 @@ class _MaterialBuilder():
 
 
 class VMTImporter():
-    def __init__(self, verbose: bool = False, simple: bool = False, interpolation: str = 'Linear') -> None:
+    def __init__(self, verbose: bool = False, simple: bool = False,
+                 interpolation: str = 'Linear', cull: bool = False) -> None:
         self.verbose = verbose
         self.simple = simple
         self.interpolation = interpolation

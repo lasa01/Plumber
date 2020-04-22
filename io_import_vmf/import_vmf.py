@@ -52,7 +52,7 @@ class VMFImporter():
                  import_solids: bool = True, import_overlays: bool = True,
                  import_props: bool = True, import_materials: bool = True, import_lights: bool = True,
                  scale: float = 0.01, epsilon: float = 0.001,
-                 simple_materials: bool = False, texture_interpolation: str = 'Linear',
+                 simple_materials: bool = False, texture_interpolation: str = 'Linear', cull_materials: bool = False,
                  light_factor: float = 0.1, sun_factor: float = 0.01, ambient_factor: float = 0.001,
                  verbose: bool = False, skip_tools: bool = False):
         self.epsilon = epsilon
@@ -76,7 +76,9 @@ class VMFImporter():
             self._side_normals: Dict[int, Vector] = {}
         if import_materials:
             from . import import_vmt
-            self._vmt_importer = import_vmt.VMTImporter(self.verbose, simple_materials, texture_interpolation)
+            self._vmt_importer = import_vmt.VMTImporter(
+                self.verbose, simple_materials, texture_interpolation, cull_materials
+            )
         else:
             self._vmt_importer = None
         self._fallback_materials: Dict[str, bpy.types.Material] = {}

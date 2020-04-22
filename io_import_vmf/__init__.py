@@ -344,6 +344,12 @@ class ImportSceneVMF(_VMFOperator, _VMFOperatorProps):
         default='Linear',
     )
 
+    cull_materials: bpy.props.BoolProperty(  # type: ignore
+        name="Allow backface culling",
+        description="Enable backface culling for materials which don't disable it.",
+        default=False,
+    )
+
     global_scale: bpy.props.FloatProperty(  # type: ignore
         name="Scale",
         description="Scale everything by this value",
@@ -392,7 +398,7 @@ class ImportSceneVMF(_VMFOperator, _VMFOperatorProps):
                                           import_solids=self.import_solids, import_overlays=self.import_overlays,
                                           import_props=self.import_props,
                                           import_materials=self.import_materials,
-                                          simple_materials=self.simple_materials,
+                                          simple_materials=self.simple_materials, cull_materials=self.cull_materials,
                                           texture_interpolation=self.texture_interpolation,
                                           import_lights=self.import_lights,
                                           scale=self.global_scale, epsilon=self.epsilon,
@@ -442,6 +448,7 @@ class ImportSceneVMF(_VMFOperator, _VMFOperatorProps):
                 box.alignment = 'RIGHT'
                 box.prop(self, "simple_materials")
                 box.prop(self, "texture_interpolation")
+                box.prop(self, "cull_materials")
         layout.prop(self, "import_lights")
         if self.import_lights:
             box = layout.box()
@@ -496,6 +503,12 @@ class ImportSceneQC(_ValveGameOperator, _ValveGameOperatorProps):
         default='Linear',
     )
 
+    cull_materials: bpy.props.BoolProperty(  # type: ignore
+        name="Allow backface culling",
+        description="Enable backface culling for materials which don't disable it.",
+        default=False,
+    )
+
     verbose: bpy.props.BoolProperty(  # type: ignore
         name="Verbose",
         description="Enable to print more info into console",
@@ -523,7 +536,7 @@ class ImportSceneQC(_ValveGameOperator, _ValveGameOperatorProps):
         importer = import_qc.QCImporter(
             root,
             fs,
-            import_vmt.VMTImporter(self.verbose, self.simple_materials, self.texture_interpolation)
+            import_vmt.VMTImporter(self.verbose, self.simple_materials, self.texture_interpolation, self.cull_materials)
             if self.import_materials else None,
             self.verbose,
         )
@@ -540,6 +553,7 @@ class ImportSceneQC(_ValveGameOperator, _ValveGameOperatorProps):
             box.alignment = 'RIGHT'
             box.prop(self, "simple_materials")
             box.prop(self, "texture_interpolation")
+            box.prop(self, "cull_materials")
         layout.prop(self, "verbose")
 
 
@@ -575,6 +589,12 @@ class ImportSceneMDL(_ValveGameOperator, _ValveGameOperatorProps):
         default='Linear',
     )
 
+    cull_materials: bpy.props.BoolProperty(  # type: ignore
+        name="Allow backface culling",
+        description="Enable backface culling for materials which don't disable it.",
+        default=False,
+    )
+
     verbose: bpy.props.BoolProperty(  # type: ignore
         name="Verbose",
         description="Enable to print more info into console",
@@ -598,7 +618,7 @@ class ImportSceneMDL(_ValveGameOperator, _ValveGameOperatorProps):
         print("Importing model...")
         importer = import_mdl.MDLImporter(
             fs,
-            import_vmt.VMTImporter(self.verbose, self.simple_materials, self.texture_interpolation)
+            import_vmt.VMTImporter(self.verbose, self.simple_materials, self.texture_interpolation, self.cull_materials)
             if self.import_materials else None,
             self.verbose,
         )
@@ -614,6 +634,7 @@ class ImportSceneMDL(_ValveGameOperator, _ValveGameOperatorProps):
             box.alignment = 'RIGHT'
             box.prop(self, "simple_materials")
             box.prop(self, "texture_interpolation")
+            box.prop(self, "cull_materials")
         layout.prop(self, "verbose")
 
 
@@ -643,6 +664,12 @@ class ImportSceneVMT(_ValveGameOperator, _ValveGameOperatorProps):
         default='Linear',
     )
 
+    cull_materials: bpy.props.BoolProperty(  # type: ignore
+        name="Allow backface culling",
+        description="Enable backface culling for materials which don't disable it.",
+        default=False,
+    )
+
     verbose: bpy.props.BoolProperty(  # type: ignore
         name="Verbose",
         description="Enable to print more info into console",
@@ -659,7 +686,8 @@ class ImportSceneVMT(_ValveGameOperator, _ValveGameOperatorProps):
         print("Indexing game files...")
         fs = VMFFileSystem(self.data_dirs, self.data_paks, index_files=True)
         print("Loading material...")
-        importer = import_vmt.VMTImporter(self.verbose, self.simple_materials, self.texture_interpolation)
+        importer = import_vmt.VMTImporter(self.verbose, self.simple_materials,
+                                          self.texture_interpolation, self.cull_materials)
         importer.load(
             splitext(basename(self.filepath))[0],
             lambda: VMT(open(self.filepath, encoding='utf-8'), fs, allow_patch=False)
@@ -671,6 +699,7 @@ class ImportSceneVMT(_ValveGameOperator, _ValveGameOperatorProps):
         super().draw(context)
         layout.prop(self, "simple_materials")
         layout.prop(self, "texture_interpolation")
+        layout.prop(self, "cull_materials")
         layout.prop(self, "verbose")
 
 
@@ -703,6 +732,12 @@ class ImportSceneAGREnhanced(_ValveGameOperator, _ValveGameOperatorProps):
             ('Smart', "Smart", "Bicubic when magnifying, else bilinear"),
         ],
         default='Linear',
+    )
+
+    cull_materials: bpy.props.BoolProperty(  # type: ignore
+        name="Allow backface culling",
+        description="Enable backface culling for materials which don't disable it.",
+        default=False,
     )
 
     inter_key: bpy.props.BoolProperty(  # type: ignore
@@ -747,8 +782,8 @@ class ImportSceneAGREnhanced(_ValveGameOperator, _ValveGameOperatorProps):
         fs = VMFFileSystem(self.data_dirs, self.data_paks, index_files=True)
         importer = import_agr.AgrImporter(
             dec_models_path, fs,
-            import_materials=self.import_materials,
-            simple_materials=self.simple_materials, texture_interpolation=self.texture_interpolation,
+            import_materials=self.import_materials, simple_materials=self.simple_materials,
+            texture_interpolation=self.texture_interpolation, cull_materials=self.cull_materials,
             inter_key=self.inter_key, global_scale=self.global_scale, scale_invisible_zero=self.scale_invisible_zero,
         )
         with importer:
@@ -776,6 +811,7 @@ class ImportSceneAGREnhanced(_ValveGameOperator, _ValveGameOperatorProps):
             box.alignment = 'RIGHT'
             box.prop(self, "simple_materials")
             box.prop(self, "texture_interpolation")
+            box.prop(self, "cull_materials")
         layout.prop(self, "inter_key")
         layout.prop(self, "global_scale")
         layout.prop(self, "scale_invisible_zero")
