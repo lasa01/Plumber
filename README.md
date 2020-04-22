@@ -15,6 +15,12 @@ Also includes helpful wrappers for importing [HLAE .agr files](https://www.advan
 - Go to Preferences > Addons > Install.
 - Select the .zip file you downloaded.
 
+### Latest from source
+- Install Python.
+- Clone the repository.
+- Run `install.sh` or `install.ps1` depending on your OS.
+- Follow the installation instructions above for the newly created .zip file.
+
 ## Usage
 
 The importer can automatically extract the required files from the game files.
@@ -55,3 +61,14 @@ You should check it if you plan to export the materials outside Blender, since e
 
 ### AGR (requires [afx-blender-scripts](https://github.com/advancedfx/afx-blender-scripts))
 `File -> Import -> HLAE afxGameRecord (enhanced) (.agr)`
+
+## Credits
+- Me for the addon, [VMF and VMT parser](https://github.com/lasa01/vmfpy) and [VTFLib wrapper](https://github.com/lasa01/pyvtflib).
+- ValvePython for [VPK](https://github.com/ValvePython/vpk) and [Valve KeyValues](https://github.com/ValvePython/vdf) parser.
+- Nemesis for [VTFLib](http://nemesis.thewavelength.net/index.php?p=40).
+- Artfunkel for [Blender Source Tools](http://steamreview.org/BlenderSourceTools/).
+- ZeqMacaw and UltraTechX for [Crowbar](https://steamcommunity.com/groups/CrowbarTool) and [Crowbar-Command-Line](https://github.com/UltraTechX/Crowbar-Command-Line).
+- Devostated for testing and bug reporting.
+
+## License
+This project is licensed under the MIT license. See LICENSE for more information.
