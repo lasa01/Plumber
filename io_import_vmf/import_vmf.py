@@ -597,6 +597,9 @@ class VMFImporter():
                 polygon.use_smooth = True
                 for loop_ref_idx, loop_idx in enumerate(polygon.loop_indices):
                     vertex_colors.data[loop_idx].color = face_loop_cols[polygon_idx][loop_ref_idx]
+        # check if normals need to be flipped by comparing the first polygon normal to the plane normal
+        if side_planes[0][1].dot(mesh.polygons[0].normal) < 0:
+            mesh.flip_normals()
         obj: bpy.types.Object = bpy.data.objects.new(name, object_data=mesh)
         collection.objects.link(obj)
         if is_tool:
