@@ -40,6 +40,7 @@ class ValveGameDirList(bpy.types.UIList):
 
 
 class AddValveDirOperator(bpy.types.Operator):
+    """Add a new empty game directory definition to the selected game"""
     bl_idname = "io_import_vmf.valvedir_add"
     bl_label = "Add a Valve game directory definition"
     bl_options = {'REGISTER', 'UNDO'}
@@ -57,6 +58,7 @@ class AddValveDirOperator(bpy.types.Operator):
 
 
 class RemoveValveDirOperator(bpy.types.Operator):
+    """Remove the selected game directory definition from the selected game"""
     bl_idname = "io_import_vmf.valvedir_remove"
     bl_label = "Remove a Valve game directory definition"
     bl_options = {'REGISTER', 'UNDO'}
@@ -92,6 +94,7 @@ class ValveGamePakList(bpy.types.UIList):
 
 
 class AddValvePakOperator(bpy.types.Operator):
+    """Add a new empty VPK archive definition to the selected game"""
     bl_idname = "io_import_vmf.valvepak_add"
     bl_label = "Add a Valve game pak definition"
     bl_options = {'REGISTER', 'UNDO'}
@@ -109,6 +112,7 @@ class AddValvePakOperator(bpy.types.Operator):
 
 
 class RemoveValvePakOperator(bpy.types.Operator):
+    """Remove the selected VPK archive definition from the selected game"""
     bl_idname = "io_import_vmf.valvepak_remove"
     bl_label = "Remove a Valve game pak definition"
     bl_options = {'REGISTER', 'UNDO'}
@@ -150,6 +154,7 @@ class ValveGameSettingsList(bpy.types.UIList):
 
 
 class AddValveGameOperator(bpy.types.Operator):
+    """Add a new empty Valve game definition"""
     bl_idname = "io_import_vmf.valvegame_add"
     bl_label = "Add an empty Valve game definition"
     bl_options = {'REGISTER', 'UNDO'}
@@ -162,6 +167,7 @@ class AddValveGameOperator(bpy.types.Operator):
 
 
 class RemoveValveGameOperator(bpy.types.Operator):
+    """Remove the selected Valve game definition"""
     bl_idname = "io_import_vmf.valvegame_remove"
     bl_label = "Remove a Valve game definition"
     bl_options = {'REGISTER', 'UNDO'}
@@ -178,6 +184,7 @@ class RemoveValveGameOperator(bpy.types.Operator):
 
 
 class DetectValveGameOperator(bpy.types.Operator):
+    """Automatically detect VPKs inside a game directory and add them to the selected game definition"""
     bl_idname = "io_import_vmf.valvegame_detect"
     bl_label = "Detect Valve game data from a game directory"
     bl_options = {'REGISTER', 'UNDO'}
@@ -271,6 +278,7 @@ class ValveGameAddonPreferences(bpy.types.AddonPreferences):
 
 
 class ValveGameOpenPreferencesOperator(bpy.types.Operator):
+    """Open the preferences of the VMF importer"""
     bl_idname = "io_import_vmf.open_preferences"
     bl_label = "Open Valve game definition preferences"
     bl_options = {'INTERNAL'}
@@ -341,7 +349,7 @@ class _VMFOperator(_ValveGameOperator, _VMFOperatorProps):
 
 
 class ExportVMFMDLs(_VMFOperator, _VMFOperatorProps):
-    """Export required MDL files for a VMF."""
+    """Export required MDL files for a VMF"""
     bl_idname = "export.vmf_mdls"
     bl_label = "Export VMF MDLs for decompilation"
     bl_options: Set[str] = set()
@@ -402,6 +410,7 @@ class ExportVMFMDLs(_VMFOperator, _VMFOperatorProps):
 
 
 class ImportSceneVMF(_VMFOperator, _VMFOperatorProps):
+    """Load a Source Engine VMF file"""
     bl_idname = "import_scene.vmf"
     bl_label = "Import VMF"
     bl_options = {'UNDO', 'PRESET'}
@@ -617,6 +626,7 @@ def _get_source_path_root(path: str) -> str:
 
 
 class ImportSceneQC(_ValveGameOperator, _ValveGameOperatorProps):
+    """Load a Source Engine QC file"""
     bl_idname = "import_scene.qc_enhanced"
     bl_label = "Import QC (enhanced)"
     bl_options = {'UNDO', 'PRESET'}
@@ -703,6 +713,7 @@ class ImportSceneQC(_ValveGameOperator, _ValveGameOperatorProps):
 
 # NOTE: Imports invalid rotation, disabled
 class ImportSceneMDL(_ValveGameOperator, _ValveGameOperatorProps):
+    """Load a Source Engine MDL file"""
     bl_idname = "import_scene.mdl_enhanced"
     bl_label = "Import MDL (enhanced)"
     bl_options = {'UNDO', 'PRESET'}
@@ -783,6 +794,7 @@ class ImportSceneMDL(_ValveGameOperator, _ValveGameOperatorProps):
 
 
 class ImportSceneVMT(_ValveGameOperator, _ValveGameOperatorProps):
+    """Load a Source Engine VMT file"""
     bl_idname = "import_scene.vmt"
     bl_label = "Import VMT"
     bl_options = {'UNDO', 'PRESET'}
@@ -848,6 +860,7 @@ class ImportSceneVMT(_ValveGameOperator, _ValveGameOperatorProps):
 
 
 class ImportSceneAGREnhanced(_ValveGameOperator, _ValveGameOperatorProps):
+    """Load a HLAE AGR file"""
     bl_idname = "import_scene.agr_enhanced"
     bl_label = "Import AGR (enhanced)"
     bl_options = {'UNDO', 'PRESET'}
