@@ -14,7 +14,7 @@ bl_info = {
     "author": "Lassi Säike",
     "description": "Import Valve Map Format (VMF) and Valve Material Type (VMT) files.",
     "blender": (2, 82, 0),
-    "version": (0, 1, 0),
+    "version": (0, 2, 0),
     "location": "File > Import",
     "warning": "",
     "tracker_url": "https://github.com/lasa01/io_import_vmf",
