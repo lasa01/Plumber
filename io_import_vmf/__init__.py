@@ -22,30 +22,118 @@ bl_info = {
 }
 
 
+class ValveGameDir(bpy.types.PropertyGroup):
+    dirpath: bpy.props.StringProperty(name="Directory path", default="", subtype='DIR_PATH')  # type: ignore
+
+
+class ValveGameDirList(bpy.types.UIList):
+    bl_idname = "IO_IMPORT_VMF_UL_valvedirslist"
+
+    def draw_item(self, context: bpy.types.Context, layout: bpy.types.UILayout,
+                  data: 'ValveGameSettings', item: ValveGameDir,
+                  icon: int, active_data: int, active_propname: str) -> None:
+        if self.layout_type in {'DEFAULT', 'COMPACT'}:
+            layout.prop(item, "dirpath", text="", emboss=False, icon_value=icon)
+        elif self.layout_type in {'GRID'}:
+            layout.alignment = 'CENTER'
+            layout.label(text=item.dirpath, icon_value=icon)
+
+
+class AddValveDirOperator(bpy.types.Operator):
+    bl_idname = "io_import_vmf.valvedir_add"
+    bl_label = "Add a Valve game directory definition"
+    bl_options = {'REGISTER', 'UNDO'}
+
+    @classmethod
+    def poll(cls, context: bpy.types.Context) -> bool:
+        return bool(context.preferences.addons[__package__].preferences.games)
+
+    def execute(self, context: bpy.types.Context) -> Set[str]:
+        preferences: ValveGameAddonPreferences = context.preferences.addons[__package__].preferences
+        game: ValveGameSettings = preferences.games[preferences.game_index]
+        game.gamedirs.add()
+        game.gamedir_index = len(game.gamedirs) - 1
+        return {'FINISHED'}
+
+
+class RemoveValveDirOperator(bpy.types.Operator):
+    bl_idname = "io_import_vmf.valvedir_remove"
+    bl_label = "Remove a Valve game directory definition"
+    bl_options = {'REGISTER', 'UNDO'}
+
+    @classmethod
+    def poll(cls, context: bpy.types.Context) -> bool:
+        preferences: ValveGameAddonPreferences = context.preferences.addons[__package__].preferences
+        return bool(preferences.games) and bool(preferences.games[preferences.game_index].gamedirs)
+
+    def execute(self, context: bpy.types.Context) -> Set[str]:
+        preferences: ValveGameAddonPreferences = context.preferences.addons[__package__].preferences
+        game: ValveGameSettings = preferences.games[preferences.game_index]
+        game.gamedirs.remove(game.gamedir_index)
+        game.gamedir_index = min(max(0, game.gamedir_index - 1), len(game.gamedirs) - 1)
+        return {'FINISHED'}
+
+
+class ValveGamePak(bpy.types.PropertyGroup):
+    filepath: bpy.props.StringProperty(name="VPK path", default="", subtype='FILE_PATH')  # type: ignore
+
+
+class ValveGamePakList(bpy.types.UIList):
+    bl_idname = "IO_IMPORT_VMF_UL_valvepakslist"
+
+    def draw_item(self, context: bpy.types.Context, layout: bpy.types.UILayout,
+                  data: 'ValveGameSettings', item: ValveGamePak,
+                  icon: int, active_data: int, active_propname: str) -> None:
+        if self.layout_type in {'DEFAULT', 'COMPACT'}:
+            layout.prop(item, "filepath", text="", emboss=False, icon_value=icon)
+        elif self.layout_type in {'GRID'}:
+            layout.alignment = 'CENTER'
+            layout.label(text=item.filepath, icon_value=icon)
+
+
+class AddValvePakOperator(bpy.types.Operator):
+    bl_idname = "io_import_vmf.valvepak_add"
+    bl_label = "Add a Valve game pak definition"
+    bl_options = {'REGISTER', 'UNDO'}
+
+    @classmethod
+    def poll(cls, context: bpy.types.Context) -> bool:
+        return bool(context.preferences.addons[__package__].preferences.games)
+
+    def execute(self, context: bpy.types.Context) -> Set[str]:
+        preferences: ValveGameAddonPreferences = context.preferences.addons[__package__].preferences
+        game: ValveGameSettings = preferences.games[preferences.game_index]
+        game.pakfiles.add()
+        game.pakfile_index = len(game.pakfiles) - 1
+        return {'FINISHED'}
+
+
+class RemoveValvePakOperator(bpy.types.Operator):
+    bl_idname = "io_import_vmf.valvepak_remove"
+    bl_label = "Remove a Valve game pak definition"
+    bl_options = {'REGISTER', 'UNDO'}
+
+    @classmethod
+    def poll(cls, context: bpy.types.Context) -> bool:
+        preferences: ValveGameAddonPreferences = context.preferences.addons[__package__].preferences
+        return bool(preferences.games) and bool(preferences.games[preferences.game_index].pakfiles)
+
+    def execute(self, context: bpy.types.Context) -> Set[str]:
+        preferences: ValveGameAddonPreferences = context.preferences.addons[__package__].preferences
+        game: ValveGameSettings = preferences.games[preferences.game_index]
+        game.pakfiles.remove(game.pakfile_index)
+        game.pakfile_index = min(max(0, game.pakfile_index - 1), len(game.pakfiles) - 1)
+        return {'FINISHED'}
+
+
 class ValveGameSettings(bpy.types.PropertyGroup):
     name: bpy.props.StringProperty(name="Name", default="Source Game")  # type: ignore
 
-    def get_gamedir_path(self) -> str:
-        return self.get("gamedir_path", "")
+    pakfiles: bpy.props.CollectionProperty(type=ValveGamePak)  # type: ignore
+    pakfile_index: bpy.props.IntProperty(name="Game VPK archive")  # type: ignore
 
-    def set_gamedir_path(self, value: str) -> None:
-        value = value.rstrip("\\/")
-        self["gamedir_path"] = value
-        pak_candidates = glob.glob(join(value, "*_dir.vpk"))
-        if len(pak_candidates) != 0:
-            game = basename(value)
-            for candidate in pak_candidates:
-                candidate_f = basename(candidate)
-                if "pak01" in candidate_f or game in candidate_f:
-                    self.pakfile_path = candidate
-                    break
-            else:
-                self.pakfile_path = pak_candidates[0]
-        self.name = basename(dirname(value))
-
-    gamedir_path: bpy.props.StringProperty(name="Game directory path", subtype='DIR_PATH',  # type: ignore
-                                           get=get_gamedir_path, set=set_gamedir_path)
-    pakfile_path: bpy.props.StringProperty(name="Game VPK path", subtype='FILE_PATH')  # type: ignore
+    gamedirs: bpy.props.CollectionProperty(type=ValveGameDir)  # type: ignore
+    gamedir_index: bpy.props.IntProperty(name="Game directory")  # type: ignore
 
 
 class ValveGameSettingsList(bpy.types.UIList):
@@ -63,7 +151,7 @@ class ValveGameSettingsList(bpy.types.UIList):
 
 class AddValveGameOperator(bpy.types.Operator):
     bl_idname = "io_import_vmf.valvegame_add"
-    bl_label = "Add a Valve game definition"
+    bl_label = "Add an empty Valve game definition"
     bl_options = {'REGISTER', 'UNDO'}
 
     def execute(self, context: bpy.types.Context) -> Set[str]:
@@ -86,6 +174,50 @@ class RemoveValveGameOperator(bpy.types.Operator):
         preferences: ValveGameAddonPreferences = context.preferences.addons[__package__].preferences
         preferences.games.remove(preferences.game_index)
         preferences.game_index = min(max(0, preferences.game_index - 1), len(preferences.games) - 1)
+        return {'FINISHED'}
+
+
+class DetectValveGameOperator(bpy.types.Operator):
+    bl_idname = "io_import_vmf.valvegame_detect"
+    bl_label = "Detect Valve game data from a game directory"
+    bl_options = {'REGISTER', 'UNDO'}
+
+    directory: bpy.props.StringProperty(  # type: ignore
+        name="Game directory path",
+        subtype='DIR_PATH'
+    )
+    filter_folder: bpy.props.BoolProperty(default=True, options={'HIDDEN'})  # type: ignore
+
+    @classmethod
+    def poll(cls, context: bpy.types.Context) -> bool:
+        return bool(context.preferences.addons[__package__].preferences.games)
+
+    def invoke(self, context: bpy.types.Context, event: bpy.types.Event) -> Set[str]:
+        context.window_manager.fileselect_add(self)
+        return {'RUNNING_MODAL'}
+
+    def execute(self, context: bpy.types.Context) -> Set[str]:
+        game_dir = self.directory.rstrip("\\/")
+        if not isdir(game_dir):
+            self.report({'ERROR_INVALID_INPUT'}, "The specified game directory doesn't exist.")
+            return {'CANCELLED'}
+        game_id = basename(game_dir)
+        name = basename(dirname(game_dir))
+        pak_candidates = glob.glob(join(game_dir, "*_dir.vpk"))
+        preferences: ValveGameAddonPreferences = context.preferences.addons[__package__].preferences
+        game: ValveGameSettings = preferences.games[preferences.game_index]
+        if game.name == "" or game.name == "Source Game":
+            game.name = name
+        gamedir: ValveGameDir = game.gamedirs.add()
+        gamedir.dirpath = game_dir
+        game.gamedir_index = len(game.gamedirs) - 1
+        for pak_candidate in pak_candidates:
+            pak_filename = basename(pak_candidate)
+            if "pak01" not in pak_filename and game_id not in pak_filename:
+                continue
+            pakfile: ValveGamePak = game.pakfiles.add()
+            pakfile.filepath = pak_candidate
+        game.pakfile_index = len(game.pakfiles) - 1
         return {'FINISHED'}
 
 
@@ -120,8 +252,19 @@ class ValveGameAddonPreferences(bpy.types.AddonPreferences):
         if self.games:
             box = layout.box()
             game = self.games[self.game_index]
-            box.prop(game, "gamedir_path")
-            box.prop(game, "pakfile_path")
+            box.operator("io_import_vmf.valvegame_detect", text="Detect from a game directory", icon='FILE_FOLDER')
+            box.label(text="Game directories:")
+            row = box.row()
+            row.template_list("IO_IMPORT_VMF_UL_valvedirslist", "", game, "gamedirs", game, "gamedir_index")
+            col = row.column()
+            col.operator("io_import_vmf.valvedir_add", text="", icon='ADD')
+            col.operator("io_import_vmf.valvedir_remove", text="", icon='REMOVE')
+            box.label(text="Game VPK archives:")
+            row = box.row()
+            row.template_list("IO_IMPORT_VMF_UL_valvepakslist", "", game, "pakfiles", game, "pakfile_index")
+            col = row.column()
+            col.operator("io_import_vmf.valvepak_add", text="", icon='ADD')
+            col.operator("io_import_vmf.valvepak_remove", text="", icon='REMOVE')
         layout.separator_spacer()
         layout.prop(self, "dec_models_path")
         layout.label(text="Specifies a persistent path to save decompiled models to.", icon='INFO')
@@ -143,8 +286,8 @@ class _ValveGameOperatorProps():
 
 
 class _ValveGameOperator(bpy.types.Operator, _ValveGameOperatorProps):
-    data_dirs: Tuple[str, ...]
-    data_paks: Tuple[str, ...]
+    data_dirs: List[str]
+    data_paks: List[str]
 
     def invoke(self, context: bpy.types.Context, event: bpy.types.Event) -> Set[str]:
         context.window_manager.fileselect_add(self)
@@ -165,11 +308,11 @@ class _ValveGameOperator(bpy.types.Operator, _ValveGameOperatorProps):
         if self.game != 'NONE':
             preferences: ValveGameAddonPreferences = context.preferences.addons[__package__].preferences
             game_def: ValveGameSettings = preferences.games[int(self.game)]
-            self.data_paks = (game_def.pakfile_path,)
-            self.data_dirs = (game_def.gamedir_path,)
+            self.data_paks = [pak.filepath for pak in game_def.pakfiles]
+            self.data_dirs = [gamedir.dirpath for gamedir in game_def.gamedirs]
         else:
-            self.data_paks = ()
-            self.data_dirs = ()
+            self.data_paks = []
+            self.data_dirs = []
         return None
 
 
@@ -219,7 +362,8 @@ class ExportVMFMDLs(_VMFOperator, _VMFOperatorProps):
         print("Loading VMF...")
         import vmfpy
         print("Indexing game files...")
-        vmf_fs = vmfpy.VMFFileSystem(self.data_dirs + (self.map_data_path,), self.data_paks, index_files=True)
+        data_dirs = self.data_dirs + [self.map_data_path] if self.map_data_path is not None else self.data_dirs
+        vmf_fs = vmfpy.VMFFileSystem(data_dirs, self.data_paks, index_files=True)
         vmf = vmfpy.VMF(open(self.filepath, encoding="utf-8"), vmf_fs)
         print("Saving model files...")
         saved: Set[PurePosixPath] = set()
@@ -819,10 +963,19 @@ class ImportSceneAGREnhanced(_ValveGameOperator, _ValveGameOperatorProps):
 
 
 classes = (
+    ValveGameDir,
+    ValveGameDirList,
+    AddValveDirOperator,
+    RemoveValveDirOperator,
+    ValveGamePak,
+    ValveGamePakList,
+    AddValvePakOperator,
+    RemoveValvePakOperator,
     ValveGameSettings,
     ValveGameSettingsList,
     AddValveGameOperator,
     RemoveValveGameOperator,
+    DetectValveGameOperator,
     ValveGameAddonPreferences,
     ValveGameOpenPreferencesOperator,
     ExportVMFMDLs,
