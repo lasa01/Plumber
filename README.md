@@ -27,8 +27,12 @@ The importer can automatically extract the required files from the game files.
 Materials and props, for example, require external game files for the import to succeed.
 
 You need to go to the addon preferences to add game definitions which are used for loading these files.
-Click the + button to add a new game definition, and select the game folder path.
-For CSGO that is installed in the default directory, you need to select `C:\Program Files (x86)\Steam\steamapps\common\Counter-Strike Global Offensive\csgo`. The addon should automatically detect the game name and VPK file path. If however the automatic detection doesn't work, you need to select them manually as well.
+Click the + button to add a new game definition. Press the "Detect from a game directory" button and select the game directory.
+For CSGO that is installed in the default directory, you need to select `C:\Program Files (x86)\Steam\steamapps\common\Counter-Strike Global Offensive\csgo`.
+The addon attempts to automatically detect the game name and relevant VPK files inside the selected directory.
+If your game includes content inside other directories, you can use the auto-detection on them too.
+In case the addon fails to detect some VPK archives or you would like to add a directory without detecting the VPKs inside it,
+you can use the + buttons to add them manually.
 
 Blender may appear frozen when importing complex maps. To see the import progress and any errors in realtime, you can open the Blender console.
 
@@ -55,6 +59,9 @@ They are however approximations and may appear different than ingame.
 
 You can also import simpler versions of materials.
 You should check it if you plan to export the materials outside Blender, since exporters are usually unable to read the more complicated material setups.
+
+There are also options to select the texture interpolation type
+and whether to allow backface culling in materials that don't disable it.
 
 ### QC (requires [Blender Source Tools](https://steamreview.org/BlenderSourceTools/))
 `File -> Import -> Source Engine Model (enhanced) (.qc)`
