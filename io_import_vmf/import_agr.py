@@ -29,7 +29,7 @@ class AgrImporterWrapper(import_agr.AgrImporter):
             return None
         try:
             smd = self.qc_importer.load_return_smd(name, self.collection)
-        except FileNotFoundError:
+        except Exception:
             self.error(f"Failed to import \"{name}\"")
             return None
         modelData = import_agr.ModelData(smd=smd)
