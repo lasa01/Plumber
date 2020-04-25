@@ -130,6 +130,60 @@ class RemoveValvePakOperator(bpy.types.Operator):
         return {'FINISHED'}
 
 
+class ValveGameWildcardDir(bpy.types.PropertyGroup):
+    dirpath: bpy.props.StringProperty(name="Directory path", default="", subtype='DIR_PATH')  # type: ignore
+
+
+class ValveGameWildcardDirList(bpy.types.UIList):
+    bl_idname = "IO_IMPORT_VMF_UL_valvewildcarddirslist"
+
+    def draw_item(self, context: bpy.types.Context, layout: bpy.types.UILayout,
+                  data: 'ValveGameSettings', item: ValveGameWildcardDir,
+                  icon: int, active_data: int, active_propname: str) -> None:
+        if self.layout_type in {'DEFAULT', 'COMPACT'}:
+            layout.prop(item, "dirpath", text="", emboss=False, icon_value=icon)
+        elif self.layout_type in {'GRID'}:
+            layout.alignment = 'CENTER'
+            layout.label(text=item.dirpath, icon_value=icon)
+
+
+class AddValveWildcardDirOperator(bpy.types.Operator):
+    """Add a new empty wildcard directory definition to the selected game"""
+    bl_idname = "io_import_vmf.valvewildcarddir_add"
+    bl_label = "Add a Valve wildcard directory definition"
+    bl_options = {'REGISTER', 'UNDO'}
+
+    @classmethod
+    def poll(cls, context: bpy.types.Context) -> bool:
+        return bool(context.preferences.addons[__package__].preferences.games)
+
+    def execute(self, context: bpy.types.Context) -> Set[str]:
+        preferences: ValveGameAddonPreferences = context.preferences.addons[__package__].preferences
+        game: ValveGameSettings = preferences.games[preferences.game_index]
+        game.wildcard_dirs.add()
+        game.wildcard_dir_index = len(game.wildcard_dirs) - 1
+        return {'FINISHED'}
+
+
+class RemoveValveWildcardDirOperator(bpy.types.Operator):
+    """Remove the selected wildcard directory definition from the selected game"""
+    bl_idname = "io_import_vmf.valvewildcarddir_remove"
+    bl_label = "Remove a Valve wildcard directory definition"
+    bl_options = {'REGISTER', 'UNDO'}
+
+    @classmethod
+    def poll(cls, context: bpy.types.Context) -> bool:
+        preferences: ValveGameAddonPreferences = context.preferences.addons[__package__].preferences
+        return bool(preferences.games) and bool(preferences.games[preferences.game_index].wildcard_dirs)
+
+    def execute(self, context: bpy.types.Context) -> Set[str]:
+        preferences: ValveGameAddonPreferences = context.preferences.addons[__package__].preferences
+        game: ValveGameSettings = preferences.games[preferences.game_index]
+        game.wildcard_dirs.remove(game.wildcard_dir_index)
+        game.wildcard_dir_index = min(max(0, game.wildcard_dir_index - 1), len(game.wildcard_dirs) - 1)
+        return {'FINISHED'}
+
+
 class ValveGameSettings(bpy.types.PropertyGroup):
     name: bpy.props.StringProperty(name="Name", default="Source Game")  # type: ignore
 
@@ -138,6 +192,9 @@ class ValveGameSettings(bpy.types.PropertyGroup):
 
     gamedirs: bpy.props.CollectionProperty(type=ValveGameDir)  # type: ignore
     gamedir_index: bpy.props.IntProperty(name="Game directory")  # type: ignore
+
+    wildcard_dirs: bpy.props.CollectionProperty(type=ValveGameWildcardDir)  # type: ignore
+    wildcard_dir_index: bpy.props.IntProperty(name="Game wildcard directory")  # type: ignore
 
 
 class ValveGameSettingsList(bpy.types.UIList):
@@ -225,6 +282,11 @@ class DetectValveGameOperator(bpy.types.Operator):
             pakfile: ValveGamePak = game.pakfiles.add()
             pakfile.filepath = pak_candidate
         game.pakfile_index = len(game.pakfiles) - 1
+        custom_path = join(game_dir, "custom").rstrip("\\/")
+        if isdir(custom_path):
+            custom_dir: ValveGameWildcardDir = game.wildcard_dirs.add()
+            custom_dir.dirpath = custom_path
+            game.wildcard_dir_index = len(game.wildcard_dirs) - 1
         return {'FINISHED'}
 
 
@@ -272,6 +334,14 @@ class ValveGameAddonPreferences(bpy.types.AddonPreferences):
             col = row.column()
             col.operator("io_import_vmf.valvepak_add", text="", icon='ADD')
             col.operator("io_import_vmf.valvepak_remove", text="", icon='REMOVE')
+            box.label(text="Game wildcard directories:")
+            box.label(text="Every VPK file and subdirectory inside these directories will be searched.", icon='INFO')
+            row = box.row()
+            row.template_list("IO_IMPORT_VMF_UL_valvewildcarddirslist", "",
+                              game, "wildcard_dirs", game, "wildcard_dir_index")
+            col = row.column()
+            col.operator("io_import_vmf.valvewildcarddir_add", text="", icon='ADD')
+            col.operator("io_import_vmf.valvewildcarddir_remove", text="", icon='REMOVE')
         layout.separator_spacer()
         layout.prop(self, "dec_models_path")
         layout.label(text="Specifies a persistent path to save decompiled models to.", icon='INFO')
@@ -318,6 +388,12 @@ class _ValveGameOperator(bpy.types.Operator, _ValveGameOperatorProps):
             game_def: ValveGameSettings = preferences.games[int(self.game)]
             self.data_paks = [pak.filepath for pak in game_def.pakfiles]
             self.data_dirs = [gamedir.dirpath for gamedir in game_def.gamedirs]
+            for wildcard_dir in game_def.wildcard_dirs:
+                for dir_entry in os.scandir(wildcard_dir.dirpath):
+                    if dir_entry.is_dir():
+                        self.data_dirs.append(dir_entry.path)
+                    elif dir_entry.name.endswith(".vpk"):
+                        self.data_paks.append(dir_entry.path)
         else:
             self.data_paks = []
             self.data_dirs = []
@@ -1002,6 +1078,10 @@ classes = (
     ValveGamePakList,
     AddValvePakOperator,
     RemoveValvePakOperator,
+    ValveGameWildcardDir,
+    ValveGameWildcardDirList,
+    AddValveWildcardDirOperator,
+    RemoveValveWildcardDirOperator,
     ValveGameSettings,
     ValveGameSettingsList,
     AddValveGameOperator,
