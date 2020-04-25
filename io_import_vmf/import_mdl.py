@@ -91,6 +91,8 @@ class Source2BlenderWrapper(mdl2model.Source2Blender):
             self.armature_obj = None
             self.armature = None
             self.create_skeleton(self.normal_bones)
+            if self.armature_obj.name in bpy.context.collection.objects:  # type: ignore
+                bpy.context.collection.objects.unlink(self.armature_obj)
             if self.custom_name:
                 self.armature_obj.name = self.custom_name
             self.mesh_obj = None
