@@ -40,7 +40,6 @@ class SmdImporterWrapper(import_smd.SmdImporter):
             for match in _CDMATERIALS_REGEX.finditer(fp.read()):
                 self._cdmaterials.append(vmf_path(match.group(1)))
         self.readQC(self.filepath, False, True, False, 'XYZ', outer_qc=True)
-        SmdImporterWrapper.smd = self.smd
         return {'FINISHED'}
 
     def readSMD(self, filepath: str, upAxis: str, rotMode: str,
@@ -56,6 +55,8 @@ class SmdImporterWrapper(import_smd.SmdImporter):
                 self.collection.objects.link(smd_collection.objects[0])
                 smd_collection.objects.unlink(smd_collection.objects[0])
             bpy.data.collections.remove(smd_collection)
+        if result != 0:
+            SmdImporterWrapper.smd = self.smd
         return result
 
     # properly import materials if they exist
