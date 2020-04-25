@@ -613,14 +613,14 @@ class ImportSceneVMF(_VMFOperator, _VMFOperatorProps):
         layout.prop(self, "verbose")
 
 
-def _get_source_path_root(path: str) -> str:
+def _get_source_path_root(path: str, stop: str = "models") -> str:
     fallback_dirname = dirname(path)
     while True:
         new_path = dirname(path)
         if new_path == path:
             return fallback_dirname
         path = new_path
-        if basename(path) == "models":
+        if basename(path) == stop:
             break
     return dirname(path)
 
@@ -848,6 +848,9 @@ class ImportSceneVMT(_ValveGameOperator, _ValveGameOperatorProps):
         from vmfpy.fs import VMFFileSystem
         from vmfpy.vmt import VMT
         print("Indexing game files...")
+        root = _get_source_path_root(self.filepath, "materials")
+        if root not in self.data_dirs:
+            self.data_dirs.append(root)
         fs = VMFFileSystem(self.data_dirs, self.data_paks, index_files=True)
         print("Loading material...")
         importer = import_vmt.VMTImporter(self.verbose, self.simple_materials,
