@@ -613,12 +613,11 @@ class ImportSceneVMF(_VMFOperator, _VMFOperatorProps):
         layout.prop(self, "verbose")
 
 
-def _get_source_path_root(path: str, stop: str = "models") -> str:
-    fallback_dirname = dirname(path)
+def _get_source_path_root(path: str, stop: str = "models") -> Optional[str]:
     while True:
         new_path = dirname(path)
         if new_path == path:
-            return fallback_dirname
+            return None
         path = new_path
         if basename(path) == stop:
             break
@@ -691,6 +690,8 @@ class ImportSceneQC(_ValveGameOperator, _ValveGameOperatorProps):
             fs = None
         print("Importing model...")
         root = _get_source_path_root(self.filepath)
+        if root is None:
+            root = dirname(self.filepath)
         importer = import_qc.QCImporter(
             root,
             fs,
@@ -776,6 +777,8 @@ class ImportSceneMDL(_ValveGameOperator, _ValveGameOperatorProps):
         from . import import_vmt
         from vmfpy.fs import VMFFileSystem
         root = _get_source_path_root(self.filepath)
+        if root is None:
+            root = ""
         print("Indexing game files...")
         fs = VMFFileSystem(self.data_dirs, self.data_paks, index_files=True)
         print("Importing model...")
@@ -849,7 +852,7 @@ class ImportSceneVMT(_ValveGameOperator, _ValveGameOperatorProps):
         from vmfpy.vmt import VMT
         print("Indexing game files...")
         root = _get_source_path_root(self.filepath, "materials")
-        if root not in self.data_dirs:
+        if root is not None and root not in self.data_dirs:
             self.data_dirs.append(root)
         fs = VMFFileSystem(self.data_dirs, self.data_paks, index_files=True)
         print("Loading material...")
