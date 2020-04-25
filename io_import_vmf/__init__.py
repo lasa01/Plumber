@@ -669,6 +669,10 @@ class ImportSceneQC(_ValveGameOperator, _ValveGameOperatorProps):
         default=False,
     )
 
+    @classmethod
+    def poll(cls, context: bpy.types.Context) -> bool:
+        return "io_scene_valvesource" in context.preferences.addons
+
     def execute(self, context: bpy.types.Context) -> Set[str]:
         try:
             from . import import_qc
@@ -755,6 +759,10 @@ class ImportSceneMDL(_ValveGameOperator, _ValveGameOperatorProps):
         description="Enable to print more info into console",
         default=False,
     )
+
+    @classmethod
+    def poll(cls, context: bpy.types.Context) -> bool:
+        return "SourceIO" in context.preferences.addons
 
     def execute(self, context: bpy.types.Context) -> Set[str]:
         try:
@@ -922,6 +930,10 @@ class ImportSceneAGREnhanced(_ValveGameOperator, _ValveGameOperatorProps):
         description="Enable to print more info into console",
         default=False,
     )
+
+    @classmethod
+    def poll(cls, context: bpy.types.Context) -> bool:
+        return "advancedfx" in context.preferences.addons
 
     def execute(self, context: bpy.types.Context) -> Set[str]:
         result = self._check_valve_props(context)
