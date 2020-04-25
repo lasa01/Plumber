@@ -925,17 +925,24 @@ class _MaterialBuilder():
         elif "$metalness" in params:
             self._shader_dict['Metallic'].const = vmt_data.param_as_float("$metalness")
 
+        selfillum_input = None
         if not self.simple and vmt_data.param_flag("$selfillum_envmapmask_alpha"):
-            self._shader_dict['Emission'].input = texture_inputs["$envmapmask"].alpha
+            selfillum_input = texture_inputs["$envmapmask"].alpha
         elif vmt_data.param_flag("$selfillum"):
             if "$selfillummask" in params:
                 image = self._vtf_importer.load(
                     params["$selfillummask"], vmt_data.param_open_texture("$selfillummask"), 'Non-Color'
                 )
                 texture_inputs["$selfillummask"].setimage(image)
-                self._shader_dict['Emission'].input = texture_inputs["$selfillummask"].color
+                selfillum_input = texture_inputs["$selfillummask"].color
             elif not self.simple:
-                self._shader_dict['Emission'].input = texture_inputs["$basetexture"].alpha
+                selfillum_input = texture_inputs["$basetexture"].alpha
+        if selfillum_input is not None:
+            if not self.simple:
+                self._shader_dict['Emission'].input = texture_inputs["$basetexture"].color
+                self._shader_dict['Emission'].append(_MultiplyRGBMaterialNode(selfillum_input, 1))
+            else:
+                self._shader_dict['Emission'].input = selfillum_input
 
     def build(self) -> bpy.types.Material:
         material: bpy.types.Material = bpy.data.materials.new(self.name)
