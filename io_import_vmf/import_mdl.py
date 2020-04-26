@@ -164,6 +164,7 @@ class MDLImporter():
         self.vmt_importer = vmt_importer
 
     def load(self, name: str, path: str, collection: bpy.types.Collection) -> bpy.types.Object:
+        name = name.lower()
         if name in self._cache:
             if self.verbose:
                 print(f"Model {name} already imported, copying...")

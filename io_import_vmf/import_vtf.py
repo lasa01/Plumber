@@ -12,6 +12,7 @@ class VTFImporter():
 
     def load(self, image_name: str, file: AnyBinaryIO,
              colorspace: str = 'sRGB', alpha_mode: str = 'CHANNEL_PACKED') -> bpy.types.Image:
+        image_name = image_name.lower()
         if image_name in self._cache:
             return self._cache[image_name]
         with VTFLib() as vtflib:
