@@ -543,7 +543,7 @@ _SUPPORTED_PARAMS = frozenset((
     "$envmap", "$basealphaenvmapmask", "$basealphaenvmask", "$normalmapalphaenvmapmask",
     "$envmapmask", "$envmapmasktransform", "$envmaptint", "$envmapmaskintintmasktexture",
     "$selfillum_envmapmask_alpha", "$selfillum", "$selfillummask",
-    "$blendmodulatetexture", "$blendmodulatetransform", "$masks1", "$metalness", "$nocull",
+    "$blendmodulatetexture", "$blendmodulatetransform", "$masks1", "$metalness", "$nocull", "%compilenolight",
     "%compilewater", "$normalmap", "$fogenable", "$fogcolor",
     "$color2", "$allowdiffusemodulation", "$notint", "$blendtintbybasealpha", "$tintmasktexture",
     # ignored parameters
@@ -916,6 +916,9 @@ class _MaterialBuilder():
             else:
                 self._shader_dict['Specular'].const = 0.8
             self._shader_dict['Roughness'].const = 0.1
+        elif vmt_data.shader == "unlitgeneric" or vmt_data.param_flag("%compilenolight"):
+            self._shader_dict['Specular'].const = 0.0
+            self._shader_dict['Roughness'].const = 1.0
         else:
             self._shader_dict['Specular'].const = 0.1
             self._shader_dict['Roughness'].const = 0.9
