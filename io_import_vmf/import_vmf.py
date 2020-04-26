@@ -1,4 +1,5 @@
 from typing import Iterable, Tuple, Optional, List, Dict, Any, Callable
+from .utils import truncate_name
 import vmfpy
 from os import path
 from mathutils import geometry, Vector, Euler, Matrix
@@ -318,7 +319,7 @@ class VMFImporter():
                 if self.verbose:
                     traceback.print_exception(type(err), err, err.__traceback__)
         if name not in self._fallback_materials:
-            self._fallback_materials[name] = bpy.data.materials.new(name)
+            self._fallback_materials[name] = bpy.data.materials.new(truncate_name(name))
         return 1, 1, self._fallback_materials[name]
 
     # based on http://mattn.ufoai.org/files/MAPFiles.pdf

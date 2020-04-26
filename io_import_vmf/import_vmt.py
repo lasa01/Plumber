@@ -1,4 +1,5 @@
 from vmfpy import vmt
+from .utils import truncate_name
 from typing import NamedTuple, Dict, DefaultDict, Set, Tuple, Optional, Union, Any, Iterator, Iterable, List, Callable
 from abc import ABC, abstractmethod
 from collections import defaultdict
@@ -945,7 +946,7 @@ class _MaterialBuilder():
                 self._shader_dict['Emission'].input = selfillum_input
 
     def build(self) -> bpy.types.Material:
-        material: bpy.types.Material = bpy.data.materials.new(self.name)
+        material: bpy.types.Material = bpy.data.materials.new(truncate_name(self.name))
         material.use_nodes = True
         material.blend_method = self.blend_method
         material.shadow_method = self.shadow_method

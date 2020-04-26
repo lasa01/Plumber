@@ -1,3 +1,4 @@
+from .utils import truncate_name
 from vmfpy.fs import AnyBinaryIO
 from pyvtflib import VTFLib, VTFImageFlag
 import numpy
@@ -19,7 +20,7 @@ class VTFImporter():
             alpha = bool(vtflib.image_flags() & (VTFImageFlag.TEXTUREFLAGS_ONEBITALPHA |
                                                  VTFImageFlag.TEXTUREFLAGS_EIGHTBITALPHA))
             width, height = vtflib.image_width(), vtflib.image_height()
-            image: bpy.types.Image = bpy.data.images.new(image_name + ".png", width, height,
+            image: bpy.types.Image = bpy.data.images.new(truncate_name(image_name + ".png"), width, height,
                                                          alpha=alpha)
             pixels = numpy.frombuffer(vtflib.flip_image(vtflib.image_as_rgba8888(), width, height), dtype=numpy.uint8)
         pixels = pixels.astype(numpy.float16, copy=False)
