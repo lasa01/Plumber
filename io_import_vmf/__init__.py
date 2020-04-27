@@ -654,6 +654,7 @@ class ImportSceneVMF(_VMFOperator, _VMFOperatorProps):
         col.prop(self, "import_props")
         if self.import_props:
             box = col.box()
+            # NOTE: Imports invalid rotation, disabled
             # if self.mdl_available:
             #     box.label(text="Models will be imported using SourceIO.")
             if self.qc_available:
@@ -792,7 +793,6 @@ class ImportSceneQC(_ValveGameOperator, _ValveGameOperatorProps):
         layout.prop(self, "verbose")
 
 
-# NOTE: Imports invalid rotation, disabled
 class ImportSceneMDL(_ValveGameOperator, _ValveGameOperatorProps):
     """Load a Source Engine MDL file"""
     bl_idname = "import_scene.mdl_enhanced"
@@ -1092,7 +1092,7 @@ classes = (
     ExportVMFMDLs,
     ImportSceneVMF,
     ImportSceneQC,
-    # ImportSceneMDL,
+    ImportSceneMDL,
     ImportSceneVMT,
     ImportSceneAGREnhanced,
 )
@@ -1102,7 +1102,7 @@ def import_menu_func(self: bpy.types.Menu, context: bpy.types.Context) -> None:
     self.layout.operator(ImportSceneVMF.bl_idname, text="Valve Map Format (.vmf)")
     self.layout.operator(ImportSceneVMT.bl_idname, text="Valve Material Type (.vmt)")
     self.layout.operator(ImportSceneQC.bl_idname, text="Source Engine Model (enhanced) (.qc)")
-    # self.layout.operator(ImportSceneMDL.bl_idname, text="Source Engine Model (enhanced) (.mdl)")
+    self.layout.operator(ImportSceneMDL.bl_idname, text="Source Engine Model (enhanced) (.mdl)")
     self.layout.operator(ImportSceneAGREnhanced.bl_idname, text="HLAE afxGameRecord (enhanced) (.agr)")
 
 
