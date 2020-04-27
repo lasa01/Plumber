@@ -597,18 +597,8 @@ class ImportSceneVMF(_VMFOperator, _VMFOperatorProps):
     qc_available = False
 
     def invoke(self, context: bpy.types.Context, event: bpy.types.Event) -> Set[str]:
-        # try:
-        #     from . import import_mdl  # noqa: F401
-        # except ImportError:
-        #     self.mdl_available = False
-        # else:
-        #     self.mdl_available = True
-        try:
-            from . import import_qc  # noqa: F401
-        except ImportError:
-            self.qc_available = False
-        else:
-            self.qc_available = True
+        # self.mdl_available = "SourceIO" in context.preferences.addons
+        self.qc_available = "io_scene_valvesource" in context.preferences.addons
         return super().invoke(context, event)
 
     def execute(self, context: bpy.types.Context) -> Set[str]:
