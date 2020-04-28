@@ -554,7 +554,7 @@ _SUPPORTED_PARAMS = frozenset((
 
 class _MaterialBuilder():
     def __init__(self, vtf_importer: import_vtf.VTFImporter, name: str, vmt_data: vmt.VMT,
-                 simple: bool = False, interpolation: str = 'Linear', cull: bool = True):
+                 simple: bool = False, interpolation: str = 'Linear', cull: bool = False):
         self._vtf_importer = vtf_importer
         self.name = name
         self.simple = simple
@@ -1008,6 +1008,7 @@ class VMTImporter():
         self.verbose = verbose
         self.simple = simple
         self.interpolation = interpolation
+        self.cull = cull
         self._cache: Dict[str, VMTData] = {}
         self._vtf_importer = import_vtf.VTFImporter()
 
@@ -1018,7 +1019,7 @@ class VMTImporter():
         if self.verbose:
             print(f"Building material {material_name}...")
         builder = _MaterialBuilder(self._vtf_importer, material_name, vmt_data(),
-                                   simple=self.simple, interpolation=self.interpolation)
+                                   simple=self.simple, interpolation=self.interpolation, cull=self.cull)
         material = builder.build()
         data = VMTData(builder.width, builder.height, material)
         self._cache[material_name] = data
