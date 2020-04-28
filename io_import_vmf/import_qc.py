@@ -1,6 +1,6 @@
 from io_scene_valvesource import import_smd, utils
 from vmfpy.fs import VMFFileSystem, vmf_path
-from vmfpy.vmt import VMT, VMTParseException
+from vmfpy.vmt import VMT
 import re
 from typing import Dict, Any, Tuple, Set, Optional, TYPE_CHECKING
 import bpy
@@ -77,26 +77,19 @@ class SmdImporterWrapper(import_smd.SmdImporter):
                 print(f"WARNING: MISSING MATERIAL: {mat_path}")
                 self._missing_materials.add(mat_name)
             return super().getMeshMaterial(mat_name)
-        try:
-            data = self.vmt_importer.load(
-                mat_name,
-                lambda: VMT(
-                    self.vmf_fs.open_file_utf8(mat_path),
-                    self.vmf_fs,
-                    allow_patch=True,
-                )
+        data = self.vmt_importer.load(
+            mat_name,
+            lambda: VMT(
+                self.vmf_fs.open_file_utf8(mat_path),
+                self.vmf_fs,
+                allow_patch=True,
             )
-        except VMTParseException:
-            if mat_name not in self._missing_materials:
-                print(f"WARNING: INVALID MATERIAL: {mat_path}")
-                self._missing_materials.add(mat_name)
-        else:
-            mat_ind = md.materials.find(data.material.name)
-            if mat_ind == -1:
-                mat_ind = len(md.materials)
-                md.materials.append(data.material)
-            return data.material, mat_ind
-        return super().getMeshMaterial(mat_name)
+        )
+        mat_ind = md.materials.find(data.material.name)
+        if mat_ind == -1:
+            mat_ind = len(md.materials)
+            md.materials.append(data.material)
+        return data.material, mat_ind
 
 
 class QCImporter():

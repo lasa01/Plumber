@@ -1,6 +1,6 @@
 from SourceIO import byte_io_mdl, mdl2model
 from vmfpy.fs import VMFFileSystem, vmf_path, AnyBinaryIO
-from vmfpy.vmt import VMT, VMTParseException
+from vmfpy.vmt import VMT
 import os
 from typing import Optional, Dict, Set, Any, TYPE_CHECKING
 import bpy
@@ -141,10 +141,6 @@ class Source2BlenderWrapper(mdl2model.Source2Blender):
         except KeyError:
             if mat_name not in self._missing_materials:
                 print(f"WARNING: MISSING MATERIAL: {mat_name}")
-                self._missing_materials.add(mat_name)
-        except VMTParseException:
-            if mat_name not in self._missing_materials:
-                print(f"WARNING: INVALID MATERIAL: {mat_name}")
                 self._missing_materials.add(mat_name)
         else:
             mat_ind = md.materials.find(data.material.name)

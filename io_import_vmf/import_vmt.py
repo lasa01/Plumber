@@ -3,6 +3,7 @@ from .utils import truncate_name
 from typing import NamedTuple, Dict, DefaultDict, Set, Tuple, Optional, Union, Any, Iterator, Iterable, List, Callable
 from abc import ABC, abstractmethod
 from collections import defaultdict
+import traceback
 import bpy
 from bpy.types import NodeTree, NodeSocket, Node
 from . import import_vtf
@@ -1012,15 +1013,35 @@ class VMTImporter():
         self._cache: Dict[str, VMTData] = {}
         self._vtf_importer = import_vtf.VTFImporter()
 
+    def _fallback_material(self, material_name: str) -> VMTData:
+        material: bpy.types.Material = bpy.data.materials.new(truncate_name(material_name))
+        return VMTData(1, 1, material)
     def load(self, material_name: str, vmt_data: Callable[[], vmt.VMT]) -> VMTData:
         material_name = material_name.lower()
         if material_name in self._cache:
             return self._cache[material_name]
         if self.verbose:
             print(f"Building material {material_name}...")
-        builder = _MaterialBuilder(self._vtf_importer, material_name, vmt_data(),
-                                   simple=self.simple, interpolation=self.interpolation, cull=self.cull)
-        material = builder.build()
-        data = VMTData(builder.width, builder.height, material)
+        try:
+                builder = _MaterialBuilder(self._vtf_importer, material_name, vmt_data(),
+                                           simple=self.simple, interpolation=self.interpolation, cull=self.cull)
+        except FileNotFoundError:
+            print(f"WARNING: MATERIAL {material_name} NOT FOUND")
+            data = self._fallback_material(material_name)
+        except vmt.VMTParseException as err:
+            print(f"WARNING: MATERIAL {material_name} IS INVALID")
+            if self.verbose:
+                traceback.print_exception(type(err), err, err.__traceback__)
+            data = self._fallback_material(material_name)
+        else:
+            try:
+                material = builder.build()
+            except Exception as err:
+                print(f"WARNING: MATERIAL {material_name} BUILDING FAILED: {err}")
+                if self.verbose:
+                    traceback.print_exception(type(err), err, err.__traceback__)
+                data = self._fallback_material(material_name)
+            else:
+                data = VMTData(builder.width, builder.height, material)
         self._cache[material_name] = data
         return data

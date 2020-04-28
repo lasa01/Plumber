@@ -307,18 +307,9 @@ class VMFImporter():
                                                     * vmf_light.amb_hdr_scale) * self.ambient_factor
 
     def _load_material(self, name: str, opener: Callable[[], vmfpy.vmt.VMT]) -> Tuple[int, int, bpy.types.Material]:
-        name = name.lower()
-        if name in self._fallback_materials:
-            return 1, 1, self._fallback_materials[name]
         if self._vmt_importer is not None:
-            try:
-                return self._vmt_importer.load(name, opener)
-            except FileNotFoundError:
-                print(f"WARNING: MATERIAL {name} NOT FOUND")
-            except vmfpy.vmt.VMTParseException as err:
-                print(f"WARNING: MATERIAL {name} IS INVALID")
-                if self.verbose:
-                    traceback.print_exception(type(err), err, err.__traceback__)
+            return self._vmt_importer.load(name, opener)
+        name = name.lower()
         if name not in self._fallback_materials:
             self._fallback_materials[name] = bpy.data.materials.new(truncate_name(name))
         return 1, 1, self._fallback_materials[name]
