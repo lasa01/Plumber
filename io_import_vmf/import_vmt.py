@@ -570,7 +570,7 @@ class _MaterialBuilder():
         params = vmt_data.parameters
 
         # flags that imply nodraw
-        if any(p in _NODRAW_PARAMS and vmt_data.param_as_bool(p) for p in params):
+        if any(p in _NODRAW_PARAMS and vmt_data.param_as_bool(p) for p in params) or name == "tools/toolsareaportal":
             self.blend_method = 'CLIP'
             self.shadow_method = 'CLIP'
             self.nodraw = True
