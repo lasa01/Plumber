@@ -505,8 +505,8 @@ class ImportSceneVMF(_VMFOperator, _VMFOperatorProps):
     )
 
     skip_tools: bpy.props.BoolProperty(  # type: ignore
-        name="Skip tools (invisible brushes)",
-        description="Skip importing brushes containing only tool textures",
+        name="Skip invisible brushes",
+        description="Skip importing brushes containing only invisible textures.",
         default=True,
     )
 

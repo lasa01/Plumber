@@ -1,5 +1,5 @@
 from vmfpy import vmt
-from .utils import truncate_name
+from .utils import truncate_name, is_invisible_tool
 from typing import NamedTuple, Dict, DefaultDict, Set, Tuple, Optional, Union, Any, Iterator, Iterable, List, Callable
 from abc import ABC, abstractmethod
 from collections import defaultdict
@@ -1010,12 +1010,34 @@ class VMTImporter():
         self.simple = simple
         self.interpolation = interpolation
         self.cull = cull
+        self._precache: Dict[str, _MaterialBuilder] = {}
         self._cache: Dict[str, VMTData] = {}
         self._vtf_importer = import_vtf.VTFImporter()
 
     def _fallback_material(self, material_name: str) -> VMTData:
         material: bpy.types.Material = bpy.data.materials.new(truncate_name(material_name))
         return VMTData(1, 1, material)
+
+    def is_nodraw(self, material_name: str, vmt_data: Callable[[], vmt.VMT]) -> bool:
+        material_name = material_name.lower()
+        if material_name in self._precache:
+            return self._precache[material_name].nodraw
+        try:
+            builder = _MaterialBuilder(self._vtf_importer, material_name, vmt_data(),
+                                       simple=self.simple, interpolation=self.interpolation, cull=self.cull)
+        except FileNotFoundError:
+            print(f"WARNING: MATERIAL {material_name} NOT FOUND")
+            self._cache[material_name] = self._fallback_material(material_name)
+            return is_invisible_tool((material_name,))
+        except vmt.VMTParseException as err:
+            print(f"WARNING: MATERIAL {material_name} IS INVALID")
+            if self.verbose:
+                traceback.print_exception(type(err), err, err.__traceback__)
+            self._cache[material_name] = self._fallback_material(material_name)
+            return is_invisible_tool((material_name,))
+        self._precache[material_name] = builder
+        return builder.nodraw
+
     def load(self, material_name: str, vmt_data: Callable[[], vmt.VMT]) -> VMTData:
         material_name = material_name.lower()
         if material_name in self._cache:
@@ -1023,6 +1045,9 @@ class VMTImporter():
         if self.verbose:
             print(f"Building material {material_name}...")
         try:
+            if material_name in self._precache:
+                builder = self._precache[material_name]
+            else:
                 builder = _MaterialBuilder(self._vtf_importer, material_name, vmt_data(),
                                            simple=self.simple, interpolation=self.interpolation, cull=self.cull)
         except FileNotFoundError:

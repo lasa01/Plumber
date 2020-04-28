@@ -1,5 +1,5 @@
 from typing import Iterable, Tuple, Optional, List, Dict, Any, Callable
-from .utils import truncate_name
+from .utils import truncate_name, is_invisible_tool
 import vmfpy
 from os import path
 from mathutils import geometry, Vector, Euler, Matrix
@@ -316,7 +316,10 @@ class VMFImporter():
 
     # based on http://mattn.ufoai.org/files/MAPFiles.pdf
     def _load_solid(self, solid: vmfpy.VMFSolid, parent: str, collection: bpy.types.Collection) -> None:
-        is_tool = all(side.material.lower().startswith("tools") for side in solid.sides)
+        if self._vmt_importer is not None:
+            is_tool = all(self._vmt_importer.is_nodraw(side.material, side.get_material) for side in solid.sides)
+        else:
+            is_tool = is_invisible_tool(side.material.lower() for side in solid.sides)
         if self.skip_tools and is_tool:
             return
         name = f"{parent}_{solid.id}"

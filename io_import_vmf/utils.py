@@ -1,6 +1,7 @@
 from hashlib import md5
 from base64 import urlsafe_b64encode
 from posixpath import split, splitext
+from typing import Iterable
 
 _HASH_LEN = 6
 _B64_LEN = 8
@@ -28,3 +29,12 @@ def truncate_name(name: str, maxlen: int = 63) -> str:
         extra_discard, final_keep = path_keep, ""
     final_discard = path_discard + extra_discard
     return f"...{_hashed(final_discard)}/{final_keep}{basename}"
+
+
+_VISIBLE_TOOLS = frozenset((
+    "tools/toolsblack", "tools/toolswhite", "tools/toolsnolight",
+))
+
+
+def is_invisible_tool(materials: Iterable[str]) -> bool:
+    return all(mat.startswith("tools/") and mat not in _VISIBLE_TOOLS for mat in materials)
