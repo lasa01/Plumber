@@ -467,6 +467,7 @@ class VMFImporter():
             old_face_loop_uvs = face_loop_uvs
             face_loop_uvs = []
             face_loop_cols: List[List[Tuple[float, float, float, float]]] = []
+            original_face_normals: List[Vector] = []
             # build displacements
             for side_idx, side in enumerate(solid.sides):
                 if side.dispinfo is None:
@@ -568,6 +569,7 @@ class VMFImporter():
                         face_vertices.extend(extend_face_vertices)
                         face_loop_uvs.extend([disp_loop_uvs[r][c] for r, c in idxs] for idxs in disp_face_indexes)
                         face_loop_cols.extend([disp_loop_cols[r][c] for r, c in idxs] for idxs in disp_face_indexes)
+                        original_face_normals.extend(side_planes[side_idx][1] for _ in disp_face_indexes)
                         if self.import_overlays:
                             self._side_face_vertices[side.id].extend(
                                 [side_vertice_lookup[v_i] for v_i in f_verts] for f_verts in extend_face_vertices
@@ -601,8 +603,11 @@ class VMFImporter():
                 polygon.use_smooth = True
                 for loop_ref_idx, loop_idx in enumerate(polygon.loop_indices):
                     vertex_colors.data[loop_idx].color = face_loop_cols[polygon_idx][loop_ref_idx]
+            # check if normals need to be flipped by comparing each displacement face normal to original plane normal
+            if sum(original_face_normals[i].dot(p.normal) for i, p in enumerate(mesh.polygons)) < 0:
+                mesh.flip_normals()
         # check if normals need to be flipped by comparing the first polygon normal to the plane normal
-        if side_planes[0][1].dot(mesh.polygons[0].normal) < 0:
+        elif side_planes[0][1].dot(mesh.polygons[0].normal) < 0:
             mesh.flip_normals()
         obj: bpy.types.Object = bpy.data.objects.new(name, object_data=mesh)
         collection.objects.link(obj)
