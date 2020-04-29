@@ -1,7 +1,7 @@
 import bpy
 import sys
 import os
-from os.path import join, relpath, abspath, dirname, basename, splitext, isdir
+from os.path import join, relpath, abspath, dirname, basename, splitext, isdir, isabs
 from shutil import rmtree
 import glob
 from pathlib import PurePosixPath
@@ -416,12 +416,22 @@ class _VMFOperator(_ValveGameOperator, _VMFOperatorProps):
         super().draw(context)
         layout.prop(self, "map_data_path_prop", icon='FILE_FOLDER')
 
-    def _check_vmf_props(self) -> None:
-        self.map_data_path = self.map_data_path_prop
-        if self.map_data_path == "":
-            self.map_data_path = splitext(self.filepath)[0]
-        if not isdir(self.map_data_path):  # type: ignore
-            self.map_data_path = None
+    def _check_vmf_props(self) -> Optional[Set[str]]:
+        map_data_path: str = self.map_data_path_prop
+        if map_data_path == "":
+            map_data_path = splitext(self.filepath)[0]
+            if not isdir(map_data_path):
+                self.map_data_path = None
+            else:
+                self.map_data_path = map_data_path
+        else:
+            if not isabs(map_data_path):
+                map_data_path = join(dirname(self.filepath), map_data_path)
+            if not isdir(map_data_path):
+                self.report({'ERROR_INVALID_INPUT'}, "The specified embedded files directory doesn't exist.")
+                return {'CANCELLED'}
+            self.map_data_path = map_data_path
+        return None
 
 
 class ExportVMFMDLs(_VMFOperator, _VMFOperatorProps):
@@ -437,7 +447,9 @@ class ExportVMFMDLs(_VMFOperator, _VMFOperatorProps):
         result = self._check_valve_props(context)
         if result is not None:
             return result
-        self._check_vmf_props()
+        result = self._check_vmf_props()
+        if result is not None:
+            return result
         if self.out_path == "":
             self.out_path = join(dirname(self.filepath), f"{splitext(basename(self.filepath))[0]}_models")
         os.makedirs(self.out_path, exist_ok=True)
@@ -605,7 +617,9 @@ class ImportSceneVMF(_VMFOperator, _VMFOperatorProps):
         result = self._check_valve_props(context)
         if result is not None:
             return result
-        self._check_vmf_props()
+        result = self._check_vmf_props()
+        if result is not None:
+            return result
         preferences: ValveGameAddonPreferences = context.preferences.addons[__package__].preferences
         dec_models_path = preferences.dec_models_path
         delete_files = False
