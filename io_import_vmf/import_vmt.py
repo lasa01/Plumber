@@ -524,6 +524,11 @@ class _ModulatedBlendFactorInput(_MaterialInputBase):
         self.vertex_alpha_inp.connect(node_tree, self.node.inputs['Value'])
 
 
+_NODRAW_MATERIALS = frozenset((
+    "tools/toolsareaportal", "tools/toolsoccluder",
+))
+
+
 _NODRAW_PARAMS = frozenset((
     "%compilenodraw", "%compileinvisible", "%compilehint", "%compileskip",
     "%compilesky", "%compile2dsky", "%compiletrigger", "%compileorigin", "%compilefog",
@@ -570,7 +575,7 @@ class _MaterialBuilder():
         params = vmt_data.parameters
 
         # flags that imply nodraw
-        if any(p in _NODRAW_PARAMS and vmt_data.param_as_bool(p) for p in params) or name == "tools/toolsareaportal":
+        if any(p in _NODRAW_PARAMS and vmt_data.param_as_bool(p) for p in params) or name in _NODRAW_MATERIALS:
             self.blend_method = 'CLIP'
             self.shadow_method = 'CLIP'
             self.nodraw = True
