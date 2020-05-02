@@ -2,6 +2,7 @@ from hashlib import md5
 from base64 import urlsafe_b64encode
 from posixpath import split, splitext
 from typing import Iterable
+import numpy
 
 _HASH_LEN = 6
 _B64_LEN = 8
@@ -38,3 +39,37 @@ _VISIBLE_TOOLS = frozenset((
 
 def is_invisible_tool(materials: Iterable[str]) -> bool:
     return all(mat.startswith("tools/") and mat not in _VISIBLE_TOOLS for mat in materials)
+
+
+# Originally created by Alex Flint, https://stackoverflow.com/a/12729229
+# Applied Pete Florence's suggested modifications to make it work with this use case.
+# Modified out of bounds handling to prevent black pixels.
+def bilinear_interpolate(im: numpy.ndarray, x: numpy.ndarray, y: numpy.ndarray) -> numpy.ndarray:
+    x0 = numpy.floor(x).astype(int)
+    x1 = x0 + 1
+    y0 = numpy.floor(y).astype(int)
+    y1 = y0 + 1
+
+    x0 = numpy.clip(x0, 0, im.shape[1]-1)
+    x1 = numpy.clip(x1, 0, im.shape[1]-1)
+    y0 = numpy.clip(y0, 0, im.shape[0]-1)
+    y1 = numpy.clip(y1, 0, im.shape[0]-1)
+
+    i_a = im[y0, x0]
+    i_b = im[y1, x0]
+    i_c = im[y0, x1]
+    i_d = im[y1, x1]
+
+    wa = (x1-x) * (y1-y)
+    wb = (x1-x) * (y-y0)
+    wc = (x-x0) * (y1-y)
+    wd = (x-x0) * (y-y0)
+
+    z = (wa == 0) & (wb == 0) & (wc == 0) & (wd == 0)
+
+    wa[z] = 0.25
+    wb[z] = 0.25
+    wc[z] = 0.25
+    wd[z] = 0.25
+
+    return (i_a.T*wa).T + (i_b.T*wb).T + (i_c.T*wc).T + (i_d.T*wd).T

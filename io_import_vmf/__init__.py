@@ -538,6 +538,19 @@ class ImportSceneVMF(_VMFOperator, _VMFOperatorProps):
         default=True,
     )
 
+    import_sky: bpy.props.BoolProperty(  # type: ignore
+        name="Import sky",
+        default=True,
+    )
+
+    sky_resolution: bpy.props.IntProperty(  # type: ignore
+        name="Sky resolution",
+        description="The imported sky texture height in pixels. Higher values increase quality.",
+        min=1, max=32768,
+        soft_min=256, soft_max=8192,
+        default=1024,
+    )
+
     light_factor: bpy.props.FloatProperty(  # type: ignore
         name="Light brightness factor",
         description="Factor for converting light brightness into Blender",
@@ -630,6 +643,7 @@ class ImportSceneVMF(_VMFOperator, _VMFOperatorProps):
         importer = import_vmf.VMFImporter(self.data_dirs, self.data_paks, dec_models_path,
                                           import_solids=self.import_solids, import_overlays=self.import_overlays,
                                           import_props=self.import_props,
+                                          import_sky=self.import_sky, sky_resolution=self.sky_resolution,
                                           import_materials=self.import_materials,
                                           simple_materials=self.simple_materials, cull_materials=self.cull_materials,
                                           texture_interpolation=self.texture_interpolation,
@@ -689,6 +703,10 @@ class ImportSceneVMF(_VMFOperator, _VMFOperatorProps):
             box.prop(self, "light_factor")
             box.prop(self, "sun_factor")
             box.prop(self, "ambient_factor")
+        layout.prop(self, "import_sky")
+        if self.import_sky:
+            box = layout.box()
+            box.prop(self, "sky_resolution")
         layout.separator_spacer()
         layout.prop(self, "global_scale")
         layout.prop(self, "verbose")

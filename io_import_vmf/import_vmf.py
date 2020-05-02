@@ -50,9 +50,9 @@ def _srgb2lin(s: float) -> float:
 
 class VMFImporter():
     def __init__(self, data_dirs: Iterable[str], data_paks: Iterable[str], dec_models_path: str = None,
-                 import_solids: bool = True, import_overlays: bool = True,
-                 import_props: bool = True, import_materials: bool = True, import_lights: bool = True,
-                 scale: float = 0.01, epsilon: float = 0.001,
+                 import_solids: bool = True, import_overlays: bool = True, import_props: bool = True,
+                 import_materials: bool = True, import_lights: bool = True, import_sky: bool = True,
+                 scale: float = 0.01, epsilon: float = 0.001, sky_resolution: int = 1024,
                  simple_materials: bool = False, texture_interpolation: str = 'Linear', cull_materials: bool = False,
                  light_factor: float = 0.1, sun_factor: float = 0.01, ambient_factor: float = 0.001,
                  verbose: bool = False, skip_tools: bool = False):
@@ -62,6 +62,8 @@ class VMFImporter():
         self.import_props = import_props
         self.import_materials = import_materials
         self.import_lights = import_lights
+        self.import_sky = import_sky
+        self.sky_resolution = sky_resolution
         self.light_factor = light_factor
         self.sun_factor = sun_factor
         self.ambient_factor = ambient_factor
@@ -82,6 +84,9 @@ class VMFImporter():
             )
         else:
             self._vmt_importer = None
+        if import_sky:
+            from .import_vmt import load_sky
+            self._load_sky = load_sky
         self._fallback_materials: Dict[str, bpy.types.Material] = {}
         # self._mdl_importer = None
         self._qc_importer = None
@@ -94,7 +99,7 @@ class VMFImporter():
             self._qc_importer = import_qc.QCImporter(
                 self.dec_models_path, self._vmf_fs, self._vmt_importer, self.verbose
             )
-        self.need_files = import_materials or import_props
+        self.need_files = import_materials or import_props or import_sky
         if self.need_files:
             print("Indexing game files...")
             start = time.time()
@@ -219,6 +224,17 @@ class VMFImporter():
                     failed_lights += 1
                 else:
                     success_lights += 1
+        if self.import_sky:
+            print("Importing skybox...")
+            try:
+                self._load_sky(
+                    self._vmf_fs, "materials/skybox/" + vmf.world.skyname,
+                    output_res=self.sky_resolution, context=context,
+                )
+            except Exception as err:
+                print(f"ERROR LOADING SKYBOX: {err}")
+                if self.verbose:
+                    traceback.print_exception(type(err), err, err.__traceback__)
 
         print(f"Done in {time.time() - start} s")
         if self.import_solids:

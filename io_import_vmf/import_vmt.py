@@ -1,4 +1,5 @@
 from vmfpy import vmt
+from vmfpy.fs import VMFFileSystem
 from .utils import truncate_name, is_invisible_tool
 from typing import NamedTuple, Dict, DefaultDict, Set, Tuple, Optional, Union, Any, Iterator, Iterable, List, Callable
 from abc import ABC, abstractmethod
@@ -1075,3 +1076,38 @@ class VMTImporter():
                 data = VMTData(builder.width, builder.height, material)
         self._cache[material_name] = data
         return data
+
+
+_CUBEMAP_SUFFIXES = (
+    "lf", "rt", "up", "dn", "ft", "bk",
+)
+
+
+def load_sky(fs: VMFFileSystem, skyname: str, output_res: int = 1024, context: bpy.types.Context = bpy.context) -> None:
+    hdr = False
+    textures = []
+    for suffix in _CUBEMAP_SUFFIXES:
+        sky_vmt = vmt.VMT(fs.open_file_utf8(f"{skyname}{suffix}.vmt"), fs)
+        params = sky_vmt.parameters
+        if "$hdrbasetexture" in params:
+            textures.append(sky_vmt.param_open_texture("$hdrbasetexture"))
+            hdr = True
+        elif "$hdrcompressedtexture" in params:
+            textures.append(sky_vmt.param_open_texture("$hdrcompressedtexture"))
+            hdr = True
+        elif "$basetexture" in params:
+            textures.append(sky_vmt.param_open_texture("$basetexture"))
+    image = import_vtf.load_as_equi(skyname, textures, output_res, hdr=hdr)
+
+    context.scene.world.use_nodes = True
+    nt = context.scene.world.node_tree
+    nt.nodes.clear()
+    out_node: Node = nt.nodes.new('ShaderNodeOutputWorld')
+    out_node.location = (0, 0)
+    bg_node: Node = nt.nodes.new('ShaderNodeBackground')
+    bg_node.location = (-300, 0)
+    nt.links.new(bg_node.outputs['Background'], out_node.inputs['Surface'])
+    tex_node: Node = nt.nodes.new('ShaderNodeTexEnvironment')
+    tex_node.image = image
+    tex_node.location = (-600, 0)
+    nt.links.new(tex_node.outputs['Color'], bg_node.inputs['Color'])
