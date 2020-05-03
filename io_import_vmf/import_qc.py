@@ -46,7 +46,7 @@ class SmdImporterWrapper(import_smd.SmdImporter):
                 newscene: bool = False, smd_type: Any = None, target_layer: int = 0) -> int:
         if smd_type == utils.PHYS:  # skip collision meshes
             return 0
-        if splitext(basename(filepath))[0].rstrip("1234567890").endswith("_lod"):  # skip lod meshes
+        if splitext(basename(filepath))[0].rstrip("123456789").endswith("_lod"):  # skip lod meshes
             return 0
         result = super().readSMD(filepath, upAxis, rotMode, newscene, smd_type, target_layer)
         if self.smd.g:
