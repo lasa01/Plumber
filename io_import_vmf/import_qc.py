@@ -159,6 +159,8 @@ class QCImporter():
                 )
         bpy.ops.import_scene._io_import_vmf_smd_wrapper(filepath=path)
         smd = SmdImporterWrapper.smd
+        if smd is None:
+            raise Exception(f"Error importing {name}: nothing was imported by Blender Source Tools")
         self._cache[name] = smd
         if smd.a.name not in collection.objects:
             collection.objects.link(smd.a)
