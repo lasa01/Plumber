@@ -35,6 +35,7 @@ class SmdImporterWrapper(import_smd.SmdImporter):
         self.num_files_imported = 0
         self._missing_materials: Set[str] = set()
         self._cdmaterials = [vmf_path("")]
+        SmdImporterWrapper.smd = None
         # figure what the material dir should be for the qc
         with open(self.filepath, 'r') as fp:
             for match in _CDMATERIALS_REGEX.finditer(fp.read()):
