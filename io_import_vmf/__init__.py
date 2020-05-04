@@ -538,6 +538,11 @@ class ImportSceneVMF(_VMFOperator, _VMFOperatorProps):
         default=True,
     )
 
+    import_sky_origin: bpy.props.BoolProperty(  # type: ignore
+        name="Import 3D sky origin",
+        default=True,
+    )
+
     import_sky: bpy.props.BoolProperty(  # type: ignore
         name="Import sky",
         default=True,
@@ -642,7 +647,7 @@ class ImportSceneVMF(_VMFOperator, _VMFOperatorProps):
         from . import import_vmf
         importer = import_vmf.VMFImporter(self.data_dirs, self.data_paks, dec_models_path,
                                           import_solids=self.import_solids, import_overlays=self.import_overlays,
-                                          import_props=self.import_props,
+                                          import_props=self.import_props, import_sky_origin=self.import_sky_origin,
                                           import_sky=self.import_sky, sky_resolution=self.sky_resolution,
                                           import_materials=self.import_materials,
                                           simple_materials=self.simple_materials, cull_materials=self.cull_materials,
@@ -703,6 +708,7 @@ class ImportSceneVMF(_VMFOperator, _VMFOperatorProps):
             box.prop(self, "light_factor")
             box.prop(self, "sun_factor")
             box.prop(self, "ambient_factor")
+        layout.prop(self, "import_sky_origin")
         layout.prop(self, "import_sky")
         if self.import_sky:
             box = layout.box()
@@ -710,6 +716,26 @@ class ImportSceneVMF(_VMFOperator, _VMFOperatorProps):
         layout.separator_spacer()
         layout.prop(self, "global_scale")
         layout.prop(self, "verbose")
+
+
+class ObjectTransform3DSky(bpy.types.Operator):
+    """Transform the selected 3D sky objects, based on the active empty object"""
+    bl_idname = "object.transform_3d_sky"
+    bl_label = "Transform VMF 3D sky"
+    bl_options = {'REGISTER', 'UNDO'}
+
+    @classmethod
+    def poll(cls, context: bpy.types.Context) -> bool:
+        return (context.active_object and context.active_object.type == 'EMPTY') and context.selected_objects
+
+    def execute(self, context: bpy.types.Context) -> Set[str]:
+        target = context.active_object
+        for obj in context.selected_objects:
+            if obj != target and obj.parent is None:
+                obj.parent = target
+                obj.location -= target.location
+        target.location = (0, 0, 0)
+        return {'FINISHED'}
 
 
 def _get_source_path_root(path: str, stop: str = "models") -> Optional[str]:
@@ -1117,6 +1143,7 @@ classes = (
     ImportSceneMDL,
     ImportSceneVMT,
     ImportSceneAGREnhanced,
+    ObjectTransform3DSky,
 )
 
 
@@ -1128,13 +1155,20 @@ def import_menu_func(self: bpy.types.Menu, context: bpy.types.Context) -> None:
     self.layout.operator(ImportSceneAGREnhanced.bl_idname, text="HLAE afxGameRecord (enhanced) (.agr)")
 
 
+def object_menu_func(self: bpy.types.Menu, context: bpy.types.Context) -> None:
+    self.layout.separator()
+    self.layout.operator(ObjectTransform3DSky.bl_idname)
+
+
 def register() -> None:
     for cls in classes:
         bpy.utils.register_class(cls)
     bpy.types.TOPBAR_MT_file_import.append(import_menu_func)
+    bpy.types.VIEW3D_MT_object.append(object_menu_func)
 
 
 def unregister() -> None:
     for cls in classes:
         bpy.utils.unregister_class(cls)
     bpy.types.TOPBAR_MT_file_import.remove(import_menu_func)
+    bpy.types.VIEW3D_MT_object.remove(object_menu_func)

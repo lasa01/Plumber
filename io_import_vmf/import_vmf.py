@@ -51,7 +51,8 @@ def _srgb2lin(s: float) -> float:
 class VMFImporter():
     def __init__(self, data_dirs: Iterable[str], data_paks: Iterable[str], dec_models_path: str = None,
                  import_solids: bool = True, import_overlays: bool = True, import_props: bool = True,
-                 import_materials: bool = True, import_lights: bool = True, import_sky: bool = True,
+                 import_materials: bool = True, import_lights: bool = True,
+                 import_sky_origin: bool = True, import_sky: bool = True,
                  scale: float = 0.01, epsilon: float = 0.001, sky_resolution: int = 1024,
                  simple_materials: bool = False, texture_interpolation: str = 'Linear', cull_materials: bool = False,
                  light_factor: float = 0.1, sun_factor: float = 0.01, ambient_factor: float = 0.001,
@@ -62,6 +63,7 @@ class VMFImporter():
         self.import_props = import_props
         self.import_materials = import_materials
         self.import_lights = import_lights
+        self.import_sky_origin = import_sky_origin
         self.import_sky = import_sky
         self.sky_resolution = sky_resolution
         self.light_factor = light_factor
@@ -235,6 +237,14 @@ class VMFImporter():
                 print(f"ERROR LOADING SKYBOX: {err}")
                 if self.verbose:
                     traceback.print_exception(type(err), err, err.__traceback__)
+        if self.import_sky_origin and vmf.sky_camera_entity is not None:
+            print("Importing sky origin...")
+            try:
+                self._load_sky_camera(vmf.sky_camera_entity, map_collection, context)
+            except Exception as err:
+                print(f"ERROR LOADING SKY ORIGIN: {err}")
+                if self.verbose:
+                    traceback.print_exception(type(err), err, err.__traceback__)
 
         print(f"Done in {time.time() - start} s")
         if self.import_solids:
@@ -321,6 +331,25 @@ class VMFImporter():
         bg_node.inputs['Strength'].default_value = (vmf_light.amb_brightness if use_sdr
                                                     else vmf_light.amb_hdr_brightness
                                                     * vmf_light.amb_hdr_scale) * self.ambient_factor
+
+    def _load_sky_camera(self, sky_camera: vmfpy.VMFSkyCameraEntity,
+                         collection: bpy.types.Collection, context: bpy.types.Context) -> None:
+        name = f"sky_camera_{sky_camera.id}"
+        obj: bpy.types.Object = bpy.data.objects.new(name, None)
+        obj.location = (sky_camera.origin.x * self.scale,
+                        sky_camera.origin.y * self.scale,
+                        sky_camera.origin.z * self.scale)
+        obj.scale = (sky_camera.scale, sky_camera.scale, sky_camera.scale)
+        obj.rotation_euler = (
+            radians(sky_camera.angles[2]),
+            radians(sky_camera.angles[0]),
+            radians(sky_camera.angles[1])
+        )
+        collection.objects.link(obj)
+        for selected_obj in context.selected_objects:
+            selected_obj.select_set(False)
+        obj.select_set(True)
+        context.view_layer.objects.active = obj
 
     def _load_material(self, name: str, opener: Callable[[], vmfpy.vmt.VMT]) -> Tuple[int, int, bpy.types.Material]:
         if self._vmt_importer is not None:
