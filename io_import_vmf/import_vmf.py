@@ -340,11 +340,7 @@ class VMFImporter():
                         sky_camera.origin.y * self.scale,
                         sky_camera.origin.z * self.scale)
         obj.scale = (sky_camera.scale, sky_camera.scale, sky_camera.scale)
-        obj.rotation_euler = (
-            radians(sky_camera.angles[2]),
-            radians(sky_camera.angles[0]),
-            radians(sky_camera.angles[1])
-        )
+        obj.rotation_euler = (0, 0, 0)
         collection.objects.link(obj)
         for selected_obj in context.selected_objects:
             selected_obj.select_set(False)
