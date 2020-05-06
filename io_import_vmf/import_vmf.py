@@ -59,7 +59,7 @@ class VMFImporter():
                  verbose: bool = False, skip_tools: bool = False):
         self.epsilon = epsilon
         self.import_solids = import_solids
-        self.import_overlays = import_overlays
+        self.import_overlays = import_solids and import_overlays
         self.import_props = import_props
         self.import_materials = import_materials
         self.import_lights = import_lights
