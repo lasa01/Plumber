@@ -687,6 +687,7 @@ class VMFImporter():
 
         vertices: List[Vector] = []
         face_vertices: List[List[int]] = []
+        face_normals: List[Vector] = []
 
         offset = 0.1
         if overlay.renderorder is not None:
@@ -710,6 +711,7 @@ class VMFImporter():
                     current_face_vertices.append(vert_idx)
                     vert_idx_map[vertice] = vert_idx
                 face_vertices.append(current_face_vertices)
+                face_normals.append(self._side_normals[side_id])
         for side_id in overlay.sides:
             side_normal = self._side_normals[side_id]  # TODO: should be face normal for displacements
             for vertice_idxs in self._side_face_vertices[side_id]:
@@ -822,6 +824,7 @@ class VMFImporter():
             if any(v_idx in remove_vertices for v_idx in face_vert_idxs):
                 continue
             face_vertices.append([vertice_idx_map[v_idx] for v_idx in face_vert_idxs])
+            face_normals.append(old_face_normals[face_idx])
 
         # calculate projective transformation for the vertices into uvs based on the 4 supplied points
         # https://math.stackexchange.com/a/339033
@@ -871,6 +874,8 @@ class VMFImporter():
 
         mesh: bpy.types.Mesh = bpy.data.meshes.new(name)
         mesh.from_pydata([v * self.scale for v in vertices], (), face_vertices)
+        if sum(face_normals[i].dot(p.normal) for i, p in enumerate(mesh.polygons)) < 0:
+            mesh.flip_normals()
         _, _, material = self._load_material(overlay.material, lambda: overlay.get_material(allow_patch=True))
         mesh.materials.append(material)
         uv_layer: bpy.types.MeshUVLoopLayer = mesh.uv_layers.new()
