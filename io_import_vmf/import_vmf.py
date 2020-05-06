@@ -700,9 +700,11 @@ class VMFImporter():
                 for vertice_idx in vertice_idxs:
                     vertice = self._side_vertices[side_id][vertice_idx]
                     vertice.freeze()
-                    try:  # prevent duplicate vertices
-                        vert_idx = vertices.index(vertice)
-                    except ValueError:
+                    for other_idx, other_vert in enumerate(vertices):
+                        if _vec_isclose(other_vert, vertice, Vector((0, 0, 0)), self.epsilon, 0.005):
+                            vert_idx = other_idx
+                            break
+                    else:
                         vert_idx = len(vertices)
                         vertices.append(vertice)
                     current_face_vertices.append(vert_idx)
@@ -763,26 +765,31 @@ class VMFImporter():
                     uv_rot_vertices[face_vert_idxs[(out_idx1 - 1) % len(face_vert_idxs)]],
                     uv_rot_vertices[face_vert_idxs[out_idx1]],
                 )
-                new_vertice = geometry.intersect_line_plane(*split_line, side_vert_a, cut_plane_normal)
-                try:
-                    # check if the vertice already exists
-                    new_vert_idx1 = uv_rot_vertices.index(new_vertice)
-                except ValueError:
+                new_uv_rot_vertice = geometry.intersect_line_plane(*split_line, side_vert_a, cut_plane_normal)
+                new_vertice = origin + uv_rot_to_global_matrix @ new_uv_rot_vertice
+                for other_idx, other_vert in enumerate(vertices):
+                    if _vec_isclose(other_vert, new_vertice, Vector((0, 0, 0)), self.epsilon, 0.005):
+                        new_vert_idx1 = other_idx
+                        break
+                else:
                     new_vert_idx1 = len(uv_rot_vertices)
-                    uv_rot_vertices.append(new_vertice)
-                    vertices.append(origin + uv_rot_to_global_matrix @ new_vertice)
+                    uv_rot_vertices.append(new_uv_rot_vertice)
+                    vertices.append(new_vertice)
                 # do the same for the last face vertice that is outside the border
                 split_line = (
                     uv_rot_vertices[face_vert_idxs[(out_idx2 + 1) % len(face_vert_idxs)]],
                     uv_rot_vertices[face_vert_idxs[out_idx2]],
                 )
-                new_vertice = geometry.intersect_line_plane(*split_line, side_vert_a, cut_plane_normal)
-                try:
-                    new_vert_idx2 = uv_rot_vertices.index(new_vertice)
-                except ValueError:
+                new_uv_rot_vertice = geometry.intersect_line_plane(*split_line, side_vert_a, cut_plane_normal)
+                new_vertice = origin + uv_rot_to_global_matrix @ new_uv_rot_vertice
+                for other_idx, other_vert in enumerate(vertices):
+                    if _vec_isclose(other_vert, new_vertice, Vector((0, 0, 0)), self.epsilon, 0.005):
+                        new_vert_idx2 = other_idx
+                        break
+                else:
                     new_vert_idx2 = len(uv_rot_vertices)
-                    uv_rot_vertices.append(new_vertice)
-                    vertices.append(origin + (uv_rot_to_global_matrix @ new_vertice))
+                    uv_rot_vertices.append(new_uv_rot_vertice)
+                    vertices.append(new_vertice)
                 # and replace the face vertices that were outside the uv border with the 2 newly created ones
                 face_vert_idxs[out_idx1:out_idx2 + 1] = new_vert_idx1, new_vert_idx2
 
@@ -809,7 +816,9 @@ class VMFImporter():
 
         old_face_vertices = face_vertices
         face_vertices = []
-        for face_vert_idxs in old_face_vertices:
+        old_face_normals = face_normals
+        face_normals = []
+        for face_idx, face_vert_idxs in enumerate(old_face_vertices):
             if any(v_idx in remove_vertices for v_idx in face_vert_idxs):
                 continue
             face_vertices.append([vertice_idx_map[v_idx] for v_idx in face_vert_idxs])
