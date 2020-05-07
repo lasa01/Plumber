@@ -38,9 +38,11 @@ class SmdImporterWrapper(import_smd.SmdImporter):
         SmdImporterWrapper.smd = None
         # figure what the material dir should be for the qc
         with open(self.filepath, 'r') as fp:
-            for match in _CDMATERIALS_REGEX.finditer(fp.read()):
+            content = fp.read()
+            for match in _CDMATERIALS_REGEX.finditer(content):
                 self._cdmaterials.append(vmf_path(match.group(1)))
-        self.readQC(self.filepath, False, True, False, 'XYZ', outer_qc=True)
+            animations = "$staticprop" not in content.lower()
+        self.readQC(self.filepath, False, animations, False, 'XYZ', outer_qc=True)
         return {'FINISHED'}
 
     def readSMD(self, filepath: str, upAxis: str, rotMode: str,
