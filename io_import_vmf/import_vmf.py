@@ -874,13 +874,13 @@ class VMFImporter():
 
         mesh: bpy.types.Mesh = bpy.data.meshes.new(name)
         mesh.from_pydata([v * self.scale for v in vertices], (), face_vertices)
-        if sum(face_normals[i].dot(p.normal) for i, p in enumerate(mesh.polygons)) < 0:
-            mesh.flip_normals()
         _, _, material = self._load_material(overlay.material, lambda: overlay.get_material(allow_patch=True))
         mesh.materials.append(material)
         uv_layer: bpy.types.MeshUVLoopLayer = mesh.uv_layers.new()
         for polygon_idx, polygon in enumerate(mesh.polygons):
             for loop_ref_idx, loop_idx in enumerate(polygon.loop_indices):
                 uv_layer.data[loop_idx].uv = face_loop_uvs[polygon_idx][loop_ref_idx]
+        if sum(face_normals[i].dot(p.normal) for i, p in enumerate(mesh.polygons)) < 0:
+            mesh.flip_normals()
         obj: bpy.types.Object = bpy.data.objects.new(name, object_data=mesh)
         collection.objects.link(obj)
