@@ -2,7 +2,7 @@
 
 A Valve Map Format (.vmf) and Valve Material Type (.vmt) importer for Blender.
 
-Also includes helpful wrappers for importing [HLAE .agr files](https://www.advancedfx.org/) and .qc models with materials using the included material importer.
+Also includes helpful wrappers for importing [HLAE .agr files](https://www.advancedfx.org/) and .qc/.mdl models with materials using the included material importer.
 
 ### Requires Blender 2.82 or newer.
 
@@ -29,7 +29,7 @@ Materials and props, for example, require external game files for the import to 
 You need to go to the addon preferences to add game definitions which are used for loading these files.
 Click the + button to add a new game definition. Press the "Detect from a game directory" button and select the game directory.
 For CSGO that is installed in the default directory, you need to select `C:\Program Files (x86)\Steam\steamapps\common\Counter-Strike Global Offensive\csgo`.
-The addon attempts to automatically detect the game name and relevant VPK files inside the selected directory.
+The addon attempts to automatically detect the game name and relevant VPK files and directories inside the selected directory.
 If your game includes content inside other directories, you can use the auto-detection on them too.
 In case the addon fails to detect some VPK archives or you would like to add a directory without detecting the VPKs inside it,
 you can use the + buttons to add them manually.
@@ -49,6 +49,13 @@ The more things you select, the slower the import progress will be, so you shoul
 Brushes, lights and overlays are fast to import, they should take less than a minute.
 Importing materials can take a little longer. Importing props is extremely slow, it usually takes over 30 minutes for a full-sized map.
 
+Importing the sky converts the original cubemap into a Blender-compatible equirectangular format, so quality might suffer.
+You can select a larger sky resolution to increase the quality, but this will also increase import time.
+
+Importing the 3D sky origin allows you to select the 3D sky after importing and automatically transforming it to the correct position and scale.
+After the import has finished, you need to manually select every object that belongs to the 3D sky.
+Ensure you have the 3D sky origin (sky_camera) also selected and as the active object, and press `Object -> Transform VMF 3D sky` to transform the objects.
+
 ### **The following features are only supported on Windows:**
 
 ### Materials
@@ -66,6 +73,9 @@ and whether to allow backface culling in materials that don't disable it.
 ### QC (requires [Blender Source Tools](https://steamreview.org/BlenderSourceTools/))
 `File -> Import -> Source Engine Model (enhanced) (.qc)`
 
+### MDL (requires [SourceIO](https://github.com/REDxEYE/SourceIO))
+`File -> Import -> Source Engine Model (enhanced) (.mdl)`
+
 ### AGR (requires [afx-blender-scripts](https://github.com/advancedfx/afx-blender-scripts))
 `File -> Import -> HLAE afxGameRecord (enhanced) (.agr)`
 
@@ -75,6 +85,7 @@ and whether to allow backface culling in materials that don't disable it.
 - Nemesis for [VTFLib](http://nemesis.thewavelength.net/index.php?p=40).
 - Artfunkel for [Blender Source Tools](http://steamreview.org/BlenderSourceTools/).
 - ZeqMacaw and UltraTechX for [Crowbar](https://steamcommunity.com/groups/CrowbarTool) and [Crowbar-Command-Line](https://github.com/UltraTechX/Crowbar-Command-Line).
+- REDxEYE for [SourceIO](https://github.com/REDxEYE/SourceIO).
 - Devostated for testing and bug reporting.
 
 ## License
