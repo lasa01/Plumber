@@ -533,17 +533,17 @@ class VMFImporter():
                     disp_loop_uvs.append([])
                     if row_idx == 0:  # take existing vertice from the original face if this is a corner
                         row_vert_i_a = len(vertices)
-                        vertices.append(old_vertices[old_face_vertices[side_idx][top_l_idx]])
+                        vertices.append(old_vertices[old_face_vertices[side_idx][top_l_idx]].copy())
                         row_vert_uv_a = old_face_loop_uvs[side_idx][top_l_idx]
                         row_vert_i_b = len(vertices)
-                        vertices.append(old_vertices[old_face_vertices[side_idx][top_r_idx]])
+                        vertices.append(old_vertices[old_face_vertices[side_idx][top_r_idx]].copy())
                         row_vert_uv_b = old_face_loop_uvs[side_idx][top_r_idx]
                     elif row_idx == side.dispinfo.dimension - 1:
                         row_vert_i_a = len(vertices)
-                        vertices.append(old_vertices[old_face_vertices[side_idx][btm_l_idx]])
+                        vertices.append(old_vertices[old_face_vertices[side_idx][btm_l_idx]].copy())
                         row_vert_uv_a = old_face_loop_uvs[side_idx][btm_l_idx]
                         row_vert_i_b = len(vertices)
-                        vertices.append(old_vertices[old_face_vertices[side_idx][btm_r_idx]])
+                        vertices.append(old_vertices[old_face_vertices[side_idx][btm_r_idx]].copy())
                         row_vert_uv_b = old_face_loop_uvs[side_idx][btm_r_idx]
                     else:  # if this is not a corner, create a new vertice by interpolating between corner vertices
                         row_vert_i_a = len(vertices)
