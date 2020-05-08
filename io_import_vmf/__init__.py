@@ -536,7 +536,7 @@ class ImportSceneVMF(_VMFOperator, _VMFOperatorProps):
     optimize_props: bpy.props.BoolProperty(  # type: ignore
         name="Optimize props",
         default=True,
-        description="Removes unnecessary armatures (with only 1 bone) and animations (with only 1 frame)",
+        description="Removes unnecessary armatures with 1 bone and animations with 1 frame from static props",
     )
 
     import_lights: bpy.props.BoolProperty(  # type: ignore

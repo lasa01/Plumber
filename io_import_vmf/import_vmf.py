@@ -679,7 +679,7 @@ class VMFImporter():
 
     def _optimize_props(self, collection: bpy.types.Collection) -> None:
         for prop in self._props:
-            if len(prop.pose.bones) != 1:
+            if len(prop.pose.bones) != 1 or prop.pose.bones[0].basename != "static_prop":
                 continue
             prop_name = prop.name
             try:
@@ -697,6 +697,8 @@ class VMFImporter():
                         attribute_index = fcurve.array_index
                         attribute_value = fcurve.keyframe_points[0].co[1]
                         for child in children:
+                            if attribute_name == "location":
+                                attribute_value *= prop.scale[attribute_index]
                             # apply the single frame into children's data
                             getattr(child, attribute_name)[attribute_index] = attribute_value
                     # BST likes to add fake users for some reason
