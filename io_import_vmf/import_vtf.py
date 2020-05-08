@@ -64,8 +64,13 @@ def load_as_equi(cubemap_name: str, files: List[AnyBinaryIO], out_height: int, h
                     pixels.shape = (-1, 4)
                     pixels[:, :3] = pixels[:, 2::-1] * (pixels[:, 3:] * (16 / 262144))
                     pixels[:, 3] = 1.0
-                else:
-                    raise Exception(f"ERROR LOADING CUBEMAP: UNSUPPORTED HDR FORMAT {image_format}")
+                else:  # don't know what this is, just treat is as a normal texture
+                    pixels = numpy.frombuffer(
+                        vtflib.image_as_rgba8888(), dtype=numpy.uint8
+                    )
+                    pixels = pixels.astype(numpy.float16, copy=False)
+                    pixels /= 255
+                    hdr = False
             else:
                 pixels = numpy.frombuffer(
                     vtflib.image_as_rgba8888(), dtype=numpy.uint8
