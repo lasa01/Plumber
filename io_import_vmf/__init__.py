@@ -533,6 +533,12 @@ class ImportSceneVMF(_VMFOperator, _VMFOperatorProps):
         description="SourceIO or Blender Source Tools must be installed for this to work.",
     )
 
+    optimize_props: bpy.props.BoolProperty(  # type: ignore
+        name="Optimize props",
+        default=True,
+        description="Removes unnecessary armatures (with only 1 bone) and animations (with only 1 frame)",
+    )
+
     import_lights: bpy.props.BoolProperty(  # type: ignore
         name="Import lights",
         default=True,
@@ -647,7 +653,8 @@ class ImportSceneVMF(_VMFOperator, _VMFOperatorProps):
         from . import import_vmf
         importer = import_vmf.VMFImporter(self.data_dirs, self.data_paks, dec_models_path,
                                           import_solids=self.import_solids, import_overlays=self.import_overlays,
-                                          import_props=self.import_props, import_sky_origin=self.import_sky_origin,
+                                          import_props=self.import_props, optimize_props=self.optimize_props,
+                                          import_sky_origin=self.import_sky_origin,
                                           import_sky=self.import_sky, sky_resolution=self.sky_resolution,
                                           import_materials=self.import_materials,
                                           simple_materials=self.simple_materials, cull_materials=self.cull_materials,
@@ -690,6 +697,7 @@ class ImportSceneVMF(_VMFOperator, _VMFOperatorProps):
                     row.operator("io_import_vmf.open_preferences", text="", icon='PREFERENCES')
                 else:
                     box.label(text="Missing models will be decompiled.")
+            box.prop(self, "optimize_props")
         if not self.qc_available:
             self.import_props = False
             col.enabled = False

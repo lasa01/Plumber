@@ -50,7 +50,8 @@ def _srgb2lin(s: float) -> float:
 
 class VMFImporter():
     def __init__(self, data_dirs: Iterable[str], data_paks: Iterable[str], dec_models_path: str = None,
-                 import_solids: bool = True, import_overlays: bool = True, import_props: bool = True,
+                 import_solids: bool = True, import_overlays: bool = True,
+                 import_props: bool = True, optimize_props: bool = True,
                  import_materials: bool = True, import_lights: bool = True,
                  import_sky_origin: bool = True, import_sky: bool = True,
                  scale: float = 0.01, epsilon: float = 0.001, sky_resolution: int = 1024,
@@ -61,6 +62,7 @@ class VMFImporter():
         self.import_solids = import_solids
         self.import_overlays = import_solids and import_overlays
         self.import_props = import_props
+        self.optimize_props = optimize_props
         self.import_materials = import_materials
         self.import_lights = import_lights
         self.import_sky_origin = import_sky_origin
@@ -101,6 +103,8 @@ class VMFImporter():
             self._qc_importer = import_qc.QCImporter(
                 self.dec_models_path, self._vmf_fs, self._vmt_importer, self.verbose
             )
+            if self.optimize_props:
+                self._props: List[bpy.types.Object] = []
         self.need_files = import_materials or import_props or import_sky
         if self.need_files:
             print("Indexing game files...")
@@ -192,6 +196,9 @@ class VMFImporter():
                     failed_props += 1
                 else:
                     success_props += 1
+            if self.optimize_props:
+                print("Optimizing props...")
+                self._optimize_props(prop_collection)
         if self.import_lights:
             print("Importing lights...")
             light_collection = bpy.data.collections.new("light")
@@ -667,6 +674,50 @@ class VMFImporter():
         color = [_srgb2lin(c / 255) for c in prop.rendercolor] + [prop.renderamt / 255]
         for child in obj.children:
             child.color = color
+        if self.optimize_props:
+            self._props.append(obj)
+
+    def _optimize_props(self, collection: bpy.types.Collection) -> None:
+        for prop in self._props:
+            if len(prop.pose.bones) != 1:
+                continue
+            prop_name = prop.name
+            try:
+                # optimize prop if possible (remove single bone armature, single frame animation)
+                if prop.animation_data is not None:
+                    action = prop.animation_data.action
+                    if any(len(fcurve.keyframe_points) != 1 for fcurve in action.fcurves):
+                        continue
+                    children = prop.children
+                    for fcurve in action.fcurves:
+                        datapath = fcurve.data_path
+                        if not datapath.startswith("pose.bones"):
+                            continue
+                        attribute_name = datapath.rsplit(".", maxsplit=1)[1]
+                        attribute_index = fcurve.array_index
+                        attribute_value = fcurve.keyframe_points[0].co[1]
+                        for child in children:
+                            # apply the single frame into children's data
+                            getattr(child, attribute_name)[attribute_index] = attribute_value
+                    # BST likes to add fake users for some reason
+                    action.use_fake_user = False
+                else:
+                    children = prop.children
+                prop.name += "_remove"
+                for child in children:
+                    # remove parent and armature
+                    child.parent = None
+                    child.modifiers.remove(child.modifiers["Armature"])
+                    # apply armature's location and rotation and scale
+                    child.location += prop.location
+                    child.rotation_euler.rotate(prop.rotation_euler)
+                    child.scale = Vector(a * b for a, b in zip(child.scale, prop.scale))
+                    child.name = prop_name
+                bpy.data.objects.remove(prop)
+            except Exception as err:
+                print(f"ERROR OPTIMIZING PROP {prop_name}: {err}")
+                if self.verbose:
+                    traceback.print_exception(type(err), err, err.__traceback__)
 
     def _load_overlay(self, overlay: vmfpy.VMFOverlayEntity, collection: bpy.types.Collection) -> None:
         name = f"info_overlay_{overlay.id}"
