@@ -65,7 +65,7 @@ def bilinear_interpolate(im: numpy.ndarray, x: numpy.ndarray, y: numpy.ndarray) 
     wc = (x-x0) * (y1-y)
     wd = (x-x0) * (y-y0)
 
-    z = (wa == 0) & (wb == 0) & (wc == 0) & (wd == 0)
+    z = (wa + wb + wc + wd) < 0.001
 
     wa[z] = 0.25
     wb[z] = 0.25
