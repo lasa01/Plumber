@@ -992,7 +992,7 @@ class ImportSceneVMT(_ValveGameOperator, _ValveGameOperatorProps):
                                           self.texture_interpolation, self.cull_materials)
         importer.load(
             splitext(basename(self.filepath))[0],
-            lambda: VMT(open(self.filepath, encoding='utf-8'), fs, allow_patch=False)
+            lambda: VMT(open(self.filepath, encoding='utf-8'), fs, allow_patch=True)
         )
         return {'FINISHED'}
 
@@ -1091,6 +1091,7 @@ class ImportSceneAGREnhanced(_ValveGameOperator, _ValveGameOperatorProps):
             dec_models_path, fs,
             import_materials=self.import_materials, simple_materials=self.simple_materials,
             texture_interpolation=self.texture_interpolation, cull_materials=self.cull_materials,
+            verbose=self.verbose,
             inter_key=self.inter_key, global_scale=self.global_scale, scale_invisible_zero=self.scale_invisible_zero,
         )
         with importer:
