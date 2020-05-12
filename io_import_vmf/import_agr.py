@@ -42,6 +42,13 @@ class AgrImporterWrapper(import_agr.AgrImporter):
                 bone.rotation_mode = 'QUATERNION'
         # Scale:
         armature.scale = (self.global_scale, self.global_scale, self.global_scale)
+
+        arm_name = modelHandle.modelName.rsplit('/', 1)[-1]
+        if len(arm_name) > 30:
+            arm_name = (arm_name[:30] + '..')
+        arm_name = f"afx.{modelHandle.objNr} {arm_name}"
+        armature.name = arm_name
+
         modelData = self.addCurvesToModel(context, modelData)
         return modelData
 
