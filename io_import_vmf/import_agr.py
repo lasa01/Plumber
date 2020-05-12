@@ -3,6 +3,7 @@ from . import import_qc
 from vmfpy.fs import VMFFileSystem
 from typing import Any, Set, Optional
 from os.path import splitext
+import time
 import bpy
 
 
@@ -13,13 +14,22 @@ class AgrImporterWrapper(import_agr.AgrImporter):
     interKey: bpy.props.BoolProperty(default=False)  # type: ignore
     global_scale: bpy.props.FloatProperty(default=0.01)  # type: ignore
     scaleInvisibleZero: bpy.props.BoolProperty(default=False)  # type: ignore
+    keyframeInterpolation: bpy.props.StringProperty(default='BEZIER')  # type: ignore
+    skipDuplicateKeyframes: bpy.props.BoolProperty(default=True)  # type: ignore
 
     qc_importer: import_qc.QCImporter
     collection: bpy.types.Collection
 
     def execute(self, context: bpy.types.Context) -> Set[str]:
-        self.readAgr(context)
+        time_start = time.time()
+        result = self.readAgr(context)
         self.errorReport("Error report")
+        if result is not None:
+            if result['frameBegin'] is not None:
+                context.scene.frame_start = result['frameBegin']
+            if result['frameEnd'] is not None:
+                context.scene.frame_end = result['frameEnd']
+        print("AGR import finished in %.4f sec." % (time.time() - time_start))
         return {'FINISHED'}
 
     # import models with materials straight from game files
