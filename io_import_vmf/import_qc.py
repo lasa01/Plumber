@@ -52,7 +52,7 @@ class SmdImporterWrapper(import_smd.SmdImporter):
         if splitext(basename(filepath))[0].rstrip("123456789").endswith("_lod"):  # skip lod meshes
             return 0
         result = super().readSMD(filepath, upAxis, rotMode, newscene, smd_type, target_layer)
-        if self.smd.g:
+        if self.smd.g and self.smd.g != self.collection:
             smd_collection: bpy.types.Collection = self.smd.g
             while smd_collection.objects:
                 if smd_collection.objects[0].name not in self.collection.objects:
