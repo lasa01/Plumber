@@ -55,7 +55,8 @@ class SmdImporterWrapper(import_smd.SmdImporter):
         if self.smd.g:
             smd_collection: bpy.types.Collection = self.smd.g
             while smd_collection.objects:
-                self.collection.objects.link(smd_collection.objects[0])
+                if smd_collection.objects[0].name not in self.collection.objects:
+                    self.collection.objects.link(smd_collection.objects[0])
                 smd_collection.objects.unlink(smd_collection.objects[0])
             bpy.data.collections.remove(smd_collection)
         if result != 0:
