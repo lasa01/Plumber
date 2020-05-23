@@ -54,7 +54,7 @@ class SourceModelWrapper(mdl2model.SourceModel):
 
 class Source2BlenderWrapper(mdl2model.Source2Blender):
     def __init__(self, name: str, path: str,
-                 vmffs: VMFFileSystem, vmt_importer: Optional['import_vmt.VMTImporter']):
+                 vmffs: Optional[VMFFileSystem], vmt_importer: Optional['import_vmt.VMTImporter']):
         self.vmt_importer = vmt_importer
         self.import_textures = True
         self.main_collection: bpy.types.Collection = None
@@ -65,7 +65,10 @@ class Source2BlenderWrapper(mdl2model.Source2Blender):
         self.name = name
         self.vertex_offset = 0
         self.sort_bodygroups = True
-        fp = open(path, 'rb') if os.path.isabs(path) else self.vmf_fs.open_file(path)
+        if vmffs is None or os.path.isabs(path):
+            fp = open(path, 'rb')
+        else:
+            fp = vmffs.open_file(path)
         self.model = SourceModelWrapper(path, fp, vmffs)
         self.mdl: Any = None
         self.vvd = None
@@ -102,6 +105,10 @@ class Source2BlenderWrapper(mdl2model.Source2Blender):
             bpy.ops.object.mode_set(mode='OBJECT')
 
     def load_textures(self) -> None:
+        if self.vmt_importer is None:
+            return
+        if self.vmffs is None:
+            raise Exception("cannot import materials: file system not defined")
         self.material_openers = {}
         for texture in self.mdl.file_data.textures:
             try:
@@ -152,7 +159,7 @@ class Source2BlenderWrapper(mdl2model.Source2Blender):
 
 
 class MDLImporter():
-    def __init__(self, vmf_fs: VMFFileSystem, vmt_importer: Optional['import_vmt.VMTImporter'],
+    def __init__(self, vmf_fs: Optional[VMFFileSystem], vmt_importer: Optional['import_vmt.VMTImporter'],
                  verbose: bool = False):
         self._cache: Dict[str, bpy.types.Object] = {}
         self.verbose = verbose

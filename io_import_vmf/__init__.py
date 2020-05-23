@@ -791,14 +791,23 @@ def _get_source_path_root(path: str, stop: str = "models") -> Optional[str]:
     return dirname(path)
 
 
-class ImportSceneQC(_ValveGameOperator, _ValveGameOperatorProps):
-    """Load a Source Engine QC file"""
-    bl_idname = "import_scene.qc_enhanced"
-    bl_label = "Import QC (enhanced)"
+class ImportSceneSourceModel(_ValveGameOperator, _ValveGameOperatorProps):
+    """Load a Source Engine QC/MDL file"""
+    bl_idname = "import_scene.sourcemodel_enhanced"
+    bl_label = "Import QC/MDL (enhanced)"
     bl_options = {'UNDO', 'PRESET'}
 
     filepath: bpy.props.StringProperty(subtype='FILE_PATH', options={'HIDDEN'})  # type: ignore
-    filter_glob: bpy.props.StringProperty(default="*.qc", options={'HIDDEN'})  # type: ignore
+    filter_glob: bpy.props.StringProperty(default="*.qc;*.mdl", options={'HIDDEN'})  # type: ignore
+
+    strategy: bpy.props.EnumProperty(  # type: ignore
+        name="MDL import strategy",
+        items=(
+            ('BST', "Blender Source Tools", "Decompile model and import using Blender Source Tools"),
+            ('SOURCEIO', "SourceIO", "Import model directly using SourceIO"),
+        ),
+        default='BST',
+    )
 
     import_materials: bpy.props.BoolProperty(  # type: ignore
         name="Import materials",
@@ -837,17 +846,16 @@ class ImportSceneQC(_ValveGameOperator, _ValveGameOperatorProps):
 
     @classmethod
     def poll(cls, context: bpy.types.Context) -> bool:
-        return "io_scene_valvesource" in context.preferences.addons
+        addons = context.preferences.addons
+        return "io_scene_valvesource" in addons or "SourceIO" in addons
 
     def execute(self, context: bpy.types.Context) -> Set[str]:
-        try:
-            from . import import_qc
-        except ImportError:
-            self.report({'ERROR'}, "Blender Source Tools must be installed for importing QC files")
-            return {'CANCELLED'}
         result = self._check_valve_props(context)
         if result is not None:
             return result
+        root = _get_source_path_root(self.filepath)
+        if root is None:
+            root = dirname(self.filepath)
         if self.import_materials:
             from . import import_vmt
             from vmfpy.fs import VMFFileSystem
@@ -855,111 +863,46 @@ class ImportSceneQC(_ValveGameOperator, _ValveGameOperatorProps):
             fs = VMFFileSystem(self.data_dirs, self.data_paks, index_files=True)
         else:
             fs = None
-        print("Importing model...")
-        root = _get_source_path_root(self.filepath)
-        if root is None:
-            root = dirname(self.filepath)
-        importer = import_qc.QCImporter(
-            root,
-            fs,
-            import_vmt.VMTImporter(self.verbose, self.simple_materials, self.texture_interpolation, self.cull_materials)
-            if self.import_materials else None,
-            self.verbose,
-        )
-        with importer:
-            importer.load(splitext(relpath(self.filepath, root))[0], context.collection)
+        if self.filepath.endswith(".qc"):
+            self.strategy = 'BST'
+        if self.strategy == 'SOURCEIO':
+            try:
+                from . import import_mdl
+            except ImportError:
+                self.report({'ERROR'}, "SourceIO is not installed")
+                return {'CANCELLED'}
+            print("Importing model...")
+            mdl_importer = import_mdl.MDLImporter(
+                fs,
+                import_vmt.VMTImporter(self.verbose, self.simple_materials,
+                                       self.texture_interpolation, self.cull_materials)
+                if self.import_materials else None,
+                self.verbose,
+            )
+            mdl_importer.load(splitext(relpath(self.filepath, root))[0], self.filepath, context.collection)
+        elif self.strategy == 'BST':
+            try:
+                from . import import_qc
+            except ImportError:
+                self.report({'ERROR'}, "Blender Source Tools is not installed")
+                return {'CANCELLED'}
+            print("Importing model...")
+            qc_importer = import_qc.QCImporter(
+                root,
+                fs,
+                import_vmt.VMTImporter(self.verbose, self.simple_materials,
+                                       self.texture_interpolation, self.cull_materials)
+                if self.import_materials else None,
+                self.verbose,
+            )
+            with qc_importer:
+                qc_importer.load(splitext(relpath(self.filepath, root))[0], context.collection)
         return {'FINISHED'}
 
     def draw(self, context: bpy.types.Context) -> None:
         layout: bpy.types.UILayout = self.layout
         super().draw(context)
-        layout.prop(self, "import_materials")
-        if self.import_materials:
-            box = layout.box()
-            box.alignment = 'RIGHT'
-            box.prop(self, "simple_materials")
-            box.prop(self, "texture_interpolation")
-            box.prop(self, "cull_materials")
-        layout.prop(self, "verbose")
-
-
-class ImportSceneMDL(_ValveGameOperator, _ValveGameOperatorProps):
-    """Load a Source Engine MDL file"""
-    bl_idname = "import_scene.mdl_enhanced"
-    bl_label = "Import MDL (enhanced)"
-    bl_options = {'UNDO', 'PRESET'}
-
-    filepath: bpy.props.StringProperty(subtype='FILE_PATH', options={'HIDDEN'})  # type: ignore
-    filter_glob: bpy.props.StringProperty(default="*.mdl", options={'HIDDEN'})  # type: ignore
-
-    import_materials: bpy.props.BoolProperty(  # type: ignore
-        name="Import materials",
-        default=True,
-    )
-
-    simple_materials: bpy.props.BoolProperty(  # type: ignore
-        name="Simple materials",
-        description="Import simple, exporter-friendly versions of materials.",
-        default=False,
-    )
-
-    texture_interpolation: bpy.props.EnumProperty(  # type: ignore
-        name="Texture interpolation",
-        description="Interpolation type to use for image textures.",
-        items=[
-            ('Linear', "Linear", "Linear interpolation"),
-            ('Closest', "Closest", "No interpolation"),
-            ('Cubic', "Cubic", "Cubic interpolation"),
-            ('Smart', "Smart", "Bicubic when magnifying, else bilinear"),
-        ],
-        default='Linear',
-    )
-
-    cull_materials: bpy.props.BoolProperty(  # type: ignore
-        name="Allow backface culling",
-        description="Enable backface culling for materials which don't disable it.",
-        default=False,
-    )
-
-    verbose: bpy.props.BoolProperty(  # type: ignore
-        name="Verbose",
-        description="Enable to print more info into console",
-        default=False,
-    )
-
-    @classmethod
-    def poll(cls, context: bpy.types.Context) -> bool:
-        return "SourceIO" in context.preferences.addons
-
-    def execute(self, context: bpy.types.Context) -> Set[str]:
-        try:
-            from . import import_mdl
-        except ImportError:
-            self.report({'ERROR'}, "SourceIO must be installed for importing MDL files")
-            return {'CANCELLED'}
-        result = self._check_valve_props(context)
-        if result is not None:
-            return result
-        from . import import_vmt
-        from vmfpy.fs import VMFFileSystem
-        root = _get_source_path_root(self.filepath)
-        if root is None:
-            root = ""
-        print("Indexing game files...")
-        fs = VMFFileSystem(self.data_dirs, self.data_paks, index_files=True)
-        print("Importing model...")
-        importer = import_mdl.MDLImporter(
-            fs,
-            import_vmt.VMTImporter(self.verbose, self.simple_materials, self.texture_interpolation, self.cull_materials)
-            if self.import_materials else None,
-            self.verbose,
-        )
-        importer.load(splitext(relpath(self.filepath, root))[0], self.filepath, context.collection)
-        return {'FINISHED'}
-
-    def draw(self, context: bpy.types.Context) -> None:
-        layout: bpy.types.UILayout = self.layout
-        super().draw(context)
+        layout.prop(self, "strategy")
         layout.prop(self, "import_materials")
         if self.import_materials:
             box = layout.box()
@@ -1182,8 +1125,7 @@ classes = (
     ValveGameOpenPreferencesOperator,
     ExportVMFMDLs,
     ImportSceneVMF,
-    ImportSceneQC,
-    ImportSceneMDL,
+    ImportSceneSourceModel,
     ImportSceneVMT,
     ImportSceneAGREnhanced,
     ObjectTransform3DSky,
@@ -1193,8 +1135,7 @@ classes = (
 def import_menu_func(self: bpy.types.Menu, context: bpy.types.Context) -> None:
     self.layout.operator(ImportSceneVMF.bl_idname, text="Valve Map Format (.vmf)")
     self.layout.operator(ImportSceneVMT.bl_idname, text="Valve Material Type (.vmt)")
-    self.layout.operator(ImportSceneQC.bl_idname, text="Source Engine Model (enhanced) (.qc)")
-    self.layout.operator(ImportSceneMDL.bl_idname, text="Source Engine Model (enhanced) (.mdl)")
+    self.layout.operator(ImportSceneSourceModel.bl_idname, text="Source Engine Model (enhanced) (.qc/.mdl)")
     self.layout.operator(ImportSceneAGREnhanced.bl_idname, text="HLAE afxGameRecord (enhanced) (.agr)")
 
 
