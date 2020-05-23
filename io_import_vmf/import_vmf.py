@@ -141,6 +141,34 @@ class VMFImporter():
         failed_lights = 0
         map_collection = bpy.data.collections.new(path.splitext(path.basename(file_path))[0])
         context.collection.children.link(map_collection)
+
+        total_to_import = 0
+        if self.import_solids:
+            total_to_import += len(vmf.world.solids) + sum(len(e.solids) for e in vmf.func_entities)
+            if self.import_overlays:
+                total_to_import += len(vmf.overlay_entities)
+        if self.import_props:
+            total_to_import += len(vmf.prop_entities)
+        if self.import_lights:
+            total_to_import += len(vmf.light_entities) + len(vmf.spot_light_entities)
+            if vmf.env_light_entity is not None:
+                total_to_import += 1
+        if self.import_sky:
+            total_to_import += 1
+        if self.import_sky_origin:
+            total_to_import += 1
+
+        currently_imported = 0
+
+        def update_progress(interval: int = 100) -> None:
+            nonlocal currently_imported
+            currently_imported += 1
+            if currently_imported % interval == 0:
+                progress = currently_imported / total_to_import
+                context.window_manager.progress_update(progress)
+                print(f"Import progress: {progress * 100:.4f} %")
+
+        context.window_manager.progress_begin(0, 1)
         if self.import_solids:
             print("Building geometry...")
             world_collection = bpy.data.collections.new(vmf.world.classname)
@@ -155,6 +183,7 @@ class VMFImporter():
                     failed_solids += 1
                 else:
                     success_solids += 1
+                update_progress()
             func_collection = bpy.data.collections.new("func")
             map_collection.children.link(func_collection)
             for func_entity in vmf.func_entities:
@@ -168,6 +197,7 @@ class VMFImporter():
                         failed_solids += 1
                     else:
                         success_solids += 1
+                    update_progress()
             if self.import_overlays:
                 print("Importing overlays...")
                 collection = bpy.data.collections.new("overlay")
@@ -182,6 +212,7 @@ class VMFImporter():
                         failed_overlays += 1
                     else:
                         success_overlays += 1
+                    update_progress()
         if self.import_props:
             print("Importing props...")
             prop_collection = bpy.data.collections.new("prop")
@@ -196,6 +227,7 @@ class VMFImporter():
                     failed_props += 1
                 else:
                     success_props += 1
+                update_progress(interval=10)
             if self.optimize_props:
                 print("Optimizing props...")
                 self._optimize_props(prop_collection)
@@ -213,6 +245,7 @@ class VMFImporter():
                     failed_lights += 1
                 else:
                     success_lights += 1
+                update_progress()
             for light_entity in vmf.light_entities:
                 try:
                     self._load_light(light_entity, light_collection)
@@ -223,6 +256,7 @@ class VMFImporter():
                     failed_lights += 1
                 else:
                     success_lights += 1
+                update_progress()
             for spotlight_entity in vmf.spot_light_entities:
                 try:
                     self._load_spotlight(spotlight_entity, light_collection)
@@ -233,6 +267,7 @@ class VMFImporter():
                     failed_lights += 1
                 else:
                     success_lights += 1
+                update_progress()
         if self.import_sky:
             print("Importing skybox...")
             try:
@@ -244,6 +279,7 @@ class VMFImporter():
                 print(f"ERROR LOADING SKYBOX: {err}")
                 if self.verbose:
                     traceback.print_exception(type(err), err, err.__traceback__)
+            update_progress()
         if self.import_sky_origin and vmf.sky_camera_entity is not None:
             print("Importing sky origin...")
             try:
@@ -252,8 +288,10 @@ class VMFImporter():
                 print(f"ERROR LOADING SKY ORIGIN: {err}")
                 if self.verbose:
                     traceback.print_exception(type(err), err, err.__traceback__)
+            update_progress()
 
-        print(f"Done in {time.time() - start} s")
+        context.window_manager.progress_end()
+        print(f"Done in {time.time() - start:.4f} s")
         if self.import_solids:
             print(f"Imported {success_solids} solids ({failed_solids} failed)")
         if self.import_overlays:
