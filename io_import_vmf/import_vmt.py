@@ -1016,6 +1016,7 @@ class VMTImporter():
         self.simple = simple
         self.interpolation = interpolation
         self.cull = cull
+        self._nodraw_cache: Dict[str, bool] = {}
         self._precache: Dict[str, _MaterialBuilder] = {}
         self._cache: Dict[str, VMTData] = {}
         self._vtf_importer = import_vtf.VTFImporter()
@@ -1026,23 +1027,26 @@ class VMTImporter():
 
     def is_nodraw(self, material_name: str, vmt_data: Callable[[], vmt.VMT]) -> bool:
         material_name = material_name.lower()
-        if material_name in self._precache:
-            return self._precache[material_name].nodraw
+        if material_name in self._nodraw_cache:
+            return self._nodraw_cache[material_name]
         try:
             builder = _MaterialBuilder(self._vtf_importer, material_name, vmt_data(),
                                        simple=self.simple, interpolation=self.interpolation, cull=self.cull)
         except FileNotFoundError:
             print(f"WARNING: MATERIAL {material_name} NOT FOUND")
             self._cache[material_name] = self._fallback_material(material_name)
-            return is_invisible_tool((material_name,))
+            is_nodraw = is_invisible_tool((material_name,))
         except vmt.VMTParseException as err:
             print(f"WARNING: MATERIAL {material_name} IS INVALID")
             if self.verbose:
                 traceback.print_exception(type(err), err, err.__traceback__)
             self._cache[material_name] = self._fallback_material(material_name)
-            return is_invisible_tool((material_name,))
-        self._precache[material_name] = builder
-        return builder.nodraw
+            is_nodraw = is_invisible_tool((material_name,))
+        else:
+            self._precache[material_name] = builder
+            is_nodraw = builder.nodraw
+        self._nodraw_cache[material_name] = is_nodraw
+        return is_nodraw
 
     def load(self, material_name: str, vmt_data: Callable[[], vmt.VMT]) -> VMTData:
         material_name = material_name.lower()
