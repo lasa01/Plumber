@@ -44,6 +44,7 @@ class AgrImporterWrapper(import_agr.AgrImporter):
             return None
         modelData = import_agr.ModelData(smd=smd)
         armature = modelData.smd.a
+        armature.animation_data_clear()
         # Fix rotation:
         if armature.rotation_mode != 'QUATERNION':
             armature.rotation_mode = 'QUATERNION'
