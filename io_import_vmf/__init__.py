@@ -23,7 +23,16 @@ bl_info = {
 
 
 class ValveGameDir(bpy.types.PropertyGroup):
-    dirpath: bpy.props.StringProperty(name="Directory path", default="", subtype='DIR_PATH')  # type: ignore
+    def get_dirpath(self) -> str:
+        return self["dirpath"]
+
+    def set_dirpath(self, value: str) -> None:
+        self["dirpath"] = bpy.path.abspath(value)
+
+    dirpath: bpy.props.StringProperty(  # type: ignore
+        name="Directory path", default="", subtype='DIR_PATH',
+        get=get_dirpath, set=set_dirpath,
+    )
 
 
 class ValveGameDirList(bpy.types.UIList):
@@ -77,7 +86,16 @@ class RemoveValveDirOperator(bpy.types.Operator):
 
 
 class ValveGamePak(bpy.types.PropertyGroup):
-    filepath: bpy.props.StringProperty(name="VPK path", default="", subtype='FILE_PATH')  # type: ignore
+    def get_filepath(self) -> str:
+        return self["filepath"]
+
+    def set_filepath(self, value: str) -> None:
+        self["filepath"] = bpy.path.abspath(value)
+
+    filepath: bpy.props.StringProperty(  # type: ignore
+        name="VPK path", default="", subtype='FILE_PATH',
+        get=get_filepath, set=set_filepath,
+    )
 
 
 class ValveGamePakList(bpy.types.UIList):
@@ -131,7 +149,16 @@ class RemoveValvePakOperator(bpy.types.Operator):
 
 
 class ValveGameWildcardDir(bpy.types.PropertyGroup):
-    dirpath: bpy.props.StringProperty(name="Directory path", default="", subtype='DIR_PATH')  # type: ignore
+    def get_dirpath(self) -> str:
+        return self["dirpath"]
+
+    def set_dirpath(self, value: str) -> None:
+        self["dirpath"] = bpy.path.abspath(value)
+
+    dirpath: bpy.props.StringProperty(  # type: ignore
+        name="Directory path", default="", subtype='DIR_PATH',
+        get=get_dirpath, set=set_dirpath,
+    )
 
 
 class ValveGameWildcardDirList(bpy.types.UIList):
@@ -296,11 +323,18 @@ class ValveGameAddonPreferences(bpy.types.AddonPreferences):
     games: bpy.props.CollectionProperty(type=ValveGameSettings)  # type: ignore
     game_index: bpy.props.IntProperty(name="Game definition")  # type: ignore
 
+    def get_dec_models_path(self) -> str:
+        return self["dec_models_path"]
+
+    def set_dec_models_path(self, value: str) -> None:
+        self["dec_models_path"] = bpy.path.abspath(value)
+
     dec_models_path: bpy.props.StringProperty(  # type: ignore
         name="Models path",
         default="",
         description="Path to the directory for decompiled models.",
-        subtype='DIR_PATH'
+        subtype='DIR_PATH',
+        get=get_dec_models_path, set=set_dec_models_path,
     )
 
     @staticmethod
