@@ -8,6 +8,9 @@ import os
 from os.path import splitext, basename, dirname, isfile, join
 import subprocess
 import copy
+import sys
+from contextlib import redirect_stdout
+from io import StringIO
 
 
 _CROWBARCMD_PATH = join(dirname(__file__), "bin/CrowbarCommandLineDecomp.exe")
@@ -78,7 +81,7 @@ class SmdImporterWrapper(import_smd.SmdImporter):
                 break
         else:
             if mat_name not in self._missing_materials:
-                print(f"WARNING: MISSING MATERIAL: {mat_path}")
+                sys.__stdout__.write(f"WARNING: MISSING MATERIAL: {mat_path}\n")
                 self._missing_materials.add(mat_name)
             return super().getMeshMaterial(mat_name)
         data = self.vmt_importer.load(
@@ -130,6 +133,8 @@ class QCImporter():
                 collection.objects.link(twin)
             smd.a = copy_arm
             return smd
+        if self.verbose:
+            print(f"Importing model {name}...")
         SmdImporterWrapper.collection = collection
         path = join(self.dec_models_path, name + ".qc")
         if not isfile(path):
@@ -153,15 +158,24 @@ class QCImporter():
                 raise FileNotFoundError(mdl_path)
             else:
                 # call the decompiler
-                subprocess.run(
+                result = subprocess.run(
                     (
                         _CROWBARCMD_PATH,
                         "-p", str(self.dec_models_path / mdl_path.with_suffix(".mdl")),
                         "-o", str(self.dec_models_path / mdl_dir)
                     ),
-                    check=True
+                    text=True, stdout=subprocess.PIPE, stderr=subprocess.STDOUT,
                 )
-        bpy.ops.import_scene._io_import_vmf_smd_wrapper(filepath=path)
+                if result.returncode != 0:
+                    print(result.stdout)
+                    result.check_returncode()
+        log_capture = StringIO()
+        try:
+            with redirect_stdout(log_capture):
+                bpy.ops.import_scene._io_import_vmf_smd_wrapper(filepath=path)
+        except Exception:
+            print(log_capture.getvalue())
+            raise
         smd = SmdImporterWrapper.smd
         if smd is None:
             raise Exception(f"Error importing {name}: nothing was imported by Blender Source Tools")
