@@ -5,7 +5,7 @@ import re
 from typing import Dict, Any, Tuple, Set, Optional, TYPE_CHECKING
 import bpy
 import os
-from os.path import splitext, basename, dirname, isfile, join
+from os.path import splitext, basename, dirname, isfile, isabs, join
 import subprocess
 import copy
 import sys
@@ -116,7 +116,7 @@ class QCImporter():
     def __exit__(self, exc_type: Any, exc_value: Any, traceback: Any) -> None:
         bpy.utils.unregister_class(SmdImporterWrapper)
 
-    def load_return_smd(self, name: str, collection: bpy.types.Collection) -> Any:
+    def load_return_smd(self, name: str, path: str, collection: bpy.types.Collection) -> Any:
         name = name.lower()
         if name in self._cache:
             if self.verbose:
@@ -136,32 +136,39 @@ class QCImporter():
         if self.verbose:
             print(f"Importing model {name}...")
         SmdImporterWrapper.collection = collection
-        path = join(self.dec_models_path, name + ".qc")
-        if not isfile(path):
-            mdl_path = vmf_path(name)
-            mdl_dir = mdl_path.parent
-            mdl_name = mdl_path.stem
-            # decompiled model doesn't exist, decompile it
-            # save required files
-            try:
-                for filename in self.vmf_fs.tree[mdl_dir].files:
-                    if not filename.startswith(mdl_name):
-                        continue
-                    file_out_path = join(self.dec_models_path, mdl_dir, filename)
-                    os.makedirs(dirname(file_out_path), exist_ok=True)
-                    with self.vmf_fs[mdl_dir / filename] as in_f:
-                        with open(file_out_path, 'wb') as out_f:
-                            for line in in_f:
-                                out_f.write(line)
-            except KeyError:
-                print(f"ERROR: MODEL {mdl_path} NOT FOUND")
-                raise FileNotFoundError(mdl_path)
-            else:
+        if path.endswith(".mdl"):
+            qc_path = join(self.dec_models_path, name + ".qc")
+            if not isfile(qc_path):
+                print("lets decompile")
+                # decompiled model doesn't exist, decompile it
+                mdl_path = vmf_path(name)
+                mdl_dir = mdl_path.parent
+                if not isabs(path):
+                    print("getting files")
+                    mdl_name = mdl_path.stem
+                    # save required files
+                    saved_files = 0
+                    for filename in self.vmf_fs.tree[mdl_dir].files:
+                        if not filename.startswith(mdl_name):
+                            continue
+                        file_out_path = join(self.dec_models_path, mdl_dir, filename)
+                        os.makedirs(dirname(file_out_path), exist_ok=True)
+                        with self.vmf_fs[mdl_dir / filename] as in_f:
+                            with open(file_out_path, 'wb') as out_f:
+                                for line in in_f:
+                                    out_f.write(line)
+                        saved_files += 1
+                    if saved_files == 0:
+                        print(f"ERROR: MODEL {mdl_path} NOT FOUND")
+                        raise FileNotFoundError(mdl_path)
+                    full_mdl_path = str(self.dec_models_path / mdl_path)
+                else:
+                    full_mdl_path = path
                 # call the decompiler
                 result = subprocess.run(
                     (
                         _CROWBARCMD_PATH,
-                        "-p", str(self.dec_models_path / mdl_path.with_suffix(".mdl")),
+                        "-p", full_mdl_path,
                         "-o", str(self.dec_models_path / mdl_dir)
                     ),
                     text=True, stdout=subprocess.PIPE, stderr=subprocess.STDOUT,
@@ -169,6 +176,7 @@ class QCImporter():
                 if result.returncode != 0:
                     print(result.stdout)
                     result.check_returncode()
+            path = qc_path
         log_capture = StringIO()
         try:
             with redirect_stdout(log_capture):
@@ -186,5 +194,5 @@ class QCImporter():
             bpy.context.scene.collection.objects.unlink(smd.a)
         return smd
 
-    def load(self, name: str, collection: bpy.types.Collection) -> bpy.types.Object:
-        return self.load_return_smd(name, collection).a
+    def load(self, name: str, path: str, collection: bpy.types.Collection) -> bpy.types.Object:
+        return self.load_return_smd(name, path, collection).a

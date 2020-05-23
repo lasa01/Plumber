@@ -886,9 +886,16 @@ class ImportSceneSourceModel(_ValveGameOperator, _ValveGameOperatorProps):
             except ImportError:
                 self.report({'ERROR'}, "Blender Source Tools is not installed")
                 return {'CANCELLED'}
+            preferences: ValveGameAddonPreferences = context.preferences.addons[__package__].preferences
+            dec_models_path = preferences.dec_models_path
+            delete_files = False
+            if dec_models_path == "":
+                delete_files = True
+                dec_models_path = join(context.preferences.filepaths.temporary_directory,
+                                       "blender_io_import_vmf_models")
             print("Importing model...")
             qc_importer = import_qc.QCImporter(
-                root,
+                dec_models_path,
                 fs,
                 import_vmt.VMTImporter(self.verbose, self.simple_materials,
                                        self.texture_interpolation, self.cull_materials)
@@ -896,7 +903,9 @@ class ImportSceneSourceModel(_ValveGameOperator, _ValveGameOperatorProps):
                 self.verbose,
             )
             with qc_importer:
-                qc_importer.load(splitext(relpath(self.filepath, root))[0], context.collection)
+                qc_importer.load(splitext(relpath(self.filepath, root))[0], self.filepath, context.collection)
+            if delete_files:
+                rmtree(dec_models_path, ignore_errors=True)
         return {'FINISHED'}
 
     def draw(self, context: bpy.types.Context) -> None:

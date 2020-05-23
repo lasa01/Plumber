@@ -700,7 +700,7 @@ class VMFImporter():
         #     obj: bpy.types.Object = self._mdl_importer.load(name, name + ".mdl", collection)
         #     obj.rotation_euler = Euler((0, 0, radians(90)))
         if self._qc_importer is not None:
-            obj = self._qc_importer.load(name, collection)
+            obj = self._qc_importer.load(name, name + ".mdl", collection)
             obj.rotation_euler = Euler((0, 0, radians(90)))
         else:
             raise ImportError("QC importer not found")

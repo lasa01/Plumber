@@ -38,7 +38,7 @@ class AgrImporterWrapper(import_agr.AgrImporter):
         if name == "?":
             return None
         try:
-            smd = self.qc_importer.load_return_smd(name, self.collection)
+            smd = self.qc_importer.load_return_smd(name, name + ".mdl", self.collection)
         except Exception:
             self.error(f"Failed to import \"{name}\"")
             return None
