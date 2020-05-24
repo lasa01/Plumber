@@ -139,12 +139,10 @@ class QCImporter():
         if path.endswith(".mdl"):
             qc_path = join(self.dec_models_path, name + ".qc")
             if not isfile(qc_path):
-                print("lets decompile")
                 # decompiled model doesn't exist, decompile it
-                mdl_path = vmf_path(name)
+                mdl_path = vmf_path(name + ".mdl")
                 mdl_dir = mdl_path.parent
                 if not isabs(path):
-                    print("getting files")
                     mdl_name = mdl_path.stem
                     # save required files
                     saved_files = 0
@@ -173,9 +171,9 @@ class QCImporter():
                     ),
                     text=True, stdout=subprocess.PIPE, stderr=subprocess.STDOUT,
                 )
-                if result.returncode != 0:
+                if result.returncode != 0 or not isfile(qc_path):
                     print(result.stdout)
-                    result.check_returncode()
+                    raise Exception(f"Decompiling model {mdl_path} failed")
             path = qc_path
         log_capture = StringIO()
         try:
