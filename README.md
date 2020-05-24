@@ -35,6 +35,7 @@ In case the addon fails to detect some VPK archives or you would like to add a d
 you can use the + buttons to add them manually.
 
 Blender may appear frozen when importing complex maps. To see the import progress and any errors in realtime, you can open the Blender console.
+Unsupported material parameter warnings are normal, although they could mean that the importer can not recreate fully accurate materials.
 
 ### Maps
 `File -> Import -> Valve Map Format (.vmf)`
@@ -48,6 +49,9 @@ The more things you select, the slower the import progress will be, so you shoul
 
 Brushes, lights and overlays are fast to import, they should take less than a minute.
 Importing materials can take a little longer. Importing props is extremely slow, it usually takes over 30 minutes for a full-sized map.
+
+There is an option to optimize the imported props, which removes unneeded armatures from static props.
+It is enabled by default, but you can disable it if you encounter issues with it.
 
 Importing the sky converts the original cubemap into a Blender-compatible equirectangular format, so quality might suffer.
 You can select a larger sky resolution to increase the quality, but this will also increase import time.
@@ -70,11 +74,8 @@ You should check it if you plan to export the materials outside Blender, since e
 There are also options to select the texture interpolation type
 and whether to allow backface culling in materials that don't disable it.
 
-### QC (requires [Blender Source Tools](https://steamreview.org/BlenderSourceTools/))
-`File -> Import -> Source Engine Model (enhanced) (.qc)`
-
-### MDL (requires [SourceIO](https://github.com/REDxEYE/SourceIO))
-`File -> Import -> Source Engine Model (enhanced) (.mdl)`
+### QC / MDL (requires [Blender Source Tools](https://steamreview.org/BlenderSourceTools/) or [SourceIO](https://github.com/REDxEYE/SourceIO))
+`File -> Import -> Source Engine Model (enhanced) (.qc/.mdl)`
 
 ### AGR (requires [afx-blender-scripts](https://github.com/advancedfx/afx-blender-scripts))
 `File -> Import -> HLAE afxGameRecord (enhanced) (.agr)`
