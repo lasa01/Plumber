@@ -831,7 +831,7 @@ class VMFImporter():
             # find out which vertices are outside this uv side
             outside_vertices = {
                 i for i, v in enumerate(uv_rot_vertices)
-                if geometry.distance_point_to_plane(v, side_vert_a, cut_plane_normal) > 0
+                if geometry.distance_point_to_plane(v, side_vert_a, cut_plane_normal) > 0.005
             }
             if len(outside_vertices) == 0:
                 continue
@@ -891,7 +891,7 @@ class VMFImporter():
             cut_plane_normal = up_vector.cross(side_vert_b - side_vert_a)
             remove_vertices |= {
                 i for i, v in enumerate(uv_rot_vertices)
-                if geometry.distance_point_to_plane(v, side_vert_a, cut_plane_normal) > 0.001
+                if geometry.distance_point_to_plane(v, side_vert_a, cut_plane_normal) > 0.005
             }
 
         # remove marked vertices and faces referencing them
