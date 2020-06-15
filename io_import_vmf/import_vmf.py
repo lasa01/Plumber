@@ -861,6 +861,8 @@ class VMFImporter():
                 new_uv_rot_vertice = geometry.intersect_line_plane(*split_line, side_vert_a, cut_plane_normal)
                 new_vertice = origin + uv_rot_to_global_matrix @ new_uv_rot_vertice
                 for other_idx, other_vert in enumerate(vertices):
+                    if other_idx in remove_vertices:
+                        continue
                     if _vec_isclose(other_vert, new_vertice, Vector((0, 0, 0)), self.epsilon, 0.005):
                         new_vert_idx1 = other_idx
                         break
@@ -876,6 +878,8 @@ class VMFImporter():
                 new_uv_rot_vertice = geometry.intersect_line_plane(*split_line, side_vert_a, cut_plane_normal)
                 new_vertice = origin + uv_rot_to_global_matrix @ new_uv_rot_vertice
                 for other_idx, other_vert in enumerate(vertices):
+                    if other_idx in remove_vertices:
+                        continue
                     if _vec_isclose(other_vert, new_vertice, Vector((0, 0, 0)), self.epsilon, 0.005):
                         new_vert_idx2 = other_idx
                         break
