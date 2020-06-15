@@ -803,6 +803,10 @@ class VMFImporter():
                     vert_idx_map[vertice] = vert_idx
                 face_vertices.append(current_face_vertices)
                 face_normals.append(self._side_normals[side_id])
+
+        if len(face_vertices) == 0:
+            raise Exception(f"NO OVERLAY TARGET FACES FOUND FOR {name}")
+
         for side_id in overlay.sides:
             side_normal = self._side_normals[side_id]  # TODO: should be face normal for displacements
             for vertice_idxs in self._side_face_vertices[side_id]:
@@ -920,6 +924,9 @@ class VMFImporter():
                 continue
             face_vertices.append([vertice_idx_map[v_idx] for v_idx in face_vert_idxs])
             face_normals.append(old_face_normals[face_idx])
+
+        if len(face_vertices) == 0:
+            raise Exception(f"IMPORTED OVERLAY FOR {name} IS EMPTY")
 
         # calculate projective transformation for the vertices into uvs based on the 4 supplied points
         # https://math.stackexchange.com/a/339033
