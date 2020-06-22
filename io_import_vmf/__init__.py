@@ -928,7 +928,8 @@ class ImportSceneVMT(_ValveGameOperator, _ValveGameOperatorProps):
     bl_label = "Import VMT"
     bl_options = {'UNDO', 'PRESET'}
 
-    filepath: bpy.props.StringProperty(subtype='FILE_PATH', options={'HIDDEN'})  # type: ignore
+    directory: bpy.props.StringProperty(subtype='DIR_PATH', options={'HIDDEN'})  # type: ignore
+    files: bpy.props.CollectionProperty(type=bpy.types.OperatorFileListElement, options={'HIDDEN'})  # type: ignore
     filter_glob: bpy.props.StringProperty(default="*.vmt", options={'HIDDEN'})  # type: ignore
 
     simple_materials: bpy.props.BoolProperty(  # type: ignore
@@ -969,17 +970,20 @@ class ImportSceneVMT(_ValveGameOperator, _ValveGameOperatorProps):
         from vmfpy.fs import VMFFileSystem
         from vmfpy.vmt import VMT
         print("Indexing game files...")
-        root = _get_source_path_root(self.filepath, "materials")
+        root = _get_source_path_root(self.directory, "materials")
         if root is not None and root not in self.data_dirs:
             self.data_dirs.append(root)
         fs = VMFFileSystem(self.data_dirs, self.data_paks, index_files=True)
-        print("Loading material...")
+        print("Loading materials...")
         importer = import_vmt.VMTImporter(self.verbose, self.simple_materials,
                                           self.texture_interpolation, self.cull_materials)
-        importer.load(
-            splitext(basename(self.filepath))[0],
-            lambda: VMT(open(self.filepath, encoding='utf-8'), fs, allow_patch=True)
-        )
+        for file_obj in self.files:
+            print(f"Importing {file_obj.name}...")
+            filepath = join(self.directory, file_obj.name)
+            importer.load(
+                splitext(file_obj.name)[0],
+                lambda: VMT(open(filepath, encoding='utf-8'), fs, allow_patch=True)
+            )
         return {'FINISHED'}
 
     def draw(self, context: bpy.types.Context) -> None:
