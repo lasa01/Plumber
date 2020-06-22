@@ -1,4 +1,8 @@
-from SourceIO import byte_io_mdl, mdl2model
+from SourceIO import byte_io_mdl
+try:
+    from SourceIO import mdl2model
+except ImportError:
+    raise Exception("Incompatible SourceIO version. Only versions up to 3.7.0 are supported.")
 from vmfpy.fs import VMFFileSystem, vmf_path, AnyBinaryIO
 from vmfpy.vmt import VMT
 import os
