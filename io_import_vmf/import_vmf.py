@@ -48,6 +48,10 @@ def _srgb2lin(s: float) -> float:
     return lin
 
 
+def _vertices_center(verts: List[Vector]) -> Vector:
+    return sum(verts, Vector((0, 0, 0))) / len(verts)
+
+
 class VMFImporter():
     def __init__(self, data_dirs: Iterable[str], data_paks: Iterable[str], dec_models_path: str = None,
                  import_solids: bool = True, import_overlays: bool = True,
@@ -666,10 +670,12 @@ class VMFImporter():
                         if self.import_overlays:
                             self._side_vertices[side.id].append(vertices[vert_idx])
 
+        center = _vertices_center(vertices)
+
         mesh: bpy.types.Mesh = bpy.data.meshes.new(name)
 
         # blender can figure out the edges
-        mesh.from_pydata([v * self.scale for v in vertices], (), face_vertices)
+        mesh.from_pydata([(v - center) * self.scale for v in vertices], (), face_vertices)
         for material in materials:
             mesh.materials.append(material)
         uv_layer: bpy.types.MeshUVLoopLayer = mesh.uv_layers.new()
@@ -691,6 +697,7 @@ class VMFImporter():
             mesh.flip_normals()
         obj: bpy.types.Object = bpy.data.objects.new(name, object_data=mesh)
         collection.objects.link(obj)
+        obj.location = center * self.scale
         if is_tool:
             obj.display_type = 'WIRE'
 
@@ -974,8 +981,10 @@ class VMFImporter():
                 face_uvs.append((product_vec.x / product_vec.z, product_vec.y / product_vec.z))
             face_loop_uvs.append(face_uvs)
 
+        center = _vertices_center(vertices)
+
         mesh: bpy.types.Mesh = bpy.data.meshes.new(name)
-        mesh.from_pydata([v * self.scale for v in vertices], (), face_vertices)
+        mesh.from_pydata([(v - center) * self.scale for v in vertices], (), face_vertices)
         _, _, material = self._load_material(overlay.material, lambda: overlay.get_material(allow_patch=True))
         mesh.materials.append(material)
         uv_layer: bpy.types.MeshUVLoopLayer = mesh.uv_layers.new()
@@ -986,3 +995,4 @@ class VMFImporter():
             mesh.flip_normals()
         obj: bpy.types.Object = bpy.data.objects.new(name, object_data=mesh)
         collection.objects.link(obj)
+        obj.location = center * self.scale
