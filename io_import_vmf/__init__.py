@@ -903,7 +903,7 @@ class ImportSceneSourceModel(_ValveGameOperator, _ValveGameOperatorProps):
                 self.verbose,
             )
             with qc_importer:
-                qc_importer.load(splitext(relpath(self.filepath, root))[0], self.filepath, context.collection)
+                qc_importer.load(splitext(relpath(self.filepath, root))[0], self.filepath, context.collection, root)
             if delete_files:
                 rmtree(dec_models_path, ignore_errors=True)
         return {'FINISHED'}

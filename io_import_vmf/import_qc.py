@@ -1,16 +1,18 @@
 from io_scene_valvesource import import_smd, utils
+from .utils import truncate_name
 from vmfpy.fs import VMFFileSystem, vmf_path
 from vmfpy.vmt import VMT
 import re
 from typing import Dict, Any, Tuple, Set, Optional, TYPE_CHECKING
 import bpy
 import os
-from os.path import splitext, basename, dirname, isfile, isabs, join
+from os.path import splitext, basename, dirname, isfile, isabs, join, relpath
 import subprocess
 import copy
 import sys
 from contextlib import redirect_stdout
 from io import StringIO
+import time
 
 
 _CROWBARCMD_PATH = join(dirname(__file__), "bin/CrowbarCommandLineDecomp.exe")
@@ -32,6 +34,8 @@ class SmdImporterWrapper(import_smd.SmdImporter):
     vmt_importer: Optional['import_vmt.VMTImporter']
     vmf_fs: VMFFileSystem
     collection: bpy.types.Collection
+    root: str
+    name: str
 
     def execute(self, context: bpy.types.Context) -> set:
         self.existingBones = []  # type: ignore
@@ -47,6 +51,27 @@ class SmdImporterWrapper(import_smd.SmdImporter):
             animations = "$staticprop" not in content.lower()
         self.readQC(self.filepath, False, animations, False, 'XYZ', outer_qc=True)
         return {'FINISHED'}
+
+    def readQC(self, filepath: str, newscene: bool, doAnim: bool,
+               makeCamera: bool, rotMode: str, outer_qc: bool = False) -> int:
+        if outer_qc:
+            self.qc = utils.QcInfo()
+            self.qc.startTime = time.time()
+            self.qc.jobName = SmdImporterWrapper.name
+            self.qc.root_filedir = dirname(filepath)
+            self.qc.makeCamera = makeCamera
+            self.qc.animation_names = []
+        return super().readQC(filepath, newscene, doAnim, makeCamera, rotMode, False)
+
+    def createArmature(self, armature_name: str) -> bpy.types.Object:
+        if armature_name.endswith("_skeleton"):
+            armature_name = armature_name[:-9]
+        return super().createArmature(armature_name)
+
+    def initSMD(self, filepath: str, smd_type: str, upAxis: str, rotMode: str, target_layer: int) -> Any:
+        smd = super().initSMD(filepath, smd_type, upAxis, rotMode, target_layer)
+        smd.jobName = truncate_name(splitext(relpath(filepath, SmdImporterWrapper.root))[0])
+        return smd
 
     def readSMD(self, filepath: str, upAxis: str, rotMode: str,
                 newscene: bool = False, smd_type: Any = None, target_layer: int = 0) -> int:
@@ -78,6 +103,7 @@ class SmdImporterWrapper(import_smd.SmdImporter):
         for mat_dir in self._cdmaterials:
             mat_path = "materials" / mat_dir / mat_name_path
             if mat_path in self.vmf_fs:
+                mat_name = splitext(mat_path)[0]
                 break
         else:
             if mat_name not in self._missing_materials:
@@ -116,7 +142,7 @@ class QCImporter():
     def __exit__(self, exc_type: Any, exc_value: Any, traceback: Any) -> None:
         bpy.utils.unregister_class(SmdImporterWrapper)
 
-    def load_return_smd(self, name: str, path: str, collection: bpy.types.Collection) -> Any:
+    def load_return_smd(self, name: str, path: str, collection: bpy.types.Collection, root: str = "") -> Any:
         name = name.lower()
         if name in self._cache:
             if self.verbose:
@@ -136,6 +162,7 @@ class QCImporter():
         if self.verbose:
             print(f"Importing model {name}...")
         SmdImporterWrapper.collection = collection
+        SmdImporterWrapper.name = truncate_name(name)
         if path.endswith(".mdl"):
             qc_path = join(self.dec_models_path, name + ".qc")
             if not isfile(qc_path):
@@ -175,6 +202,9 @@ class QCImporter():
                     print(result.stdout)
                     raise Exception(f"Decompiling model {mdl_path} failed")
             path = qc_path
+            SmdImporterWrapper.root = self.dec_models_path
+        else:
+            SmdImporterWrapper.root = root
         log_capture = StringIO()
         try:
             with redirect_stdout(log_capture):
@@ -192,5 +222,5 @@ class QCImporter():
             bpy.context.scene.collection.objects.unlink(smd.a)
         return smd
 
-    def load(self, name: str, path: str, collection: bpy.types.Collection) -> bpy.types.Object:
-        return self.load_return_smd(name, path, collection).a
+    def load(self, name: str, path: str, collection: bpy.types.Collection, root: str = "") -> bpy.types.Object:
+        return self.load_return_smd(name, path, collection, root).a
