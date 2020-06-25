@@ -649,6 +649,12 @@ class ImportSceneVMF(_VMFOperator, _VMFOperatorProps):
         default=False,
     )
 
+    reuse_old_materials: bpy.props.BoolProperty(  # type: ignore
+        name="Reuse old materials",
+        description="Reuse previously imported materials and images instead of reimporting them.",
+        default=True,
+    )
+
     global_scale: bpy.props.FloatProperty(  # type: ignore
         name="Scale",
         description="Scale everything by this value",
@@ -693,6 +699,7 @@ class ImportSceneVMF(_VMFOperator, _VMFOperatorProps):
                                           import_materials=self.import_materials,
                                           simple_materials=self.simple_materials, cull_materials=self.cull_materials,
                                           texture_interpolation=self.texture_interpolation,
+                                          reuse_old_materials=self.reuse_old_materials,
                                           import_lights=self.import_lights,
                                           scale=self.global_scale, epsilon=self.epsilon,
                                           light_factor=self.light_factor, sun_factor=self.sun_factor,
@@ -744,6 +751,7 @@ class ImportSceneVMF(_VMFOperator, _VMFOperatorProps):
                 box.prop(self, "simple_materials")
                 box.prop(self, "texture_interpolation")
                 box.prop(self, "cull_materials")
+                box.prop(self, "reuse_old_materials")
         layout.prop(self, "import_lights")
         if self.import_lights:
             box = layout.box()
@@ -838,6 +846,12 @@ class ImportSceneSourceModel(_ValveGameOperator, _ValveGameOperatorProps):
         default=False,
     )
 
+    reuse_old_materials: bpy.props.BoolProperty(  # type: ignore
+        name="Reuse old materials",
+        description="Reuse previously imported materials and images instead of reimporting them.",
+        default=True,
+    )
+
     verbose: bpy.props.BoolProperty(  # type: ignore
         name="Verbose",
         description="Enable to print more info into console",
@@ -875,7 +889,8 @@ class ImportSceneSourceModel(_ValveGameOperator, _ValveGameOperatorProps):
             mdl_importer = import_mdl.MDLImporter(
                 fs,
                 import_vmt.VMTImporter(self.verbose, self.simple_materials,
-                                       self.texture_interpolation, self.cull_materials)
+                                       self.texture_interpolation, self.cull_materials,
+                                       reuse_old=self.reuse_old_materials, reuse_old_images=self.reuse_old_materials)
                 if self.import_materials else None,
                 self.verbose,
             )
@@ -898,7 +913,8 @@ class ImportSceneSourceModel(_ValveGameOperator, _ValveGameOperatorProps):
                 dec_models_path,
                 fs,
                 import_vmt.VMTImporter(self.verbose, self.simple_materials,
-                                       self.texture_interpolation, self.cull_materials)
+                                       self.texture_interpolation, self.cull_materials,
+                                       reuse_old=self.reuse_old_materials, reuse_old_images=self.reuse_old_materials)
                 if self.import_materials else None,
                 self.verbose,
             )
@@ -919,6 +935,7 @@ class ImportSceneSourceModel(_ValveGameOperator, _ValveGameOperatorProps):
             box.prop(self, "simple_materials")
             box.prop(self, "texture_interpolation")
             box.prop(self, "cull_materials")
+            box.prop(self, "reuse_old_materials")
         layout.prop(self, "verbose")
 
 
@@ -956,6 +973,12 @@ class ImportSceneVMT(_ValveGameOperator, _ValveGameOperatorProps):
         default=False,
     )
 
+    reuse_old_images: bpy.props.BoolProperty(  # type: ignore
+        name="Reuse old images",
+        description="Reuse previously imported images instead of reimporting them.",
+        default=True,
+    )
+
     verbose: bpy.props.BoolProperty(  # type: ignore
         name="Verbose",
         description="Enable to print more info into console",
@@ -976,7 +999,8 @@ class ImportSceneVMT(_ValveGameOperator, _ValveGameOperatorProps):
         fs = VMFFileSystem(self.data_dirs, self.data_paks, index_files=True)
         print("Loading materials...")
         importer = import_vmt.VMTImporter(self.verbose, self.simple_materials,
-                                          self.texture_interpolation, self.cull_materials)
+                                          self.texture_interpolation, self.cull_materials,
+                                          reuse_old=False, reuse_old_images=self.reuse_old_images)
         for file_obj in self.files:
             print(f"Importing {file_obj.name}...")
             filepath = join(self.directory, file_obj.name)
@@ -992,6 +1016,7 @@ class ImportSceneVMT(_ValveGameOperator, _ValveGameOperatorProps):
         layout.prop(self, "simple_materials")
         layout.prop(self, "texture_interpolation")
         layout.prop(self, "cull_materials")
+        layout.prop(self, "reuse_old_images")
         layout.prop(self, "verbose")
 
 
@@ -1053,6 +1078,12 @@ class ImportSceneAGREnhanced(_ValveGameOperator, _ValveGameOperatorProps):
         default=False,
     )
 
+    reuse_old_materials: bpy.props.BoolProperty(  # type: ignore
+        name="Reuse old materials",
+        description="Reuse previously imported materials and images instead of reimporting them.",
+        default=True,
+    )
+
     verbose: bpy.props.BoolProperty(  # type: ignore
         name="Verbose",
         description="Enable to print more info into console",
@@ -1081,6 +1112,7 @@ class ImportSceneAGREnhanced(_ValveGameOperator, _ValveGameOperatorProps):
             dec_models_path, fs,
             import_materials=self.import_materials, simple_materials=self.simple_materials,
             texture_interpolation=self.texture_interpolation, cull_materials=self.cull_materials,
+            reuse_old_materials=self.reuse_old_materials,
             verbose=self.verbose,
             inter_key=self.inter_key, global_scale=self.global_scale, scale_invisible_zero=self.scale_invisible_zero,
         )
@@ -1110,10 +1142,16 @@ class ImportSceneAGREnhanced(_ValveGameOperator, _ValveGameOperatorProps):
             box.prop(self, "simple_materials")
             box.prop(self, "texture_interpolation")
             box.prop(self, "cull_materials")
+            box.prop(self, "reuse_old_materials")
         layout.prop(self, "inter_key")
         layout.prop(self, "global_scale")
         layout.prop(self, "scale_invisible_zero")
         layout.prop(self, "verbose")
+
+
+class MaterialVMTData(bpy.types.PropertyGroup):
+    width: bpy.props.IntProperty(default=1)  # type: ignore
+    height: bpy.props.IntProperty(default=1)  # type: ignore
 
 
 classes = (
@@ -1142,6 +1180,7 @@ classes = (
     ImportSceneVMT,
     ImportSceneAGREnhanced,
     ObjectTransform3DSky,
+    MaterialVMTData,
 )
 
 
@@ -1162,6 +1201,7 @@ def register() -> None:
         bpy.utils.register_class(cls)
     bpy.types.TOPBAR_MT_file_import.append(import_menu_func)
     bpy.types.VIEW3D_MT_object.append(object_menu_func)
+    bpy.types.Material.vmt_data = bpy.props.PointerProperty(type=MaterialVMTData)
 
 
 def unregister() -> None:
@@ -1169,3 +1209,4 @@ def unregister() -> None:
         bpy.utils.unregister_class(cls)
     bpy.types.TOPBAR_MT_file_import.remove(import_menu_func)
     bpy.types.VIEW3D_MT_object.remove(object_menu_func)
+    del bpy.types.Material.vmt_data

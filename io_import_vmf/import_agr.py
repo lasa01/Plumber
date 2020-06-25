@@ -68,6 +68,7 @@ class AgrImporter():
     def __init__(self, dec_models_path: str, vmf_fs: VMFFileSystem = VMFFileSystem(),
                  import_materials: bool = True, simple_materials: bool = False,
                  texture_interpolation: str = 'Linear', cull_materials: bool = False,
+                 reuse_old_materials: bool = True,
                  inter_key: bool = False, global_scale: float = 0.01, scale_invisible_zero: bool = False,
                  verbose: bool = False):
         self.verbose = verbose
@@ -76,7 +77,8 @@ class AgrImporter():
         if import_materials:
             from . import import_vmt
             vmt_importer: Optional[import_vmt.VMTImporter] = import_vmt.VMTImporter(
-                verbose, simple_materials, texture_interpolation, cull_materials
+                verbose, simple_materials, texture_interpolation, cull_materials,
+                reuse_old=reuse_old_materials, reuse_old_images=reuse_old_materials,
             )
         else:
             vmt_importer = None

@@ -8,22 +8,25 @@ import bpy
 
 
 class VTFImporter():
-    def __init__(self) -> None:
+    def __init__(self, reuse_old: bool = True) -> None:
+        self.reuse_old = reuse_old
         self._cache: Dict[str, bpy.types.Image] = {}
 
     def load(self, image_name: str, file: AnyBinaryIO,
              colorspace: str = 'sRGB', alpha_mode: str = 'CHANNEL_PACKED') -> bpy.types.Image:
         image_name = image_name.lower()
+        truncated_name = truncate_name(image_name + ".png")
         if image_name in self._cache:
             return self._cache[image_name]
+        if self.reuse_old and truncated_name in bpy.data.images:
+            return bpy.data.images[truncated_name]
         with VTFLib() as vtflib:
             with file:
                 vtflib.load_image_bytes(file.read())
             alpha = bool(vtflib.image_flags() & (VTFImageFlag.TEXTUREFLAGS_ONEBITALPHA |
                                                  VTFImageFlag.TEXTUREFLAGS_EIGHTBITALPHA))
             width, height = vtflib.image_width(), vtflib.image_height()
-            image: bpy.types.Image = bpy.data.images.new(truncate_name(image_name + ".png"), width, height,
-                                                         alpha=alpha)
+            image: bpy.types.Image = bpy.data.images.new(truncated_name, width, height, alpha=alpha)
             pixels = numpy.frombuffer(vtflib.flip_image(vtflib.image_as_rgba8888(), width, height), dtype=numpy.uint8)
         pixels = pixels.astype(numpy.float16, copy=False)
         pixels /= 255

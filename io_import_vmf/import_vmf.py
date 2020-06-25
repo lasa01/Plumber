@@ -59,7 +59,8 @@ class VMFImporter():
                  import_materials: bool = True, import_lights: bool = True,
                  import_sky_origin: bool = True, import_sky: bool = True,
                  scale: float = 0.01, epsilon: float = 0.001, sky_resolution: int = 1024,
-                 simple_materials: bool = False, texture_interpolation: str = 'Linear', cull_materials: bool = False,
+                 simple_materials: bool = False, texture_interpolation: str = 'Linear',
+                 cull_materials: bool = False, reuse_old_materials: bool = True,
                  light_factor: float = 0.1, sun_factor: float = 0.01, ambient_factor: float = 0.001,
                  verbose: bool = False, skip_tools: bool = False):
         self.epsilon = epsilon
@@ -88,7 +89,8 @@ class VMFImporter():
         if import_materials:
             from . import import_vmt
             self._vmt_importer = import_vmt.VMTImporter(
-                self.verbose, simple_materials, texture_interpolation, cull_materials
+                self.verbose, simple_materials, texture_interpolation, cull_materials,
+                reuse_old=reuse_old_materials, reuse_old_images=reuse_old_materials,
             )
         else:
             self._vmt_importer = None

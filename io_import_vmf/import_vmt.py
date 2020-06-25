@@ -956,7 +956,7 @@ class _MaterialBuilder():
                 self._shader_dict['Emission'].input = selfillum_input
 
     def build(self) -> bpy.types.Material:
-        material: bpy.types.Material = bpy.data.materials.new(truncate_name(self.name))
+        material: bpy.types.Material = bpy.data.materials.new(self.name)
         material.use_nodes = True
         material.blend_method = self.blend_method
         material.shadow_method = self.shadow_method
@@ -1011,36 +1011,39 @@ class _MaterialBuilder():
 
 class VMTImporter():
     def __init__(self, verbose: bool = False, simple: bool = False,
-                 interpolation: str = 'Linear', cull: bool = False) -> None:
+                 interpolation: str = 'Linear', cull: bool = False,
+                 reuse_old: bool = True, reuse_old_images: bool = True) -> None:
         self.verbose = verbose
         self.simple = simple
         self.interpolation = interpolation
         self.cull = cull
+        self.reuse_old = reuse_old
         self._nodraw_cache: Dict[str, bool] = {}
         self._precache: Dict[str, _MaterialBuilder] = {}
         self._cache: Dict[str, VMTData] = {}
-        self._vtf_importer = import_vtf.VTFImporter()
+        self._vtf_importer = import_vtf.VTFImporter(reuse_old=reuse_old_images)
 
     def _fallback_material(self, material_name: str) -> VMTData:
-        material: bpy.types.Material = bpy.data.materials.new(truncate_name(material_name))
+        material: bpy.types.Material = bpy.data.materials.new(material_name)
         return VMTData(1, 1, material)
 
     def is_nodraw(self, material_name: str, vmt_data: Callable[[], vmt.VMT]) -> bool:
         material_name = material_name.lower()
+        truncated_name = truncate_name(material_name)
         if material_name in self._nodraw_cache:
             return self._nodraw_cache[material_name]
         try:
-            builder = _MaterialBuilder(self._vtf_importer, material_name, vmt_data(),
+            builder = _MaterialBuilder(self._vtf_importer, truncated_name, vmt_data(),
                                        simple=self.simple, interpolation=self.interpolation, cull=self.cull)
         except FileNotFoundError:
             print(f"WARNING: MATERIAL {material_name} NOT FOUND")
-            self._cache[material_name] = self._fallback_material(material_name)
+            self._cache[material_name] = self._fallback_material(truncated_name)
             is_nodraw = is_invisible_tool((material_name,))
         except vmt.VMTParseException as err:
             print(f"WARNING: MATERIAL {material_name} IS INVALID")
             if self.verbose:
                 traceback.print_exception(type(err), err, err.__traceback__)
-            self._cache[material_name] = self._fallback_material(material_name)
+            self._cache[material_name] = self._fallback_material(truncated_name)
             is_nodraw = is_invisible_tool((material_name,))
         else:
             self._precache[material_name] = builder
@@ -1050,15 +1053,20 @@ class VMTImporter():
 
     def load(self, material_name: str, vmt_data: Callable[[], vmt.VMT]) -> VMTData:
         material_name = material_name.lower()
+        truncated_name = truncate_name(material_name)
         if material_name in self._cache:
             return self._cache[material_name]
+        if self.reuse_old and truncated_name in bpy.data.materials:
+            material: bpy.types.Material = bpy.data.materials[truncated_name]
+            if len(material.node_tree.nodes) != 0:
+                return VMTData(material.vmt_data.width, material.vmt_data.height, material)
         if self.verbose:
             print(f"Building material {material_name}...")
         try:
             if material_name in self._precache:
                 builder = self._precache[material_name]
             else:
-                builder = _MaterialBuilder(self._vtf_importer, material_name, vmt_data(),
+                builder = _MaterialBuilder(self._vtf_importer, truncated_name, vmt_data(),
                                            simple=self.simple, interpolation=self.interpolation, cull=self.cull)
         except FileNotFoundError:
             print(f"WARNING: MATERIAL {material_name} NOT FOUND")
@@ -1077,6 +1085,8 @@ class VMTImporter():
                     traceback.print_exception(type(err), err, err.__traceback__)
                 data = self._fallback_material(material_name)
             else:
+                material.vmt_data.width = builder.width
+                material.vmt_data.height = builder.height
                 data = VMTData(builder.width, builder.height, material)
         self._cache[material_name] = data
         return data
