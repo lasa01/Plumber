@@ -6,7 +6,8 @@ import re
 from typing import Dict, Any, Tuple, Set, Optional, TYPE_CHECKING
 import bpy
 import os
-from os.path import splitext, basename, dirname, isfile, isabs, join, relpath
+from os.path import splitext, basename, dirname, isfile, isdir, isabs, join, relpath
+from shutil import move
 import subprocess
 import copy
 import sys
@@ -198,6 +199,14 @@ class QCImporter():
                     ),
                     text=True, stdout=subprocess.PIPE, stderr=subprocess.STDOUT,
                 )
+                alternate_qc_dir = splitext(qc_path)[0]
+                alternate_qc_path = join(alternate_qc_dir, basename(name) + ".qc")
+                if isdir(alternate_qc_dir) and isfile(alternate_qc_path):
+                    # model could be decompiled into different location if user has edited settings in Crowbar
+                    qc_dir = dirname(qc_path)
+                    for filename in os.listdir(alternate_qc_dir):
+                        move(join(alternate_qc_dir, filename), qc_dir)
+                    os.rmdir(alternate_qc_dir)
                 if result.returncode != 0 or not isfile(qc_path):
                     print(result.stdout)
                     raise Exception(f"Decompiling model {mdl_path} failed")
