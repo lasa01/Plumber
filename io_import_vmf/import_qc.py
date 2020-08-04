@@ -205,7 +205,11 @@ class QCImporter():
                     # model could be decompiled into different location if user has edited settings in Crowbar
                     qc_dir = dirname(qc_path)
                     for filename in os.listdir(alternate_qc_dir):
-                        move(join(alternate_qc_dir, filename), qc_dir)
+                        filepath = join(alternate_qc_dir, filename)
+                        try:
+                            move(filepath, qc_dir)
+                        except FileExistsError:
+                            os.remove(filepath)
                     os.rmdir(alternate_qc_dir)
                 if result.returncode != 0 or not isfile(qc_path):
                     print(result.stdout)
