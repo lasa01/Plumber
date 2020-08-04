@@ -1058,7 +1058,7 @@ class VMTImporter():
             return self._cache[material_name]
         if self.reuse_old and truncated_name in bpy.data.materials:
             material: bpy.types.Material = bpy.data.materials[truncated_name]
-            if len(material.node_tree.nodes) != 0:
+            if material.use_nodes and len(material.node_tree.nodes) != 0:
                 return VMTData(material.vmt_data.width, material.vmt_data.height, material)
         if self.verbose:
             print(f"Building material {material_name}...")
