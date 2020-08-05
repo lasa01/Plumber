@@ -9,7 +9,6 @@ import os
 from os.path import splitext, basename, dirname, isfile, isdir, isabs, join, relpath
 from shutil import move
 import subprocess
-import copy
 import sys
 from contextlib import redirect_stdout
 from io import StringIO
@@ -22,6 +21,23 @@ _CDMATERIALS_REGEX = re.compile(r'\$CDMaterials[ \t]+"([^"\n]+)"', re.IGNORECASE
 
 if TYPE_CHECKING:
     from . import import_vmt  # noqa: F401
+
+
+class FakeSmd():
+    def __init__(self, armature: bpy.types.Object, bone_id_map: Dict[int, str]):
+        self.a = armature
+        self.boneIDs = bone_id_map
+
+    def copy(self) -> 'FakeSmd':
+        return FakeSmd(self.a, self.boneIDs)
+
+    @staticmethod
+    def from_bst(smd: Any) -> 'FakeSmd':
+        if smd is None:
+            raise Exception("nothing was imported by Blender Source Tools")
+        if not isinstance(smd.a, bpy.types.Object) or not isinstance(smd.boneIDs, dict):
+            raise Exception("unexpected Blender Source Tools data format (unsupported version?)")
+        return FakeSmd(smd.a, smd.boneIDs)
 
 
 class SmdImporterWrapper(import_smd.SmdImporter):
@@ -128,11 +144,13 @@ class SmdImporterWrapper(import_smd.SmdImporter):
 
 class QCImporter():
     def __init__(self, dec_models_path: str, vmf_fs: VMFFileSystem = VMFFileSystem(),
-                 vmt_importer: Optional['import_vmt.VMTImporter'] = None, verbose: bool = False):
-        self._cache: Dict[str, bpy.types.Object] = {}
+                 vmt_importer: Optional['import_vmt.VMTImporter'] = None,
+                 reuse_old: bool = True, verbose: bool = False):
+        self._cache: Dict[str, FakeSmd] = {}
         self.verbose = verbose
         self.dec_models_path = dec_models_path
         self.vmf_fs = vmf_fs
+        self.reuse_old = reuse_old
         SmdImporterWrapper.vmt_importer = vmt_importer
         SmdImporterWrapper.vmf_fs = vmf_fs
 
@@ -143,12 +161,14 @@ class QCImporter():
     def __exit__(self, exc_type: Any, exc_value: Any, traceback: Any) -> None:
         bpy.utils.unregister_class(SmdImporterWrapper)
 
-    def load_return_smd(self, name: str, path: str, collection: bpy.types.Collection, root: str = "") -> Any:
+    def load_return_smd(self, name: str, path: str, context: bpy.types.Context,
+                        collection: bpy.types.Collection, root: str = "") -> FakeSmd:
         name = name.lower()
+        truncated_name = truncate_name(name)
         if name in self._cache:
             if self.verbose:
                 print(f"Model {name} already imported, copying...")
-            smd = copy.copy(self._cache[name])
+            smd = self._cache[name].copy()
             original_arm = smd.a
             copy_arm = original_arm.copy()
             collection.objects.link(copy_arm)
@@ -160,10 +180,31 @@ class QCImporter():
                 collection.objects.link(twin)
             smd.a = copy_arm
             return smd
+        if self.reuse_old and truncated_name in bpy.data.armatures:
+            if self.verbose:
+                print(f"Model {name} previously imported, recreating...")
+            armature: bpy.types.Armature = bpy.data.armatures[truncated_name]
+            qc_data = armature.qc_data
+            armature_obj: bpy.types.Object = bpy.data.objects.new(truncated_name, armature)
+            collection.objects.link(armature_obj)
+            for mesh_obj in qc_data.read_meshes():
+                new_obj = mesh_obj.copy()
+                new_obj.name = new_obj.data.name
+                new_obj.parent = armature_obj
+                if "Armature" in new_obj.modifiers:
+                    new_obj.modifiers["Armature"].object = armature_obj
+                collection.objects.link(new_obj)
+            if qc_data.action is not None:
+                anim_data = armature_obj.animation_data_create()
+                anim_data.action = qc_data.action
+            fake_smd = FakeSmd(armature_obj, qc_data.read_bone_id_map())
+            self._cache[name] = fake_smd
+            context.view_layer.update()
+            return fake_smd
         if self.verbose:
             print(f"Importing model {name}...")
         SmdImporterWrapper.collection = collection
-        SmdImporterWrapper.name = truncate_name(name)
+        SmdImporterWrapper.name = truncated_name
         if path.endswith(".mdl"):
             qc_path = join(self.dec_models_path, name + ".qc")
             if not isfile(qc_path):
@@ -225,15 +266,22 @@ class QCImporter():
         except Exception:
             print(log_capture.getvalue())
             raise
-        smd = SmdImporterWrapper.smd
-        if smd is None:
-            raise Exception(f"Error importing {name}: nothing was imported by Blender Source Tools")
-        self._cache[name] = smd
-        if smd.a.name not in collection.objects:
-            collection.objects.link(smd.a)
-        if smd.a.name in bpy.context.scene.collection.objects:
-            bpy.context.scene.collection.objects.unlink(smd.a)
-        return smd
+        try:
+            fake_smd = FakeSmd.from_bst(SmdImporterWrapper.smd)
+        except Exception as err:
+            raise Exception(f"Error importing {name}: {err}")
+        self._cache[name] = fake_smd
+        if fake_smd.a.name not in collection.objects:
+            collection.objects.link(fake_smd.a)
+        if fake_smd.a.name in bpy.context.scene.collection.objects:
+            bpy.context.scene.collection.objects.unlink(fake_smd.a)
+        qc_data = fake_smd.a.data.qc_data
+        qc_data.save_meshes(fake_smd.a.children)
+        qc_data.save_bone_id_map(fake_smd.boneIDs)
+        if fake_smd.a.animation_data is not None:
+            qc_data.action = fake_smd.a.animation_data.action
+        return fake_smd
 
-    def load(self, name: str, path: str, collection: bpy.types.Collection, root: str = "") -> bpy.types.Object:
-        return self.load_return_smd(name, path, collection, root).a
+    def load(self, name: str, path: str, context: bpy.types.Context,
+             collection: bpy.types.Collection, root: str = "") -> bpy.types.Object:
+        return self.load_return_smd(name, path, context, collection, root).a

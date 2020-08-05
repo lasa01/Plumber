@@ -61,6 +61,7 @@ class VMFImporter():
                  scale: float = 0.01, epsilon: float = 0.001, sky_resolution: int = 1024,
                  simple_materials: bool = False, texture_interpolation: str = 'Linear',
                  cull_materials: bool = False, reuse_old_materials: bool = True,
+                 reuse_old_models: bool = True,
                  light_factor: float = 0.1, sun_factor: float = 0.01, ambient_factor: float = 0.001,
                  verbose: bool = False, skip_tools: bool = False):
         self.epsilon = epsilon
@@ -107,7 +108,8 @@ class VMFImporter():
             # except ImportError:
             from . import import_qc
             self._qc_importer = import_qc.QCImporter(
-                self.dec_models_path, self._vmf_fs, self._vmt_importer, self.verbose
+                self.dec_models_path, self._vmf_fs, self._vmt_importer,
+                reuse_old=reuse_old_models, verbose=verbose,
             )
             if self.optimize_props:
                 self._props: List[bpy.types.Object] = []
@@ -225,7 +227,7 @@ class VMFImporter():
             map_collection.children.link(prop_collection)
             for prop_entity in vmf.prop_entities:
                 try:
-                    self._load_prop(prop_entity, prop_collection)
+                    self._load_prop(prop_entity, context, prop_collection)
                 except Exception as err:
                     print(f"ERROR LOADING PROP: {err}")
                     if self.verbose:
@@ -703,13 +705,14 @@ class VMFImporter():
         if is_tool:
             obj.display_type = 'WIRE'
 
-    def _load_prop(self, prop: vmfpy.VMFPropEntity, collection: bpy.types.Collection) -> None:
+    def _load_prop(self, prop: vmfpy.VMFPropEntity,
+                   context: bpy.types.Context, collection: bpy.types.Collection) -> None:
         name = path.splitext(prop.model)[0]
         # if self._mdl_importer is not None:
         #     obj: bpy.types.Object = self._mdl_importer.load(name, name + ".mdl", collection)
         #     obj.rotation_euler = Euler((0, 0, radians(90)))
         if self._qc_importer is not None:
-            obj = self._qc_importer.load(name, name + ".mdl", collection)
+            obj = self._qc_importer.load(name, name + ".mdl", context, collection)
             obj.rotation_euler = Euler((0, 0, radians(90)))
         else:
             raise ImportError("QC importer not found")

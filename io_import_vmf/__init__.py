@@ -5,7 +5,7 @@ from os.path import join, relpath, abspath, dirname, basename, splitext, isdir, 
 from shutil import rmtree
 import glob
 from pathlib import PurePosixPath
-from typing import Set, Optional, Tuple, List
+from typing import Set, Optional, Tuple, List, Dict, Sequence, Iterator
 sys.path.append(join(dirname(abspath(__file__)), "deps"))
 
 
@@ -655,6 +655,12 @@ class ImportSceneVMF(_VMFOperator, _VMFOperatorProps):
         default=True,
     )
 
+    reuse_old_models: bpy.props.BoolProperty(  # type: ignore
+        name="Reuse old models",
+        description="Reuse previously imported models instead of reimporting them.",
+        default=True,
+    )
+
     global_scale: bpy.props.FloatProperty(  # type: ignore
         name="Scale",
         description="Scale everything by this value",
@@ -700,6 +706,7 @@ class ImportSceneVMF(_VMFOperator, _VMFOperatorProps):
                                           simple_materials=self.simple_materials, cull_materials=self.cull_materials,
                                           texture_interpolation=self.texture_interpolation,
                                           reuse_old_materials=self.reuse_old_materials,
+                                          reuse_old_models=self.reuse_old_models,
                                           import_lights=self.import_lights,
                                           scale=self.global_scale, epsilon=self.epsilon,
                                           light_factor=self.light_factor, sun_factor=self.sun_factor,
@@ -739,6 +746,7 @@ class ImportSceneVMF(_VMFOperator, _VMFOperatorProps):
                 else:
                     box.label(text="Missing models will be decompiled.")
             box.prop(self, "optimize_props")
+            box.prop(self, "reuse_old_models")
         if not self.qc_available:
             self.import_props = False
             col.enabled = False
@@ -916,10 +924,13 @@ class ImportSceneSourceModel(_ValveGameOperator, _ValveGameOperatorProps):
                                        self.texture_interpolation, self.cull_materials,
                                        reuse_old=self.reuse_old_materials, reuse_old_images=self.reuse_old_materials)
                 if self.import_materials else None,
-                self.verbose,
+                reuse_old=False, verbose=self.verbose,
             )
             with qc_importer:
-                qc_importer.load(splitext(relpath(self.filepath, root))[0], self.filepath, context.collection, root)
+                qc_importer.load(
+                    splitext(relpath(self.filepath, root))[0], self.filepath,
+                    context, context.collection, root,
+                )
             if delete_files:
                 rmtree(dec_models_path, ignore_errors=True)
         return {'FINISHED'}
@@ -1084,6 +1095,12 @@ class ImportSceneAGREnhanced(_ValveGameOperator, _ValveGameOperatorProps):
         default=True,
     )
 
+    reuse_old_models: bpy.props.BoolProperty(  # type: ignore
+        name="Reuse old models",
+        description="Reuse previously imported models instead of reimporting them.",
+        default=True,
+    )
+
     verbose: bpy.props.BoolProperty(  # type: ignore
         name="Verbose",
         description="Enable to print more info into console",
@@ -1112,7 +1129,7 @@ class ImportSceneAGREnhanced(_ValveGameOperator, _ValveGameOperatorProps):
             dec_models_path, fs,
             import_materials=self.import_materials, simple_materials=self.simple_materials,
             texture_interpolation=self.texture_interpolation, cull_materials=self.cull_materials,
-            reuse_old_materials=self.reuse_old_materials,
+            reuse_old_materials=self.reuse_old_materials, reuse_old_models=self.reuse_old_models,
             verbose=self.verbose,
             inter_key=self.inter_key, global_scale=self.global_scale, scale_invisible_zero=self.scale_invisible_zero,
         )
@@ -1143,6 +1160,7 @@ class ImportSceneAGREnhanced(_ValveGameOperator, _ValveGameOperatorProps):
             box.prop(self, "texture_interpolation")
             box.prop(self, "cull_materials")
             box.prop(self, "reuse_old_materials")
+        layout.prop(self, "reuse_old_models")
         layout.prop(self, "inter_key")
         layout.prop(self, "global_scale")
         layout.prop(self, "scale_invisible_zero")
@@ -1152,6 +1170,46 @@ class ImportSceneAGREnhanced(_ValveGameOperator, _ValveGameOperatorProps):
 class MaterialVMTData(bpy.types.PropertyGroup):
     width: bpy.props.IntProperty(default=1)  # type: ignore
     height: bpy.props.IntProperty(default=1)  # type: ignore
+
+
+class QCBoneIdItem(bpy.types.PropertyGroup):
+    bone_id: bpy.props.IntProperty()  # type: ignore
+    bone_name: bpy.props.StringProperty()  # type: ignore
+
+
+class QCMeshItem(bpy.types.PropertyGroup):
+    mesh_obj: bpy.props.PointerProperty(type=bpy.types.Object)  # type: ignore
+
+
+class ArmatureQCData(bpy.types.PropertyGroup):
+    meshes: bpy.props.CollectionProperty(type=QCMeshItem)  # type: ignore
+    bone_id_map: bpy.props.CollectionProperty(type=QCBoneIdItem)  # type: ignore
+    action: bpy.props.PointerProperty(type=bpy.types.Action)  # type: ignore
+
+    def save_meshes(self, meshes: Sequence[bpy.types.Object]) -> None:
+        self.meshes.clear()
+        for mesh_obj in meshes:
+            if mesh_obj.type != 'MESH':
+                continue
+            mesh_item = self.meshes.add()
+            mesh_item.mesh_obj = mesh_obj
+
+    def read_meshes(self) -> Iterator[bpy.types.Object]:
+        for mesh_item in self.meshes:
+            yield mesh_item.mesh_obj
+
+    def save_bone_id_map(self, bone_id_map: Dict[int, str]) -> None:
+        self.bone_id_map.clear()
+        for key in bone_id_map:
+            map_item = self.bone_id_map.add()
+            map_item.bone_id = key
+            map_item.bone_name = bone_id_map[key]
+
+    def read_bone_id_map(self) -> Dict[int, str]:
+        bone_id_map = {}
+        for map_item in self.bone_id_map:
+            bone_id_map[map_item.bone_id] = map_item.bone_name
+        return bone_id_map
 
 
 classes = (
@@ -1181,6 +1239,9 @@ classes = (
     ImportSceneAGREnhanced,
     ObjectTransform3DSky,
     MaterialVMTData,
+    QCBoneIdItem,
+    QCMeshItem,
+    ArmatureQCData,
 )
 
 
@@ -1202,6 +1263,7 @@ def register() -> None:
     bpy.types.TOPBAR_MT_file_import.append(import_menu_func)
     bpy.types.VIEW3D_MT_object.append(object_menu_func)
     bpy.types.Material.vmt_data = bpy.props.PointerProperty(type=MaterialVMTData)
+    bpy.types.Armature.qc_data = bpy.props.PointerProperty(type=ArmatureQCData)
 
 
 def unregister() -> None:
@@ -1210,3 +1272,4 @@ def unregister() -> None:
     bpy.types.TOPBAR_MT_file_import.remove(import_menu_func)
     bpy.types.VIEW3D_MT_object.remove(object_menu_func)
     del bpy.types.Material.vmt_data
+    del bpy.types.Armature.qc_data

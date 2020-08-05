@@ -38,7 +38,7 @@ class AgrImporterWrapper(import_agr.AgrImporter):
         if name == "?":
             return None
         try:
-            smd = self.qc_importer.load_return_smd(name, name + ".mdl", self.collection)
+            smd = self.qc_importer.load_return_smd(name, name + ".mdl", context, self.collection)
         except Exception:
             self.error(f"Failed to import \"{name}\"")
             return None
@@ -68,7 +68,7 @@ class AgrImporter():
     def __init__(self, dec_models_path: str, vmf_fs: VMFFileSystem = VMFFileSystem(),
                  import_materials: bool = True, simple_materials: bool = False,
                  texture_interpolation: str = 'Linear', cull_materials: bool = False,
-                 reuse_old_materials: bool = True,
+                 reuse_old_materials: bool = True, reuse_old_models: bool = True,
                  inter_key: bool = False, global_scale: float = 0.01, scale_invisible_zero: bool = False,
                  verbose: bool = False):
         self.verbose = verbose
@@ -82,7 +82,10 @@ class AgrImporter():
             )
         else:
             vmt_importer = None
-        AgrImporterWrapper.qc_importer = import_qc.QCImporter(dec_models_path, vmf_fs, vmt_importer, verbose)
+        AgrImporterWrapper.qc_importer = import_qc.QCImporter(
+            dec_models_path, vmf_fs, vmt_importer,
+            reuse_old=reuse_old_models, verbose=verbose,
+        )
         AgrImporterWrapper.vmf_fs = vmf_fs
         self.inter_key = inter_key
         self.global_scale = global_scale
