@@ -108,7 +108,7 @@ class SmdImporterWrapper(import_smd.SmdImporter):
                 break
         else:
             if mat_name not in self._missing_materials:
-                sys.__stdout__.write(f"WARNING: MISSING MATERIAL: {mat_path}\n")
+                sys.__stdout__.write(f"WARNING: MISSING MATERIAL: {mat_name}\n")
                 self._missing_materials.add(mat_name)
             return super().getMeshMaterial(mat_name)
         data = self.vmt_importer.load(
