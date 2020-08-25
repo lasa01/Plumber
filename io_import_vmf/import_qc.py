@@ -3,7 +3,8 @@ from .utils import truncate_name
 from vmfpy.fs import VMFFileSystem, vmf_path
 from vmfpy.vmt import VMT
 import re
-from typing import Dict, Any, Tuple, Set, Optional, TYPE_CHECKING
+from collections import defaultdict
+from typing import DefaultDict, Dict, Any, NamedTuple, Tuple, Set, Optional, Callable, TYPE_CHECKING
 import bpy
 import os
 from os.path import splitext, basename, dirname, isfile, isdir, isabs, join, relpath
@@ -66,7 +67,7 @@ class SmdImporterWrapper(import_smd.SmdImporter):
             for match in _CDMATERIALS_REGEX.finditer(content):
                 self._cdmaterials.append(vmf_path(match.group(1)))
             animations = "$staticprop" not in content.lower()
-        self.readQC(self.filepath, False, animations, False, 'XYZ', outer_qc=True)
+        self.readQC(self.filepath, False, animations, False, 'QUATERNION', outer_qc=True)
         return {'FINISHED'}
 
     def readQC(self, filepath: str, newscene: bool, doAnim: bool,
@@ -127,7 +128,7 @@ class SmdImporterWrapper(import_smd.SmdImporter):
                 sys.__stdout__.write(f"WARNING: MISSING MATERIAL: {mat_name}\n")
                 self._missing_materials.add(mat_name)
             return super().getMeshMaterial(mat_name)
-        data = self.vmt_importer.load(
+        staged = self.vmt_importer.stage(
             mat_name,
             lambda: VMT(
                 self.vmf_fs.open_file_utf8(mat_path),
@@ -135,11 +136,31 @@ class SmdImporterWrapper(import_smd.SmdImporter):
                 allow_patch=True,
             )
         )
-        mat_ind = md.materials.find(data.material.name)
+        material = staged.get_material()
+        mat_ind = md.materials.find(material.name)
         if mat_ind == -1:
             mat_ind = len(md.materials)
-            md.materials.append(data.material)
-        return data.material, mat_ind
+            md.materials.append(material)
+        return material, mat_ind
+
+
+class NewQCInfo(NamedTuple):
+    path: str
+    root: str
+
+
+class StagedQC():
+    def __init__(self, importer: 'QCImporter', name: str, context: bpy.types.Context,
+                 info: Optional[NewQCInfo] = None, reused: Optional[bpy.types.Armature] = None) -> None:
+        self.name = name
+        self.context = context
+        self.info = info
+        self.reused = reused
+        self._qc_importer = importer
+
+    @staticmethod
+    def from_existing(importer: 'QCImporter', armature: bpy.types.Armature, context: bpy.types.Context) -> 'StagedQC':
+        return StagedQC(importer, armature.qc_data.full_name, context, reused=armature)
 
 
 class QCImporter():
@@ -147,10 +168,16 @@ class QCImporter():
                  vmt_importer: Optional['import_vmt.VMTImporter'] = None,
                  reuse_old: bool = True, verbose: bool = False):
         self._cache: Dict[str, FakeSmd] = {}
+        self._cache_uniqueness: DefaultDict[str, bool] = defaultdict(lambda: True)
         self.verbose = verbose
         self.dec_models_path = dec_models_path
         self.vmf_fs = vmf_fs
         self.reuse_old = reuse_old
+        self.progress_callback: Callable[[int, int], None] = lambda current, total: None
+        self._staging: Dict[str, StagedQC] = {}
+        self._loaded: Dict[str, StagedQC] = {}
+        self.reusable_amount = 0
+        self.importable_amount = 0
         SmdImporterWrapper.vmt_importer = vmt_importer
         SmdImporterWrapper.vmf_fs = vmf_fs
 
@@ -161,49 +188,82 @@ class QCImporter():
     def __exit__(self, exc_type: Any, exc_value: Any, traceback: Any) -> None:
         bpy.utils.unregister_class(SmdImporterWrapper)
 
-    def load_return_smd(self, name: str, path: str, context: bpy.types.Context,
-                        collection: bpy.types.Collection, root: str = "") -> FakeSmd:
+    def stage(self, name: str, path: str, context: bpy.types.Context, root: str = "") -> StagedQC:
         name = name.lower()
         truncated_name = truncate_name(name)
-        if name in self._cache:
-            if self.verbose:
-                print(f"Model {name} already imported, copying...")
-            smd = self._cache[name].copy()
-            original_arm = smd.a
-            copy_arm = original_arm.copy()
-            collection.objects.link(copy_arm)
-            for child in original_arm.children:
-                twin = child.copy()
-                twin.parent = copy_arm
-                if "Armature" in twin.modifiers:
-                    twin.modifiers["Armature"].object = copy_arm
-                collection.objects.link(twin)
-            smd.a = copy_arm
-            return smd
+        if name in self._staging:
+            return self._staging[name]
+        if name in self._loaded:
+            return self._loaded[name]
+        if self.verbose:
+            print(f"Staging model {name}")
         if self.reuse_old and truncated_name in bpy.data.armatures:
+            meshes = bpy.data.armatures[truncated_name].qc_data.read_meshes()
+            # mesh needs to be reimported if some materials failed for now
+            if (SmdImporterWrapper.vmt_importer is None or
+                all(material.use_nodes and len(material.node_tree.nodes) != 0
+                    for mesh in meshes for material in mesh.data.materials)):
+                self._staging[name] = StagedQC.from_existing(self, bpy.data.armatures[truncated_name], context)
+                self.reusable_amount += 1
+                return self._staging[name]
+            else:
+                # make sure the mesh isn't reimported every time if the materials failed in the first import
+                bpy.data.armatures[truncated_name].name = truncated_name + ".001"
+        self._staging[name] = StagedQC(self, name, context, info=NewQCInfo(path, root))
+        self.importable_amount += 1
+        return self._staging[name]
+
+    def load_all(self) -> None:
+        if self.verbose:
+            print("Loading all models...")
+        total = len(self._staging)
+        current = 0
+        for name in self._staging:
+            staged = self._staging[name]
+            self._load(name, staged)
+            self._loaded[name] = staged
+            current += 1
+            if current % 5 == 0 or current == total:
+                self.progress_callback(current, total)
+        self._staging.clear()
+        self.reusable_amount = 0
+        self.importable_amount = 0
+
+    def _load(self, name: str, staged: StagedQC) -> None:
+        name = name.lower()
+        truncated_name = truncate_name(name)
+        if staged.reused is not None:
+            scene_collection = staged.context.scene.collection
+            # qc is already imported
             if self.verbose:
                 print(f"Model {name} previously imported, recreating...")
-            armature: bpy.types.Armature = bpy.data.armatures[truncated_name]
+            armature = staged.reused
             qc_data = armature.qc_data
-            armature_obj: bpy.types.Object = bpy.data.objects.new(truncated_name, armature)
-            collection.objects.link(armature_obj)
+            armature_obj: bpy.types.Object = bpy.data.objects.new(armature.name, armature)
+            scene_collection.objects.link(armature_obj)
             for mesh_obj in qc_data.read_meshes():
                 new_obj = mesh_obj.copy()
                 new_obj.name = new_obj.data.name
                 new_obj.parent = armature_obj
-                if "Armature" in new_obj.modifiers:
-                    new_obj.modifiers["Armature"].object = armature_obj
-                collection.objects.link(new_obj)
+                new_obj.scale = (1, 1, 1)
+                new_obj.location = (0, 0, 0)
+                new_obj.rotation_euler = (0, 0, 0)
+                if "Armature" not in new_obj.modifiers:
+                    new_obj.modifiers.new("Armature", 'ARMATURE')
+                new_obj.modifiers["Armature"].object = armature_obj
+                scene_collection.objects.link(new_obj)
             if qc_data.action is not None:
                 anim_data = armature_obj.animation_data_create()
                 anim_data.action = qc_data.action
-            fake_smd = FakeSmd(armature_obj, qc_data.read_bone_id_map())
-            self._cache[name] = fake_smd
-            context.view_layer.update()
-            return fake_smd
+            staged.context.view_layer.update()
+            self._cache[name] = FakeSmd(armature_obj, qc_data.read_bone_id_map())
+            return
+        if staged.info is None:
+            raise Exception("required information was not specified for non-reused staged qc")
+        path, root = staged.info
         if self.verbose:
             print(f"Importing model {name}...")
-        SmdImporterWrapper.collection = collection
+        SmdImporterWrapper.collection = staged.context.scene.collection
         SmdImporterWrapper.name = truncated_name
         if path.endswith(".mdl"):
             qc_path = join(self.dec_models_path, name + ".qc")
@@ -271,8 +331,6 @@ class QCImporter():
         except Exception as err:
             raise Exception(f"Error importing {name}: {err}")
         self._cache[name] = fake_smd
-        if fake_smd.a.name not in collection.objects:
-            collection.objects.link(fake_smd.a)
         if fake_smd.a.name in bpy.context.scene.collection.objects:
             bpy.context.scene.collection.objects.unlink(fake_smd.a)
         qc_data = fake_smd.a.data.qc_data
@@ -280,8 +338,47 @@ class QCImporter():
         qc_data.save_bone_id_map(fake_smd.boneIDs)
         if fake_smd.a.animation_data is not None:
             qc_data.action = fake_smd.a.animation_data.action
-        return fake_smd
+        self._cache[name] = fake_smd
 
-    def load(self, name: str, path: str, context: bpy.types.Context,
-             collection: bpy.types.Collection, root: str = "") -> bpy.types.Object:
-        return self.load_return_smd(name, path, context, collection, root).a
+    def get_smd(self, name: str, collection: bpy.types.Collection, context: bpy.types.Context) -> FakeSmd:
+        name = name.lower()
+        if name not in self._cache:
+            raise Exception(f"model {name} hasn't been imported")
+        self._cache_uniqueness[name] = False
+        smd = self._cache[name]
+        scene_collection = context.scene.collection
+        if smd.a.name in scene_collection.objects:
+            scene_collection.objects.unlink(smd.a)
+        collection.objects.link(smd.a)
+        for child in smd.a.children:
+            if child.name in scene_collection.objects:
+                scene_collection.objects.unlink(child)
+            collection.objects.link(child)
+        return self._cache[name]
+
+    def get(self, name: str, collection: bpy.types.Collection, context: bpy.types.Context) -> bpy.types.Object:
+        return self.get_smd(name, collection, context).a
+
+    def get_unique_smd(self, name: str, collection: bpy.types.Collection, context: bpy.types.Context) -> FakeSmd:
+        name = name.lower()
+        if name not in self._cache:
+            raise Exception(f"model {name} hasn't been imported")
+        if self._cache_uniqueness[name]:
+            return self.get_smd(name, collection, context)
+        if self.verbose:
+            print(f"Copying model {name}...")
+        smd = self._cache[name].copy()
+        original_arm = smd.a
+        copy_arm = original_arm.copy()
+        collection.objects.link(copy_arm)
+        for child in original_arm.children:
+            twin = child.copy()
+            twin.parent = copy_arm
+            if "Armature" in twin.modifiers:
+                twin.modifiers["Armature"].object = copy_arm
+            collection.objects.link(twin)
+        smd.a = copy_arm
+        return smd
+
+    def get_unique(self, name: str, collection: bpy.types.Collection, context: bpy.types.Context) -> bpy.types.Object:
+        return self.get_unique_smd(name, collection, context).a

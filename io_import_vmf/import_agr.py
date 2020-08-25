@@ -38,7 +38,9 @@ class AgrImporterWrapper(import_agr.AgrImporter):
         if name == "?":
             return None
         try:
-            smd = self.qc_importer.load_return_smd(name, name + ".mdl", context, self.collection)
+            self.qc_importer.stage(name, name + ".mdl", context)
+            self.qc_importer.load_all()
+            smd = self.qc_importer.get_unique_smd(name, self.collection, context)
         except Exception:
             self.error(f"Failed to import \"{name}\"")
             return None
@@ -76,14 +78,14 @@ class AgrImporter():
         self.vmf_fs = vmf_fs
         if import_materials:
             from . import import_vmt
-            vmt_importer: Optional[import_vmt.VMTImporter] = import_vmt.VMTImporter(
+            self.vmt_importer: Optional[import_vmt.VMTImporter] = import_vmt.VMTImporter(
                 verbose, simple_materials, texture_interpolation, cull_materials,
                 reuse_old=reuse_old_materials, reuse_old_images=reuse_old_materials,
             )
         else:
-            vmt_importer = None
+            self.vmt_importer = None
         AgrImporterWrapper.qc_importer = import_qc.QCImporter(
-            dec_models_path, vmf_fs, vmt_importer,
+            dec_models_path, vmf_fs, self.vmt_importer,
             reuse_old=reuse_old_models, verbose=verbose,
         )
         AgrImporterWrapper.vmf_fs = vmf_fs
@@ -106,3 +108,16 @@ class AgrImporter():
             filepath=file_path, interKey=self.inter_key,
             global_scale=self.global_scale, scaleInvisibleZero=self.scale_invisible_zero,
         )
+        if self.vmt_importer is not None:
+            reusable_t, importable_t = self.vmt_importer.texture_amounts()
+            print(f"Importing {importable_t} textures (reusing {reusable_t} existing) " +
+                  f"and {self.vmt_importer.importable_amount} materials " +
+                  f"(reusing {self.vmt_importer.reusable_amount} existing, " +
+                  f"{self.vmt_importer.invalid_amount} cannot be imported)...")
+            self.vmt_importer.texture_progress_callback = lambda c, t: print(
+                f"Importing textures... {c / t * 100:.4f} %"
+            )
+            self.vmt_importer.progress_callback = lambda c, t: print(
+                f"Importing materials... {c / t * 100:.4f} %"
+            )
+            self.vmt_importer.load_all()

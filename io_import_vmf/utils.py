@@ -3,6 +3,7 @@ from base64 import urlsafe_b64encode
 from posixpath import split, splitext
 from typing import Iterable
 import numpy
+import bpy
 
 _HASH_LEN = 6
 _B64_LEN = 8
@@ -73,3 +74,9 @@ def bilinear_interpolate(im: numpy.ndarray, x: numpy.ndarray, y: numpy.ndarray) 
     wd[z] = 0.25
 
     return (i_a.T*wa).T + (i_b.T*wb).T + (i_c.T*wc).T + (i_d.T*wd).T
+
+
+def fallback_material(material_name: str, truncated_name: str) -> bpy.types.Material:
+    material: bpy.types.Material = bpy.data.materials.new(truncated_name)
+    material.vmt_data.full_name = material_name
+    return material

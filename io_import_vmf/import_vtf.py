@@ -3,40 +3,114 @@ from .cube2equi import find_corresponding_pixels
 from vmfpy.fs import AnyBinaryIO
 from pyvtflib import VTFLib, VTFImageFlag, VTFImageFormat
 import numpy
-from typing import Dict, List
+from typing import Dict, List, Optional, Callable
 import bpy
+
+
+class StagedImage():
+    def __init__(self, importer: 'VTFImporter', name: str, file: Optional[AnyBinaryIO],
+                 colorspace: str, alpha_mode: str, reused: Optional[bpy.types.Image] = None) -> None:
+        self.name = name
+        self.file = file
+        self.colorspace = colorspace
+        self.alpha_mode = alpha_mode
+        self.reused = reused
+        self._vtf_importer = importer
+
+    def get_image(self) -> bpy.types.Image:
+        if self.reused is not None:
+            return self.reused
+        return self._vtf_importer.get(self.name)
+
+    @staticmethod
+    def from_existing(importer: 'VTFImporter', image: bpy.types.Image) -> 'StagedImage':
+        return StagedImage(
+            importer, image.vtf_data.full_name, None, image.colorspace_settings.name, image.alpha_mode, image
+        )
 
 
 class VTFImporter():
     def __init__(self, reuse_old: bool = True) -> None:
         self.reuse_old = reuse_old
+        self.progress_callback: Callable[[int, int], None] = lambda current, total: None
         self._cache: Dict[str, bpy.types.Image] = {}
+        self._staging: Dict[str, StagedImage] = {}
+        self._loaded: Dict[str, StagedImage] = {}
+        self.reusable_amount = 0
+        self.importable_amount = 0
 
-    def load(self, image_name: str, file: AnyBinaryIO,
-             colorspace: str = 'sRGB', alpha_mode: str = 'CHANNEL_PACKED') -> bpy.types.Image:
+    def stage(self, image_name: str, file: AnyBinaryIO,
+              colorspace: str = 'sRGB', alpha_mode: str = 'CHANNEL_PACKED') -> StagedImage:
         image_name = image_name.lower()
         truncated_name = truncate_name(image_name + ".png")
-        if image_name in self._cache:
-            return self._cache[image_name]
-        if self.reuse_old and truncated_name in bpy.data.images:
-            return bpy.data.images[truncated_name]
+        if image_name in self._staging:
+            staged = self._staging[image_name]
+            if colorspace != staged.colorspace:
+                print(f"WARNING: IMAGE {image_name}: COLORSPACES CONFLICT ({colorspace}, {staged.colorspace})")
+            if alpha_mode != staged.alpha_mode:
+                print(f"WARNING: IMAGE {image_name}: ALPHA MODES CONFLICT ({alpha_mode}, {staged.alpha_mode})")
+            return staged
+        if image_name in self._loaded:
+            loaded = self._loaded[image_name]
+            if colorspace != loaded.colorspace:
+                print(f"WARNING: IMAGE {image_name}: COLORSPACES CONFLICT ({colorspace}, {loaded.colorspace})")
+            if alpha_mode != loaded.alpha_mode:
+                print(f"WARNING: IMAGE {image_name}: ALPHA MODES CONFLICT ({alpha_mode}, {loaded.alpha_mode})")
+            return loaded
+        elif self.reuse_old and truncated_name in bpy.data.images:
+            self._staging[image_name] = StagedImage.from_existing(self, bpy.data.images[truncated_name])
+            self.reusable_amount += 1
+        else:
+            self._staging[image_name] = StagedImage(self, image_name, file, colorspace, alpha_mode)
+            self.importable_amount += 1
+        return self._staging[image_name]
+
+    def load_all(self) -> None:
+        total = len(self._staging)
+        current = 0
+        for image_name in self._staging:
+            staged = self._staging[image_name]
+            self._load(image_name, staged)
+            self._loaded[image_name] = staged
+            current += 1
+            if current % 10 == 0 or current == total:
+                self.progress_callback(current, total)
+        self._staging.clear()
+        self.reusable_amount = 0
+        self.importable_amount = 0
+
+    def _load(self, image_name: str, staged: StagedImage) -> None:
+        image_name = image_name.lower()
+        truncated_name = truncate_name(image_name + ".png")
+        if staged.reused is not None:
+            # image is already loaded
+            self._cache[image_name] = staged.reused
+            return
+        if staged.file is None:
+            raise Exception("a file was not specified for non-reused staged image")
         with VTFLib() as vtflib:
-            with file:
-                vtflib.load_image_bytes(file.read())
+            with staged.file:
+                vtflib.load_image_bytes(staged.file.read())
             alpha = bool(vtflib.image_flags() & (VTFImageFlag.TEXTUREFLAGS_ONEBITALPHA |
                                                  VTFImageFlag.TEXTUREFLAGS_EIGHTBITALPHA))
             width, height = vtflib.image_width(), vtflib.image_height()
             image: bpy.types.Image = bpy.data.images.new(truncated_name, width, height, alpha=alpha)
+            image.vtf_data.full_name = image_name
             pixels = numpy.frombuffer(vtflib.flip_image(vtflib.image_as_rgba8888(), width, height), dtype=numpy.uint8)
         pixels = pixels.astype(numpy.float16, copy=False)
         pixels /= 255
         image.pixels = pixels
         image.file_format = 'PNG'
         image.pack()
-        image.colorspace_settings.name = colorspace
-        image.alpha_mode = alpha_mode
+        image.colorspace_settings.name = staged.colorspace
+        image.alpha_mode = staged.alpha_mode
         self._cache[image_name] = image
-        return image
+
+    def get(self, image_name: str) -> bpy.types.Image:
+        image_name = image_name.lower()
+        if image_name not in self._cache:
+            raise Exception(f"image {image_name} hasn't been loaded")
+        return self._cache[image_name]
 
 
 def load_as_equi(cubemap_name: str, files: List[AnyBinaryIO], out_height: int, hdr: bool = False) -> bpy.types.Image:

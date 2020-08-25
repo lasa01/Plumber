@@ -878,11 +878,17 @@ class ImportSceneSourceModel(_ValveGameOperator, _ValveGameOperatorProps):
         root = _get_source_path_root(self.filepath)
         if root is None:
             root = dirname(self.filepath)
+        vmt_importer = None
         if self.import_materials:
             from . import import_vmt
             from vmfpy.fs import VMFFileSystem
             print("Indexing game files...")
             fs = VMFFileSystem(self.data_dirs, self.data_paks, index_files=True)
+            vmt_importer = import_vmt.VMTImporter(
+                self.verbose, self.simple_materials,
+                self.texture_interpolation, self.cull_materials,
+                reuse_old=self.reuse_old_materials, reuse_old_images=self.reuse_old_materials
+            )
         else:
             fs = None
         if self.filepath.endswith(".qc"):
@@ -894,14 +900,7 @@ class ImportSceneSourceModel(_ValveGameOperator, _ValveGameOperatorProps):
                 self.report({'ERROR'}, "SourceIO is not installed")
                 return {'CANCELLED'}
             print("Importing model...")
-            mdl_importer = import_mdl.MDLImporter(
-                fs,
-                import_vmt.VMTImporter(self.verbose, self.simple_materials,
-                                       self.texture_interpolation, self.cull_materials,
-                                       reuse_old=self.reuse_old_materials, reuse_old_images=self.reuse_old_materials)
-                if self.import_materials else None,
-                self.verbose,
-            )
+            mdl_importer = import_mdl.MDLImporter(fs, vmt_importer, self.verbose)
             mdl_importer.load(splitext(relpath(self.filepath, root))[0], self.filepath, context.collection)
         elif self.strategy == 'BST':
             try:
@@ -918,21 +917,18 @@ class ImportSceneSourceModel(_ValveGameOperator, _ValveGameOperatorProps):
                                        "blender_io_import_vmf_models")
             print("Importing model...")
             qc_importer = import_qc.QCImporter(
-                dec_models_path,
-                fs,
-                import_vmt.VMTImporter(self.verbose, self.simple_materials,
-                                       self.texture_interpolation, self.cull_materials,
-                                       reuse_old=self.reuse_old_materials, reuse_old_images=self.reuse_old_materials)
-                if self.import_materials else None,
+                dec_models_path, fs, vmt_importer,
                 reuse_old=False, verbose=self.verbose,
             )
             with qc_importer:
-                qc_importer.load(
-                    splitext(relpath(self.filepath, root))[0], self.filepath,
-                    context, context.collection, root,
-                )
+                name = splitext(relpath(self.filepath, root))[0]
+                qc_importer.stage(name, self.filepath, context, root)
+                qc_importer.load_all()
+                qc_importer.get(name, context.collection, context)
             if delete_files:
                 rmtree(dec_models_path, ignore_errors=True)
+        if vmt_importer is not None:
+            vmt_importer.load_all()
         return {'FINISHED'}
 
     def draw(self, context: bpy.types.Context) -> None:
@@ -1013,12 +1009,12 @@ class ImportSceneVMT(_ValveGameOperator, _ValveGameOperatorProps):
                                           self.texture_interpolation, self.cull_materials,
                                           reuse_old=False, reuse_old_images=self.reuse_old_images)
         for file_obj in self.files:
-            print(f"Importing {file_obj.name}...")
             filepath = join(self.directory, file_obj.name)
-            importer.load(
+            importer.stage(
                 splitext(file_obj.name)[0],
                 lambda: VMT(open(filepath, encoding='utf-8'), fs, allow_patch=True)
             )
+        importer.load_all()
         return {'FINISHED'}
 
     def draw(self, context: bpy.types.Context) -> None:
@@ -1170,6 +1166,7 @@ class ImportSceneAGREnhanced(_ValveGameOperator, _ValveGameOperatorProps):
 class MaterialVMTData(bpy.types.PropertyGroup):
     width: bpy.props.IntProperty(default=1)  # type: ignore
     height: bpy.props.IntProperty(default=1)  # type: ignore
+    full_name: bpy.props.StringProperty()  # type: ignore
 
 
 class QCBoneIdItem(bpy.types.PropertyGroup):
@@ -1185,6 +1182,7 @@ class ArmatureQCData(bpy.types.PropertyGroup):
     meshes: bpy.props.CollectionProperty(type=QCMeshItem)  # type: ignore
     bone_id_map: bpy.props.CollectionProperty(type=QCBoneIdItem)  # type: ignore
     action: bpy.props.PointerProperty(type=bpy.types.Action)  # type: ignore
+    full_name: bpy.props.StringProperty()  # type: ignore
 
     def save_meshes(self, meshes: Sequence[bpy.types.Object]) -> None:
         self.meshes.clear()
@@ -1210,6 +1208,10 @@ class ArmatureQCData(bpy.types.PropertyGroup):
         for map_item in self.bone_id_map:
             bone_id_map[map_item.bone_id] = map_item.bone_name
         return bone_id_map
+
+
+class ImageVTFData(bpy.types.PropertyGroup):
+    full_name: bpy.props.StringProperty()  # type: ignore
 
 
 classes = (
@@ -1242,6 +1244,7 @@ classes = (
     QCBoneIdItem,
     QCMeshItem,
     ArmatureQCData,
+    ImageVTFData,
 )
 
 
@@ -1264,6 +1267,7 @@ def register() -> None:
     bpy.types.VIEW3D_MT_object.append(object_menu_func)
     bpy.types.Material.vmt_data = bpy.props.PointerProperty(type=MaterialVMTData)
     bpy.types.Armature.qc_data = bpy.props.PointerProperty(type=ArmatureQCData)
+    bpy.types.Image.vtf_data = bpy.props.PointerProperty(type=ImageVTFData)
 
 
 def unregister() -> None:
@@ -1273,3 +1277,4 @@ def unregister() -> None:
     bpy.types.VIEW3D_MT_object.remove(object_menu_func)
     del bpy.types.Material.vmt_data
     del bpy.types.Armature.qc_data
+    del bpy.types.Image.vtf_data

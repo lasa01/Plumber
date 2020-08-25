@@ -1,6 +1,6 @@
 from vmfpy import vmt
 from vmfpy.fs import VMFFileSystem
-from .utils import truncate_name, is_invisible_tool
+from .utils import truncate_name, is_invisible_tool, fallback_material
 from typing import NamedTuple, Dict, DefaultDict, Set, Tuple, Optional, Union, Any, Iterator, Iterable, List, Callable
 from abc import ABC, abstractmethod
 from collections import defaultdict
@@ -279,7 +279,7 @@ class _TextureInputBase(_MaterialInputBase):
     alpha: _MaterialInputSocket
 
     @abstractmethod
-    def setimage(self, image: bpy.types.Image) -> None:
+    def setimage(self, image: import_vtf.StagedImage) -> None:
         pass
 
 
@@ -287,19 +287,21 @@ class _TextureInput(_TextureInputBase):
     def __init__(self, interpolation: str = 'Linear') -> None:
         super().__init__()
         self.interpolation = interpolation
-        self.image: bpy.types.Image = None
+        self.image: Optional[import_vtf.StagedImage] = None
         self.color = _MaterialInputSocket(self, 'Color')
         self.channels = _SplitTextureInput(self.color)
         self.alpha = _MaterialInputSocket(self, 'Alpha')
         self.dimension_x = 300
         self.dimension_y = 300
 
-    def setimage(self, image: bpy.types.Image) -> None:
+    def setimage(self, image: import_vtf.StagedImage) -> None:
         self.image = image
 
     def create(self, node_tree: NodeTree, pos: _PosRef) -> None:
+        if self.image is None:
+            raise Exception("texture input doesn't contain an image")
         self.node: Node = node_tree.nodes.new('ShaderNodeTexImage')
-        self.node.image = self.image
+        self.node.image = self.image.get_image()
         self.node.interpolation = self.interpolation
         self.node.location = pos.loc()
 
@@ -354,7 +356,7 @@ class _BlendedTextureInput(_TextureInputBase):
         self.channels = _SplitTextureInput(self.color)
         self.alpha: _MaterialInputSocket = _BlendedValueInput(fac_inp, self.input1.alpha, self.input2.alpha).value
 
-    def setimage(self, image: bpy.types.Image) -> None:
+    def setimage(self, image: import_vtf.StagedImage) -> None:
         self.input1.setimage(image)
 
     def create(self, node_tree: NodeTree, pos: _PosRef) -> None:
@@ -373,7 +375,7 @@ class _DetailedTextureInput(_TextureInputBase):
         self.dimension_x = 400
         self.dimension_y = 250
 
-    def setimage(self, image: bpy.types.Image) -> None:
+    def setimage(self, image: import_vtf.StagedImage) -> None:
         self.base_inp.setimage(image)
 
     def create(self, node_tree: NodeTree, pos: _PosRef) -> None:
@@ -563,10 +565,10 @@ class _MaterialBuilder():
     def __init__(self, vtf_importer: import_vtf.VTFImporter, name: str, vmt_data: vmt.VMT,
                  simple: bool = False, interpolation: str = 'Linear', cull: bool = False):
         self._vtf_importer = vtf_importer
+        self.material: bpy.types.Material = bpy.data.materials.new(name)
         self.name = name
         self.simple = simple
-        self.width = 1
-        self.height = 1
+        self.size_reference: Optional[import_vtf.StagedImage] = None
         self.nodraw = False
         self.water = False
         self.blend_method = 'OPAQUE'
@@ -599,10 +601,10 @@ class _MaterialBuilder():
             if vmt_data.param_flag("$fogenable") and "$fogcolor" in params:
                 self._shader_dict['Color'].const = vmt_data.param_as_color("$fogcolor") + (1,)
             if "$normalmap" in params:
-                image = self._vtf_importer.load(
+                image = self._vtf_importer.stage(
                     params["$normalmap"], vmt_data.param_open_texture("$normalmap"), 'Non-Color'
                 )
-                self.width, self.height = image.size
+                self.size_reference = image
                 if "$bumptransform" in params:
                     transform = vmt_data.param_as_transform("$bumptransform")
                     if transform.scale != (1, 1) or transform.rotate != 0 or transform.translate != (0, 0):
@@ -636,7 +638,7 @@ class _MaterialBuilder():
             self.cull = False
 
         if "$basetexture" in params:
-            image = self._vtf_importer.load(params["$basetexture"], vmt_data.param_open_texture("$basetexture"))
+            image = self._vtf_importer.stage(params["$basetexture"], vmt_data.param_open_texture("$basetexture"))
             if "$basetexturetransform" in params:
                 transform = vmt_data.param_as_transform("$basetexturetransform")
                 if transform.scale != (1, 1) or transform.rotate != 0 or transform.translate != (0, 0):
@@ -644,9 +646,9 @@ class _MaterialBuilder():
                         transform.scale, transform.rotate, transform.translate, interpolation
                     )
             texture_inputs["$basetexture"].setimage(image)
-            self.width, self.height = image.size
+            self.size_reference = image
             if not self.simple and "$blendmodulatetexture" in params:
-                bimage = self._vtf_importer.load(
+                bimage = self._vtf_importer.stage(
                     params["$blendmodulatetexture"], vmt_data.param_open_texture("$blendmodulatetexture"), 'Non-Color'
                 )
                 if "$blendmodulatetransform" in params:
@@ -661,7 +663,9 @@ class _MaterialBuilder():
                 ).fac
             if not self.simple and "$detail" in params and ("$detailblendmode" not in params  # TODO: other blend modes
                                                             or vmt_data.param_as_int("$detailblendmode") == 0):
-                dimage = self._vtf_importer.load(params["$detail"], vmt_data.param_open_texture("$detail"), 'Non-Color')
+                dimage = self._vtf_importer.stage(
+                    params["$detail"], vmt_data.param_open_texture("$detail"), 'Non-Color'
+                )
                 scale = (1, 1)
                 if "$detailscale" in params:
                     try:
@@ -688,7 +692,7 @@ class _MaterialBuilder():
                     texture_inputs["$basetexture"], texture_inputs["$detail"], blend_fac
                 )
             if not self.simple and "$basetexture2" in params:
-                image2 = self._vtf_importer.load(params["$basetexture2"], vmt_data.param_open_texture("$basetexture2"))
+                image2 = self._vtf_importer.stage(params["$basetexture2"], vmt_data.param_open_texture("$basetexture2"))
                 if "$basetexturetransform2" in params:
                     transform = vmt_data.param_as_transform("$basetexturetransform2")
                     if transform.scale != (1, 1) or transform.rotate != 0 or transform.translate != (0, 0):
@@ -697,7 +701,7 @@ class _MaterialBuilder():
                         )
                 texture_inputs["$basetexture2"].setimage(image2)
                 if "$detail2" in params:
-                    dimage2 = self._vtf_importer.load(
+                    dimage2 = self._vtf_importer.stage(
                         params["$detail2"], vmt_data.param_open_texture("$detail2"), 'Non-Color'
                     )
                     scale = (1, 1)
@@ -735,7 +739,7 @@ class _MaterialBuilder():
             if (not self.simple and vmt_data.shader == "vertexlitgeneric"
                     and not vmt_data.param_flag("$allowdiffusemodulation") and not vmt_data.param_flag("$notint")):
                 if "$tintmasktexture" in params:
-                    image = self._vtf_importer.load(
+                    image = self._vtf_importer.stage(
                         params["$tintmasktexture"],
                         vmt_data.param_open_texture("$tintmasktexture"),
                         'Non-Color'
@@ -757,7 +761,7 @@ class _MaterialBuilder():
             self._shader_dict['Base Color'].input = vertex_col_input.color
 
         if "$bumpmap" in params and (not self.simple or not vmt_data.param_flag("$ssbump")):
-            image = self._vtf_importer.load(params["$bumpmap"], vmt_data.param_open_texture("$bumpmap"), 'Non-Color')
+            image = self._vtf_importer.stage(params["$bumpmap"], vmt_data.param_open_texture("$bumpmap"), 'Non-Color')
             if "$bumptransform" in params:
                 transform = vmt_data.param_as_transform("$bumptransform")
                 if transform.scale != (1, 1) or transform.rotate != 0 or transform.translate != (0, 0):
@@ -766,7 +770,7 @@ class _MaterialBuilder():
                     )
             texture_inputs["$bumpmap"].setimage(image)
             if not self.simple and "$bumpmap2" in params:
-                image2 = self._vtf_importer.load(
+                image2 = self._vtf_importer.stage(
                     params["$bumpmap2"], vmt_data.param_open_texture("$bumpmap2"), 'Non-Color'
                 )
                 if "$bumptransform2" in params:
@@ -800,7 +804,7 @@ class _MaterialBuilder():
                 self._shader_dict['Normal'].append(_NormalMapMaterialNode())
         elif not self.simple and ("$detail" in params and "$detailblendmode" in params
                                   and vmt_data.param_as_int("$detailblendmode") == 10):
-            dimage = self._vtf_importer.load(params["$detail"], vmt_data.param_open_texture("$detail"), 'Non-Color')
+            dimage = self._vtf_importer.stage(params["$detail"], vmt_data.param_open_texture("$detail"), 'Non-Color')
             scale = (1, 1)
             if "$detailscale" in params:
                 try:
@@ -855,7 +859,7 @@ class _MaterialBuilder():
             self.shadow_method = 'HASHED'
 
         if "$masks1" in params:
-            image = self._vtf_importer.load(params["$masks1"], vmt_data.param_open_texture("$masks1"), 'Non-Color')
+            image = self._vtf_importer.stage(params["$masks1"], vmt_data.param_open_texture("$masks1"), 'Non-Color')
             texture_inputs["$masks1"].setimage(image)
             masks1 = True
         else:
@@ -882,7 +886,7 @@ class _MaterialBuilder():
                         (150 - vmt_data.param_as_float("$phongexponent")) / 150
                     ) * 0.66
             elif not self.simple and "$phongexponenttexture" in params:
-                image = self._vtf_importer.load(
+                image = self._vtf_importer.stage(
                     params["$phongexponenttexture"],
                     vmt_data.param_open_texture("$phongexponenttexture"),
                     'Non-Color'
@@ -907,7 +911,7 @@ class _MaterialBuilder():
                                       and "$tintmasktexture" in params):
                 self._shader_dict['Specular'].input = texture_inputs["$tintmasktexture"].channels.r
             elif "$envmapmask" in params:
-                image = self._vtf_importer.load(
+                image = self._vtf_importer.stage(
                     params["$envmapmask"], vmt_data.param_open_texture("$envmapmask"), 'Non-Color'
                 )
                 if "$envmapmasktransform" in params:
@@ -945,7 +949,7 @@ class _MaterialBuilder():
             selfillum_input = texture_inputs["$envmapmask"].alpha
         elif vmt_data.param_flag("$selfillum"):
             if "$selfillummask" in params:
-                image = self._vtf_importer.load(
+                image = self._vtf_importer.stage(
                     params["$selfillummask"], vmt_data.param_open_texture("$selfillummask"), 'Non-Color'
                 )
                 texture_inputs["$selfillummask"].setimage(image)
@@ -959,8 +963,13 @@ class _MaterialBuilder():
             else:
                 self._shader_dict['Emission'].input = selfillum_input
 
+    def get_size(self) -> Tuple[int, int]:
+        if self.size_reference is None:
+            return 1, 1
+        return self.size_reference.get_image().size
+
     def build(self) -> bpy.types.Material:
-        material: bpy.types.Material = bpy.data.materials.new(self.name)
+        material = self.material
         material.use_nodes = True
         material.blend_method = self.blend_method
         material.shadow_method = self.shadow_method
@@ -1013,6 +1022,30 @@ class _MaterialBuilder():
         return material
 
 
+class StagedMaterial():
+    def __init__(self, importer: 'VMTImporter', name: str,
+                 builder: Optional[_MaterialBuilder], reused: Optional[bpy.types.Material] = None) -> None:
+        self.name = name
+        self.builder = builder
+        self.reused = reused
+        self._vmt_importer = importer
+
+    def get_material(self) -> bpy.types.Material:
+        if self.reused is not None:
+            return self.reused
+        if self.builder is None:
+            raise Exception("a builder was not specified for non-reused staged material")
+        return self.builder.material
+
+    @staticmethod
+    def from_existing(importer: 'VMTImporter', material: bpy.types.Material) -> 'StagedMaterial':
+        return StagedMaterial(importer, material.vmt_data.full_name, None, material)
+
+
+def _fallback_material(material_name: str, truncated_name: str) -> VMTData:
+    return VMTData(1, 1, fallback_material(material_name, truncated_name))
+
+
 class VMTImporter():
     def __init__(self, verbose: bool = False, simple: bool = False,
                  interpolation: str = 'Linear', cull: bool = False,
@@ -1022,14 +1055,17 @@ class VMTImporter():
         self.interpolation = interpolation
         self.cull = cull
         self.reuse_old = reuse_old
+        self.progress_callback: Callable[[int, int], None] = lambda current, total: None
+        self.texture_progress_callback: Callable[[int, int], None] = lambda current, total: None
         self._nodraw_cache: Dict[str, bool] = {}
         self._precache: Dict[str, _MaterialBuilder] = {}
         self._cache: Dict[str, VMTData] = {}
         self._vtf_importer = import_vtf.VTFImporter(reuse_old=reuse_old_images)
-
-    def _fallback_material(self, material_name: str) -> VMTData:
-        material: bpy.types.Material = bpy.data.materials.new(material_name)
-        return VMTData(1, 1, material)
+        self._staging: Dict[str, StagedMaterial] = {}
+        self._loaded: Dict[str, StagedMaterial] = {}
+        self.reusable_amount = 0
+        self.importable_amount = 0
+        self.invalid_amount = 0
 
     def is_nodraw(self, material_name: str, vmt_data: Callable[[], vmt.VMT]) -> bool:
         material_name = material_name.lower()
@@ -1041,13 +1077,13 @@ class VMTImporter():
                                        simple=self.simple, interpolation=self.interpolation, cull=self.cull)
         except FileNotFoundError:
             print(f"WARNING: MATERIAL {material_name} NOT FOUND")
-            self._cache[material_name] = self._fallback_material(truncated_name)
+            self._cache[material_name] = _fallback_material(material_name, truncated_name)
             is_nodraw = is_invisible_tool((material_name,))
         except vmt.VMTParseException as err:
             print(f"WARNING: MATERIAL {material_name} IS INVALID")
             if self.verbose:
                 traceback.print_exception(type(err), err, err.__traceback__)
-            self._cache[material_name] = self._fallback_material(truncated_name)
+            self._cache[material_name] = _fallback_material(material_name, truncated_name)
             is_nodraw = is_invisible_tool((material_name,))
         else:
             self._precache[material_name] = builder
@@ -1055,17 +1091,26 @@ class VMTImporter():
         self._nodraw_cache[material_name] = is_nodraw
         return is_nodraw
 
-    def load(self, material_name: str, vmt_data: Callable[[], vmt.VMT]) -> VMTData:
+    def stage(self, material_name: str, vmt_data: Callable[[], vmt.VMT]) -> StagedMaterial:
         material_name = material_name.lower()
         truncated_name = truncate_name(material_name)
+        if material_name in self._staging:
+            return self._staging[material_name]
+        if material_name in self._loaded:
+            return self._loaded[material_name]
         if material_name in self._cache:
-            return self._cache[material_name]
+            # material was not found in nodraw check
+            self._staging[material_name] = StagedMaterial.from_existing(self, self._cache[material_name].material)
+            self.invalid_amount += 1
+            return self._staging[material_name]
+        if self.verbose:
+            print(f"Staging material {material_name}")
         if self.reuse_old and truncated_name in bpy.data.materials:
             material: bpy.types.Material = bpy.data.materials[truncated_name]
             if material.use_nodes and len(material.node_tree.nodes) != 0:
-                return VMTData(material.vmt_data.width, material.vmt_data.height, material)
-        if self.verbose:
-            print(f"Building material {material_name}...")
+                self._staging[material_name] = StagedMaterial.from_existing(self, material)
+                self.reusable_amount += 1
+                return self._staging[material_name]
         try:
             if material_name in self._precache:
                 builder = self._precache[material_name]
@@ -1074,26 +1119,76 @@ class VMTImporter():
                                            simple=self.simple, interpolation=self.interpolation, cull=self.cull)
         except FileNotFoundError:
             print(f"WARNING: MATERIAL {material_name} NOT FOUND")
-            data = self._fallback_material(material_name)
+            data = _fallback_material(material_name, truncated_name)
+            self._cache[material_name] = data
+            self._staging[material_name] = StagedMaterial.from_existing(self, data.material)
+            self.invalid_amount += 1
         except vmt.VMTParseException as err:
             print(f"WARNING: MATERIAL {material_name} IS INVALID")
             if self.verbose:
                 traceback.print_exception(type(err), err, err.__traceback__)
-            data = self._fallback_material(material_name)
+            data = _fallback_material(material_name, truncated_name)
+            self._cache[material_name] = data
+            self._staging[material_name] = StagedMaterial.from_existing(self, data.material)
+            self.invalid_amount += 1
         else:
-            try:
-                material = builder.build()
-            except Exception as err:
-                print(f"WARNING: MATERIAL {material_name} BUILDING FAILED: {err}")
-                if self.verbose:
-                    traceback.print_exception(type(err), err, err.__traceback__)
-                data = self._fallback_material(material_name)
-            else:
-                material.vmt_data.width = builder.width
-                material.vmt_data.height = builder.height
-                data = VMTData(builder.width, builder.height, material)
+            self._staging[material_name] = StagedMaterial(self, material_name, builder)
+            self.importable_amount += 1
+        return self._staging[material_name]
+
+    def load_all(self) -> None:
+        if self.verbose:
+            print("Loading all materials...")
+        self._vtf_importer.progress_callback = self.texture_progress_callback
+        self._vtf_importer.load_all()
+        total = len(self._staging)
+        current = 0
+        for material_name in self._staging:
+            staged = self._staging[material_name]
+            self._load(material_name, staged)
+            self._loaded[material_name] = staged
+            current += 1
+            if current % 100 == 0 or current == total:
+                self.progress_callback(current, total)
+        self._staging.clear()
+        self.reusable_amount = 0
+        self.importable_amount = 0
+        self.invalid_amount = 0
+
+    def _load(self, material_name: str, staged: StagedMaterial) -> None:
+        material_name = material_name.lower()
+        if staged.reused is not None:
+            # material is already loaded
+            material = staged.reused
+            self._cache[material_name] = VMTData(material.vmt_data.width, material.vmt_data.height, material)
+            return
+        builder = staged.builder
+        if builder is None:
+            raise Exception("a builder was not specified for non-reused staged material")
+        if self.verbose:
+            print(f"Building material {material_name}...")
+        try:
+            material = builder.build()
+        except Exception as err:
+            print(f"WARNING: MATERIAL {material_name} BUILDING FAILED: {err}")
+            if self.verbose:
+                traceback.print_exception(type(err), err, err.__traceback__)
+            data = _fallback_material(material_name, truncate_name(material_name))
+        else:
+            width, height = builder.get_size()
+            material.vmt_data.width = width
+            material.vmt_data.height = height
+            data = VMTData(width, height, material)
         self._cache[material_name] = data
-        return data
+
+    def get(self, material_name: str) -> VMTData:
+        material_name = material_name.lower()
+        if material_name not in self._cache:
+            raise Exception(f"material {material_name} hasn't been loaded")
+        return self._cache[material_name]
+
+    def texture_amounts(self) -> Tuple[int, int]:
+        return self._vtf_importer.reusable_amount, self._vtf_importer.importable_amount
 
 
 _CUBEMAP_SUFFIXES = (

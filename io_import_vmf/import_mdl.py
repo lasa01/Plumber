@@ -141,7 +141,7 @@ class Source2BlenderWrapper(mdl2model.Source2Blender):
             return super().get_material(mat_name, model_ob)
         md = model_ob.data
         try:
-            data = self.vmt_importer.load(
+            staged = self.vmt_importer.stage(
                 mat_name,
                 lambda: VMT(
                     self.material_openers[mat_name],
@@ -149,6 +149,7 @@ class Source2BlenderWrapper(mdl2model.Source2Blender):
                     allow_patch=True,
                 )
             )
+            data = staged.get_material()
         except KeyError:
             if mat_name not in self._missing_materials:
                 print(f"WARNING: MISSING MATERIAL: {mat_name}")

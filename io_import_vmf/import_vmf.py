@@ -1,5 +1,5 @@
-from typing import Iterable, Tuple, Optional, List, Dict, Any, Callable
-from .utils import truncate_name, is_invisible_tool
+from typing import Iterable, Tuple, Optional, List, Dict, Any
+from .utils import truncate_name, is_invisible_tool, fallback_material
 import vmfpy
 from os import path
 from mathutils import geometry, Vector, Euler, Matrix
@@ -132,13 +132,53 @@ class VMFImporter():
     def load(self, file_path: str, context: bpy.types.Context, data_dir: str = None) -> None:
         if context.mode != 'OBJECT':
             bpy.ops.object.mode_set(mode='OBJECT')
-        print("Loading VMF...")
         start = time.time()
         if data_dir is not None and self.need_files:
             print("Indexing map files...")
             self._vmf_fs.index_dir(data_dir)
-        print("Parsing map...")
+        print(f"Started importing VMF '{file_path}'")
+        print("[1/12] Parsing map...")
         vmf = vmfpy.VMF(open(file_path, encoding="utf-8"), self._vmf_fs)
+
+        print("[2/12] Determining required game files...")
+        if self.import_solids:
+            for solid in vmf.world.solids:
+                self._stage_solid(solid)
+            for func_entity in vmf.func_entities:
+                for solid in func_entity.solids:
+                    self._stage_solid(solid)
+            if self.import_overlays:
+                for overlay_entity in vmf.overlay_entities:
+                    self._stage_overlay(overlay_entity)
+        if self.import_props:
+            for prop_entity in vmf.prop_entities:
+                self._stage_prop(prop_entity, context)
+
+        if self._qc_importer is not None:
+            print(f"[3/12] Importing {self._qc_importer.importable_amount} models " +
+                  f"(reusing {self._qc_importer.reusable_amount} existing)...")
+            self._qc_importer.progress_callback = lambda c, t: print(
+                f"[3/12] Importing models... {c / t * 100:.4f} %"
+            )
+            self._qc_importer.load_all()
+        else:
+            print(f"[3/12] Skipped models")
+        if self._vmt_importer is not None:
+            reusable_t, importable_t = self._vmt_importer.texture_amounts()
+            print(f"[4/12] Importing {importable_t} textures (reusing {reusable_t} existing) " +
+                  f"and {self._vmt_importer.importable_amount} materials " +
+                  f"(reusing {self._vmt_importer.reusable_amount} existing, " +
+                  f"{self._vmt_importer.invalid_amount} cannot be imported)...")
+            self._vmt_importer.texture_progress_callback = lambda c, t: print(
+                f"[4/12] Importing textures... {c / t * 100:.4f} %"
+            )
+            self._vmt_importer.progress_callback = lambda c, t: print(
+                f"[5/12] Importing materials... {c / t * 100:.4f} %"
+            )
+            self._vmt_importer.load_all()
+        else:
+            print("[4/12] Skipped textures\n[5/12] Skipped materials")
+
         success_solids = 0
         failed_solids = 0
         success_overlays = 0
@@ -150,37 +190,12 @@ class VMFImporter():
         map_collection = bpy.data.collections.new(path.splitext(path.basename(file_path))[0])
         context.collection.children.link(map_collection)
 
-        total_to_import = 0
         if self.import_solids:
-            total_to_import += len(vmf.world.solids) + sum(len(e.solids) for e in vmf.func_entities)
-            if self.import_overlays:
-                total_to_import += len(vmf.overlay_entities)
-        if self.import_props:
-            total_to_import += len(vmf.prop_entities)
-        if self.import_lights:
-            total_to_import += len(vmf.light_entities) + len(vmf.spot_light_entities)
-            if vmf.env_light_entity is not None:
-                total_to_import += 1
-        if self.import_sky:
-            total_to_import += 1
-        if self.import_sky_origin:
-            total_to_import += 1
-
-        currently_imported = 0
-
-        def update_progress(interval: int = 100) -> None:
-            nonlocal currently_imported
-            currently_imported += 1
-            if currently_imported % interval == 0:
-                progress = currently_imported / total_to_import
-                context.window_manager.progress_update(progress)
-                print(f"Import progress: {progress * 100:.4f} %")
-
-        context.window_manager.progress_begin(0, 1)
-        if self.import_solids:
-            print("Building geometry...")
+            print("[6/12] Building geometry...")
             world_collection = bpy.data.collections.new(vmf.world.classname)
             map_collection.children.link(world_collection)
+            c = 0
+            t = len(vmf.world.solids) + sum(len(e.solids) for e in vmf.func_entities)
             for solid in vmf.world.solids:
                 try:
                     self._load_solid(solid, vmf.world.classname, world_collection)
@@ -191,7 +206,9 @@ class VMFImporter():
                     failed_solids += 1
                 else:
                     success_solids += 1
-                update_progress()
+                c += 1
+                if c % 250 == 0:
+                    print(f"[6/12] Building geometry... {c / t * 100:.4f} %")
             func_collection = bpy.data.collections.new("func")
             map_collection.children.link(func_collection)
             for func_entity in vmf.func_entities:
@@ -205,11 +222,15 @@ class VMFImporter():
                         failed_solids += 1
                     else:
                         success_solids += 1
-                    update_progress()
+                    c += 1
+                    if c % 100 == 0 or c == t:
+                        print(f"[6/12] Building geometry... {c / t * 100:.4f} %")
             if self.import_overlays:
-                print("Importing overlays...")
+                print("[7/12] Building overlays...")
                 collection = bpy.data.collections.new("overlay")
                 map_collection.children.link(collection)
+                c = 0
+                t = len(vmf.overlay_entities)
                 for overlay_entity in vmf.overlay_entities:
                     try:
                         self._load_overlay(overlay_entity, collection)
@@ -220,11 +241,19 @@ class VMFImporter():
                         failed_overlays += 1
                     else:
                         success_overlays += 1
-                    update_progress()
+                    c += 1
+                    if c % 100 == 0 or c == t:
+                        print(f"[7/12] Building overlays... {c / t * 100:.4f} %")
+            else:
+                print("[7/12] Skipped overlays")
+        else:
+            print("[6/12] Skipped geometry\n[7/12] Skipped overlays")
         if self.import_props:
-            print("Importing props...")
+            print("[8/12] Placing props...")
             prop_collection = bpy.data.collections.new("prop")
             map_collection.children.link(prop_collection)
+            c = 0
+            t = len(vmf.prop_entities)
             for prop_entity in vmf.prop_entities:
                 try:
                     self._load_prop(prop_entity, context, prop_collection)
@@ -235,15 +264,24 @@ class VMFImporter():
                     failed_props += 1
                 else:
                     success_props += 1
-                update_progress(interval=10)
+                c += 1
+                if c % 100 == 0 or c == t:
+                    print(f"[8/12] Placing props... {c / t * 100:.4f} %")
             if self.optimize_props:
-                print("Optimizing props...")
+                print("[9/12] Optimizing props...")
                 self._optimize_props(prop_collection)
+            else:
+                print("[9/12] Skipped prop optimization")
+        else:
+            print("[8/12] Skipped props\n[9/12] Skipped optimizing props")
         if self.import_lights:
-            print("Importing lights...")
+            print("[10/12] Placing lights...")
             light_collection = bpy.data.collections.new("light")
             map_collection.children.link(light_collection)
+            c = 0
+            t = len(vmf.light_entities) + len(vmf.spot_light_entities)
             if vmf.env_light_entity is not None:
+                t += 1
                 try:
                     self._load_env_light(vmf.env_light_entity, context, light_collection)
                 except Exception as err:
@@ -253,7 +291,7 @@ class VMFImporter():
                     failed_lights += 1
                 else:
                     success_lights += 1
-                update_progress()
+                c += 1
             for light_entity in vmf.light_entities:
                 try:
                     self._load_light(light_entity, light_collection)
@@ -264,7 +302,9 @@ class VMFImporter():
                     failed_lights += 1
                 else:
                     success_lights += 1
-                update_progress()
+                c += 1
+                if c % 100 == 0:
+                    f"[10/12] Placing lights... {c / t * 100:.4f} %"
             for spotlight_entity in vmf.spot_light_entities:
                 try:
                     self._load_spotlight(spotlight_entity, light_collection)
@@ -275,9 +315,13 @@ class VMFImporter():
                     failed_lights += 1
                 else:
                     success_lights += 1
-                update_progress()
+                c += 1
+                if c % 100 == 0 or c == t:
+                    print(f"[10/12] Placing lights... {c / t * 100:.4f} %")
+        else:
+            print("[10/12] Skipped lights")
         if self.import_sky:
-            print("Importing skybox...")
+            print("[11/12] Importing skybox...")
             try:
                 self._load_sky(
                     self._vmf_fs, "materials/skybox/" + vmf.world.skyname,
@@ -287,18 +331,19 @@ class VMFImporter():
                 print(f"ERROR LOADING SKYBOX: {err}")
                 if self.verbose:
                     traceback.print_exception(type(err), err, err.__traceback__)
-            update_progress()
+        else:
+            print("[11/12] Skipped skybox")
         if self.import_sky_origin and vmf.sky_camera_entity is not None:
-            print("Importing sky origin...")
+            print("[12/12] Importing sky origin...")
             try:
                 self._load_sky_camera(vmf.sky_camera_entity, map_collection, context)
             except Exception as err:
                 print(f"ERROR LOADING SKY ORIGIN: {err}")
                 if self.verbose:
                     traceback.print_exception(type(err), err, err.__traceback__)
-            update_progress()
+        else:
+            print("[12/12] Skipped sky origin")
 
-        context.window_manager.progress_end()
         print(f"Done in {time.time() - start:.4f} s")
         if self.import_solids:
             print(f"Imported {success_solids} solids ({failed_solids} failed)")
@@ -400,13 +445,22 @@ class VMFImporter():
         obj.select_set(True)
         context.view_layer.objects.active = obj
 
-    def _load_material(self, name: str, opener: Callable[[], vmfpy.vmt.VMT]) -> Tuple[int, int, bpy.types.Material]:
+    def _get_material(self, name: str) -> Tuple[int, int, bpy.types.Material]:
         if self._vmt_importer is not None:
-            return self._vmt_importer.load(name, opener)
+            return self._vmt_importer.get(name)
         name = name.lower()
         if name not in self._fallback_materials:
-            self._fallback_materials[name] = bpy.data.materials.new(truncate_name(name))
+            self._fallback_materials[name] = fallback_material(name, truncate_name(name))
         return 1, 1, self._fallback_materials[name]
+
+    def _stage_solid(self, solid: vmfpy.VMFSolid) -> None:
+        if self._vmt_importer is None:
+            return
+        materials = [(side.material, side.get_material) for side in solid.sides]
+        if self.skip_tools and all(self._vmt_importer.is_nodraw(material, getter) for material, getter in materials):
+            return
+        for material, getter in materials:
+            self._vmt_importer.stage(material, getter)
 
     # based on http://mattn.ufoai.org/files/MAPFiles.pdf
     def _load_solid(self, solid: vmfpy.VMFSolid, parent: str, collection: bpy.types.Collection) -> None:
@@ -503,10 +557,7 @@ class VMFImporter():
 
         # create uvs and materials
         for side_idx, side in enumerate(solid.sides):
-            texture_width, texture_height, material = self._load_material(
-                side.material,
-                lambda: side.get_material(allow_patch=True)
-            )
+            texture_width, texture_height, material = self._get_material(side.material)
             if material not in materials:
                 material_idx = len(materials)
                 materials.append(material)
@@ -705,6 +756,13 @@ class VMFImporter():
         if is_tool:
             obj.display_type = 'WIRE'
 
+    def _stage_prop(self, prop: vmfpy.VMFPropEntity, context: bpy.types.Context) -> None:
+        if self._qc_importer is not None:
+            name = path.splitext(prop.model)[0]
+            self._qc_importer.stage(name, name + ".mdl", context)
+        else:
+            raise ImportError("QC importer not found")
+
     def _load_prop(self, prop: vmfpy.VMFPropEntity,
                    context: bpy.types.Context, collection: bpy.types.Collection) -> None:
         name = path.splitext(prop.model)[0]
@@ -712,7 +770,7 @@ class VMFImporter():
         #     obj: bpy.types.Object = self._mdl_importer.load(name, name + ".mdl", collection)
         #     obj.rotation_euler = Euler((0, 0, radians(90)))
         if self._qc_importer is not None:
-            obj = self._qc_importer.load(name, name + ".mdl", context, collection)
+            obj = self._qc_importer.get_unique(name, collection, context)
             obj.rotation_euler = Euler((0, 0, radians(90)))
         else:
             raise ImportError("QC importer not found")
@@ -729,7 +787,7 @@ class VMFImporter():
 
     def _optimize_props(self, collection: bpy.types.Collection) -> None:
         for prop in self._props:
-            if len(prop.pose.bones) != 1 or prop.pose.bones[0].basename != "static_prop":
+            if prop.pose is not None and (len(prop.pose.bones) != 1 or prop.pose.bones[0].basename != "static_prop"):
                 continue
             prop_name = prop.name
             try:
@@ -770,6 +828,11 @@ class VMFImporter():
                 print(f"ERROR OPTIMIZING PROP {prop_name}: {err}")
                 if self.verbose:
                     traceback.print_exception(type(err), err, err.__traceback__)
+
+    def _stage_overlay(self, overlay: vmfpy.VMFOverlayEntity) -> None:
+        if self._vmt_importer is None:
+            return
+        self._vmt_importer.stage(overlay.material, lambda: overlay.get_material(allow_patch=True))
 
     def _load_overlay(self, overlay: vmfpy.VMFOverlayEntity, collection: bpy.types.Collection) -> None:
         name = f"info_overlay_{overlay.id}"
@@ -990,7 +1053,7 @@ class VMFImporter():
 
         mesh: bpy.types.Mesh = bpy.data.meshes.new(name)
         mesh.from_pydata([(v - center) * self.scale for v in vertices], (), face_vertices)
-        _, _, material = self._load_material(overlay.material, lambda: overlay.get_material(allow_patch=True))
+        _, _, material = self._get_material(overlay.material)
         mesh.materials.append(material)
         uv_layer: bpy.types.MeshUVLoopLayer = mesh.uv_layers.new()
         for polygon_idx, polygon in enumerate(mesh.polygons):
