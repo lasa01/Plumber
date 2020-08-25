@@ -303,7 +303,7 @@ class VMFImporter():
         if self.import_solids:
             print(f"Imported {success_solids} solids ({failed_solids} failed)")
         if self.import_overlays:
-            print(f"Imported {success_overlays} overlays ({failed_overlays}) failed")
+            print(f"Imported {success_overlays} overlays ({failed_overlays} failed)")
         if self.import_props:
             print(f"Imported {success_props} props ({failed_props} failed)")
         if self.import_lights:
