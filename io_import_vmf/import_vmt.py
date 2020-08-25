@@ -828,13 +828,15 @@ class _MaterialBuilder():
         if vmt_data.param_flag("$translucent"):
             self.blend_method = 'BLEND'
             self.shadow_method = 'HASHED'
-            self._shader_dict['Alpha'].input = texture_inputs["$basetexture"].alpha
+            if "$basetexture" in params:
+                self._shader_dict['Alpha'].input = texture_inputs["$basetexture"].alpha
             if not self.simple and "$alpha" in params:
                 self._shader_dict['Alpha'].append(_MultiplyMaterialNode(vmt_data.param_as_float("$alpha")))
         elif vmt_data.param_flag("$alphatest"):
             self.blend_method = 'CLIP'
             self.shadow_method = 'CLIP'
-            self._shader_dict['Alpha'].input = texture_inputs["$basetexture"].alpha
+            if "$basetexture" in params:
+                self._shader_dict['Alpha'].input = texture_inputs["$basetexture"].alpha
             if "$alphatestreference" in params:
                 self.alpha_reference = vmt_data.param_as_float("$alphatestreference")
             elif "$allowalphatocoverage" in params:
@@ -860,13 +862,13 @@ class _MaterialBuilder():
             masks1 = False
 
         if vmt_data.param_flag("$phong") or vmt_data.shader == "character":
-            if vmt_data.param_flag("$basemapluminancephongmask"):
+            if vmt_data.param_flag("$basemapluminancephongmask") and "$basetexture" in params:
                 self._shader_dict['Specular'].input = texture_inputs["$basetexture"].color
-            elif not self.simple and vmt_data.param_flag("$basemapalphaphongmask"):
+            elif not self.simple and vmt_data.param_flag("$basemapalphaphongmask") and "$basetexture" in params:
                 self._shader_dict['Specular'].input = texture_inputs["$basetexture"].alpha
             elif not self.simple and masks1:
                 self._shader_dict['Specular'].input = texture_inputs["$masks1"].channels.g
-            elif not self.simple:
+            elif not self.simple and "$bumpmap" in params:
                 self._shader_dict['Specular'].input = texture_inputs["$bumpmap"].alpha
             if "$phongexponent" in params:
                 if not self.simple and "$phongexponent2" in params:
@@ -894,13 +896,15 @@ class _MaterialBuilder():
             else:
                 self._shader_dict['Roughness'].const = 0.6
         elif "$envmap" in params:
-            if not self.simple and (vmt_data.param_flag("$basealphaenvmapmask")
-                                    or vmt_data.param_flag("$basealphaenvmask")):
+            if not self.simple and ((vmt_data.param_flag("$basealphaenvmapmask")
+                                    or vmt_data.param_flag("$basealphaenvmask"))
+                                    and "$basetexture" in params):
                 self._shader_dict['Specular'].input = texture_inputs["$basetexture"].alpha
                 self._shader_dict['Specular'].append(_InvertMaterialNode())
-            elif not self.simple and vmt_data.param_flag("$normalmapalphaenvmapmask"):
+            elif not self.simple and vmt_data.param_flag("$normalmapalphaenvmapmask") and "$bumpmap" in params:
                 self._shader_dict['Specular'].input = texture_inputs["$bumpmap"].alpha
-            elif not self.simple and vmt_data.param_flag("$envmapmaskintintmasktexture"):
+            elif not self.simple and (vmt_data.param_flag("$envmapmaskintintmasktexture")
+                                      and "$tintmasktexture" in params):
                 self._shader_dict['Specular'].input = texture_inputs["$tintmasktexture"].channels.r
             elif "$envmapmask" in params:
                 image = self._vtf_importer.load(
@@ -937,7 +941,7 @@ class _MaterialBuilder():
             self._shader_dict['Metallic'].const = vmt_data.param_as_float("$metalness")
 
         selfillum_input = None
-        if not self.simple and vmt_data.param_flag("$selfillum_envmapmask_alpha"):
+        if not self.simple and vmt_data.param_flag("$selfillum_envmapmask_alpha") and "$envmapmask" in params:
             selfillum_input = texture_inputs["$envmapmask"].alpha
         elif vmt_data.param_flag("$selfillum"):
             if "$selfillummask" in params:
@@ -946,7 +950,7 @@ class _MaterialBuilder():
                 )
                 texture_inputs["$selfillummask"].setimage(image)
                 selfillum_input = texture_inputs["$selfillummask"].color
-            elif not self.simple:
+            elif not self.simple and "$basetexture" in params:
                 selfillum_input = texture_inputs["$basetexture"].alpha
         if selfillum_input is not None:
             if not self.simple:
