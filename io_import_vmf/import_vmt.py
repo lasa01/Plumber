@@ -606,7 +606,7 @@ class _MaterialBuilder():
                 if "$bumptransform" in params:
                     transform = vmt_data.param_as_transform("$bumptransform")
                     if transform.scale != (1, 1) or transform.rotate != 0 or transform.translate != (0, 0):
-                        texture_inputs["$bumpmap"] = _TransformedTextureInput(
+                        texture_inputs["$normalmap"] = _TransformedTextureInput(
                             transform.scale, transform.rotate, transform.translate, interpolation
                         )
                 texture_inputs["$normalmap"].setimage(image)
