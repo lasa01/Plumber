@@ -20,7 +20,7 @@ def truncate_name(name: str, maxlen: int = 59) -> str:
     max_path_len = maxlen - (len(basename) + _B64_LEN + 2)
     if max_path_len <= 0:
         name, extension = splitext(name)
-        return _hashed(name) + extension
+        return f"~{_hashed(name)}{extension}"
     path_split = -max_path_len
     path_discard, path_keep = path[:path_split], path[path_split:]
     if "/" in path_keep:
