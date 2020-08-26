@@ -23,7 +23,7 @@ bl_info = {
 
 class ValveGameDir(bpy.types.PropertyGroup):
     def get_dirpath(self) -> str:
-        return self["dirpath"]
+        return self.get("dirpath", "")
 
     def set_dirpath(self, value: str) -> None:
         self["dirpath"] = bpy.path.abspath(value)
@@ -86,7 +86,7 @@ class RemoveValveDirOperator(bpy.types.Operator):
 
 class ValveGamePak(bpy.types.PropertyGroup):
     def get_filepath(self) -> str:
-        return self["filepath"]
+        return self.get("filepath", "")
 
     def set_filepath(self, value: str) -> None:
         self["filepath"] = bpy.path.abspath(value)
@@ -149,7 +149,7 @@ class RemoveValvePakOperator(bpy.types.Operator):
 
 class ValveGameWildcardDir(bpy.types.PropertyGroup):
     def get_dirpath(self) -> str:
-        return self["dirpath"]
+        return self.get("dirpath", "")
 
     def set_dirpath(self, value: str) -> None:
         self["dirpath"] = bpy.path.abspath(value)
@@ -323,7 +323,7 @@ class ValveGameAddonPreferences(bpy.types.AddonPreferences):
     game_index: bpy.props.IntProperty(name="Game definition")  # type: ignore
 
     def get_dec_models_path(self) -> str:
-        return self["dec_models_path"]
+        return self.get("dec_models_path", "")
 
     def set_dec_models_path(self, value: str) -> None:
         self["dec_models_path"] = bpy.path.abspath(value)
