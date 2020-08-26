@@ -152,7 +152,7 @@ class Source2BlenderWrapper(mdl2model.Source2Blender):
             data = staged.get_material()
         except KeyError:
             if mat_name not in self._missing_materials:
-                print(f"WARNING: MISSING MATERIAL: {mat_name}")
+                print(f"[WARNING] MISSING MATERIAL: {mat_name}")
                 self._missing_materials.add(mat_name)
         else:
             mat_ind = md.materials.find(data.material.name)
@@ -175,7 +175,7 @@ class MDLImporter():
         name = name.lower()
         if name in self._cache:
             if self.verbose:
-                print(f"Model {name} already imported, copying...")
+                print(f"[VERBOSE] Model {name} already imported, copying...")
             original = self._cache[name]
             copy = original.copy()
             collection.objects.link(copy)

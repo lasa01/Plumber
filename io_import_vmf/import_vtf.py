@@ -46,16 +46,16 @@ class VTFImporter():
         if image_name in self._staging:
             staged = self._staging[image_name]
             if colorspace != staged.colorspace:
-                print(f"WARNING: IMAGE {image_name}: COLORSPACES CONFLICT ({colorspace}, {staged.colorspace})")
+                print(f"[WARNING] IMAGE {image_name}: COLORSPACES CONFLICT ({colorspace}, {staged.colorspace})")
             if alpha_mode != staged.alpha_mode:
-                print(f"WARNING: IMAGE {image_name}: ALPHA MODES CONFLICT ({alpha_mode}, {staged.alpha_mode})")
+                print(f"[WARNING] IMAGE {image_name}: ALPHA MODES CONFLICT ({alpha_mode}, {staged.alpha_mode})")
             return staged
         if image_name in self._loaded:
             loaded = self._loaded[image_name]
             if colorspace != loaded.colorspace:
-                print(f"WARNING: IMAGE {image_name}: COLORSPACES CONFLICT ({colorspace}, {loaded.colorspace})")
+                print(f"[WARNING] IMAGE {image_name}: COLORSPACES CONFLICT ({colorspace}, {loaded.colorspace})")
             if alpha_mode != loaded.alpha_mode:
-                print(f"WARNING: IMAGE {image_name}: ALPHA MODES CONFLICT ({alpha_mode}, {loaded.alpha_mode})")
+                print(f"[WARNING] IMAGE {image_name}: ALPHA MODES CONFLICT ({alpha_mode}, {loaded.alpha_mode})")
             return loaded
         elif self.reuse_old and truncated_name in bpy.data.images:
             self._staging[image_name] = StagedImage.from_existing(self, bpy.data.images[truncated_name])

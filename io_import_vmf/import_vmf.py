@@ -200,7 +200,7 @@ class VMFImporter():
                 try:
                     self._load_solid(solid, vmf.world.classname, world_collection)
                 except Exception as err:
-                    print(f"ERROR LOADING SOLID: {err}")
+                    print(f"[ERROR] LOADING SOLID FAILED: {err}")
                     if self.verbose:
                         traceback.print_exception(type(err), err, err.__traceback__)
                     failed_solids += 1
@@ -216,7 +216,7 @@ class VMFImporter():
                     try:
                         self._load_solid(solid, func_entity.classname, func_collection)
                     except Exception as err:
-                        print(f"ERROR LOADING SOLID: {err}")
+                        print(f"[ERROR] LOADING SOLID FAILED: {err}")
                         if self.verbose:
                             traceback.print_exception(type(err), err, err.__traceback__)
                         failed_solids += 1
@@ -235,7 +235,7 @@ class VMFImporter():
                     try:
                         self._load_overlay(overlay_entity, collection)
                     except Exception as err:
-                        print(f"ERROR LOADING OVERLAY: {err}")
+                        print(f"[ERROR] LOADING OVERLAY FAILED: {err}")
                         if self.verbose:
                             traceback.print_exception(type(err), err, err.__traceback__)
                         failed_overlays += 1
@@ -258,7 +258,7 @@ class VMFImporter():
                 try:
                     self._load_prop(prop_entity, context, prop_collection)
                 except Exception as err:
-                    print(f"ERROR LOADING PROP: {err}")
+                    print(f"[ERROR] LOADING PROP FAILED: {err}")
                     if self.verbose:
                         traceback.print_exception(type(err), err, err.__traceback__)
                     failed_props += 1
@@ -285,7 +285,7 @@ class VMFImporter():
                 try:
                     self._load_env_light(vmf.env_light_entity, context, light_collection)
                 except Exception as err:
-                    print(f"ERROR LOADING ENVIRONMENT LIGHT: {err}")
+                    print(f"[ERROR] LOADING ENVIRONMENT LIGHT FAILED: {err}")
                     if self.verbose:
                         traceback.print_exception(type(err), err, err.__traceback__)
                     failed_lights += 1
@@ -296,7 +296,7 @@ class VMFImporter():
                 try:
                     self._load_light(light_entity, light_collection)
                 except Exception as err:
-                    print(f"ERROR LOADING LIGHT: {err}")
+                    print(f"[ERROR] FAILED LOADING LIGHT: {err}")
                     if self.verbose:
                         traceback.print_exception(type(err), err, err.__traceback__)
                     failed_lights += 1
@@ -309,7 +309,7 @@ class VMFImporter():
                 try:
                     self._load_spotlight(spotlight_entity, light_collection)
                 except Exception as err:
-                    print(f"ERROR LOADING SPOTLIGHT: {err}")
+                    print(f"[ERROR] FAILED LOADING SPOTLIGHT: {err}")
                     if self.verbose:
                         traceback.print_exception(type(err), err, err.__traceback__)
                     failed_lights += 1
@@ -328,7 +328,7 @@ class VMFImporter():
                     output_res=self.sky_resolution, context=context,
                 )
             except Exception as err:
-                print(f"ERROR LOADING SKYBOX: {err}")
+                print(f"[ERROR] FAILED LOADING SKYBOX: {err}")
                 if self.verbose:
                     traceback.print_exception(type(err), err, err.__traceback__)
         else:
@@ -338,7 +338,7 @@ class VMFImporter():
             try:
                 self._load_sky_camera(vmf.sky_camera_entity, map_collection, context)
             except Exception as err:
-                print(f"ERROR LOADING SKY ORIGIN: {err}")
+                print(f"[ERROR] FAILED LOADING SKY ORIGIN: {err}")
                 if self.verbose:
                     traceback.print_exception(type(err), err, err.__traceback__)
         else:
@@ -472,7 +472,7 @@ class VMFImporter():
             return
         name = f"{parent}_{solid.id}"
         if self.verbose:
-            print(f"Building {name}...")
+            print(f"[VERBOSE] Building {name}...")
         side_planes: List[VectorPair] = [_plane_from_points(*side.plane) for side in solid.sides]
         vertices: List[Vector] = []  # all vertices for this solid
         materials: List[bpy.types.Material] = []
@@ -825,7 +825,7 @@ class VMFImporter():
                     child.name = prop_name
                 bpy.data.objects.remove(prop)
             except Exception as err:
-                print(f"ERROR OPTIMIZING PROP {prop_name}: {err}")
+                print(f"[ERROR] OPTIMIZING PROP {prop_name} FAILED: {err}")
                 if self.verbose:
                     traceback.print_exception(type(err), err, err.__traceback__)
 

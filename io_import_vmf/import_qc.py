@@ -196,7 +196,7 @@ class QCImporter():
         if name in self._loaded:
             return self._loaded[name]
         if self.verbose:
-            print(f"Staging model {name}")
+            print(f"[VERBOSE] Staging model {name}")
         if self.reuse_old and truncated_name in bpy.data.armatures:
             meshes = bpy.data.armatures[truncated_name].qc_data.read_meshes()
             # mesh needs to be reimported if some materials failed for now
@@ -215,7 +215,7 @@ class QCImporter():
 
     def load_all(self) -> None:
         if self.verbose:
-            print("Loading all models...")
+            print("[VERBOSE] Loading all models...")
         total = len(self._staging)
         current = 0
         for name in self._staging:
@@ -236,7 +236,7 @@ class QCImporter():
             scene_collection = staged.context.scene.collection
             # qc is already imported
             if self.verbose:
-                print(f"Model {name} previously imported, recreating...")
+                print(f"[VERBOSE] Model {name} previously imported, recreating...")
             armature = staged.reused
             qc_data = armature.qc_data
             armature_obj: bpy.types.Object = bpy.data.objects.new(armature.name, armature)
@@ -262,7 +262,7 @@ class QCImporter():
             raise Exception("required information was not specified for non-reused staged qc")
         path, root = staged.info
         if self.verbose:
-            print(f"Importing model {name}...")
+            print(f"[VERBOSE] Importing model {name}...")
         SmdImporterWrapper.collection = staged.context.scene.collection
         SmdImporterWrapper.name = truncated_name
         if path.endswith(".mdl"):
@@ -286,7 +286,7 @@ class QCImporter():
                                     out_f.write(line)
                         saved_files += 1
                     if saved_files == 0:
-                        print(f"ERROR: MODEL {mdl_path} NOT FOUND")
+                        print(f"[ERROR] MODEL {mdl_path} NOT FOUND")
                         raise FileNotFoundError(mdl_path)
                     full_mdl_path = str(self.dec_models_path / mdl_path)
                 else:
@@ -366,7 +366,7 @@ class QCImporter():
         if self._cache_uniqueness[name]:
             return self.get_smd(name, collection, context)
         if self.verbose:
-            print(f"Copying model {name}...")
+            print(f"[VERBOSE] Copying model {name}...")
         smd = self._cache[name].copy()
         original_arm = smd.a
         copy_arm = original_arm.copy()

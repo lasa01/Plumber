@@ -588,7 +588,7 @@ class _MaterialBuilder():
 
         unsupported_params = [p for p in params if p not in _SUPPORTED_PARAMS]
         if len(unsupported_params) != 0:
-            print(f"WARNING: UNSUPPORTED MATERIAL PARAMS: {', '.join(unsupported_params)} in {name}")
+            print(f"[WARNING] UNSUPPORTED MATERIAL PARAMS: {', '.join(unsupported_params)} in {name}")
 
         if vmt_data.param_flag("%compilewater"):
             self.water = True
@@ -1076,11 +1076,11 @@ class VMTImporter():
             builder = _MaterialBuilder(self._vtf_importer, truncated_name, vmt_data(),
                                        simple=self.simple, interpolation=self.interpolation, cull=self.cull)
         except FileNotFoundError:
-            print(f"WARNING: MATERIAL {material_name} NOT FOUND")
+            print(f"[WARNING] MATERIAL {material_name} NOT FOUND")
             self._cache[material_name] = _fallback_material(material_name, truncated_name)
             is_nodraw = is_invisible_tool((material_name,))
         except vmt.VMTParseException as err:
-            print(f"WARNING: MATERIAL {material_name} IS INVALID")
+            print(f"[WARNING] MATERIAL {material_name} IS INVALID")
             if self.verbose:
                 traceback.print_exception(type(err), err, err.__traceback__)
             self._cache[material_name] = _fallback_material(material_name, truncated_name)
@@ -1104,7 +1104,7 @@ class VMTImporter():
             self.invalid_amount += 1
             return self._staging[material_name]
         if self.verbose:
-            print(f"Staging material {material_name}")
+            print(f"[VERBOSE] Staging material {material_name}")
         if self.reuse_old and truncated_name in bpy.data.materials:
             material: bpy.types.Material = bpy.data.materials[truncated_name]
             if material.use_nodes and len(material.node_tree.nodes) != 0:
@@ -1118,13 +1118,13 @@ class VMTImporter():
                 builder = _MaterialBuilder(self._vtf_importer, truncated_name, vmt_data(),
                                            simple=self.simple, interpolation=self.interpolation, cull=self.cull)
         except FileNotFoundError:
-            print(f"WARNING: MATERIAL {material_name} NOT FOUND")
+            print(f"[WARNING] MATERIAL {material_name} NOT FOUND")
             data = _fallback_material(material_name, truncated_name)
             self._cache[material_name] = data
             self._staging[material_name] = StagedMaterial.from_existing(self, data.material)
             self.invalid_amount += 1
         except vmt.VMTParseException as err:
-            print(f"WARNING: MATERIAL {material_name} IS INVALID")
+            print(f"[WARNING] MATERIAL {material_name} IS INVALID")
             if self.verbose:
                 traceback.print_exception(type(err), err, err.__traceback__)
             data = _fallback_material(material_name, truncated_name)
@@ -1138,7 +1138,7 @@ class VMTImporter():
 
     def load_all(self) -> None:
         if self.verbose:
-            print("Loading all materials...")
+            print("[VERBOSE] Loading all materials...")
         self._vtf_importer.progress_callback = self.texture_progress_callback
         self._vtf_importer.load_all()
         total = len(self._staging)
@@ -1166,11 +1166,11 @@ class VMTImporter():
         if builder is None:
             raise Exception("a builder was not specified for non-reused staged material")
         if self.verbose:
-            print(f"Building material {material_name}...")
+            print(f"[VERBOSE] Building material {material_name}...")
         try:
             material = builder.build()
         except Exception as err:
-            print(f"WARNING: MATERIAL {material_name} BUILDING FAILED: {err}")
+            print(f"[WARNING] MATERIAL {material_name} BUILDING FAILED: {err}")
             if self.verbose:
                 traceback.print_exception(type(err), err, err.__traceback__)
             data = _fallback_material(material_name, truncate_name(material_name))
