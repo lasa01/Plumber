@@ -392,8 +392,17 @@ class ValveGameOpenPreferencesOperator(bpy.types.Operator):
 
 
 class _ValveGameOperatorProps():
-    game: bpy.props.EnumProperty(items=ValveGameAddonPreferences.game_enum_items,  # type: ignore
-                                 name="Game definition", description="Used for searching files")
+    game: bpy.props.EnumProperty(  # type: ignore
+        items=ValveGameAddonPreferences.game_enum_items,
+        name="Game definition",
+        description="Used for searching files",
+    )
+
+    verbose: bpy.props.BoolProperty(  # type: ignore
+        name="Verbose",
+        description="Enable to print more info into Blender console",
+        default=False,
+    )
 
 
 class _ValveGameOperator(bpy.types.Operator, _ValveGameOperatorProps):
@@ -403,17 +412,6 @@ class _ValveGameOperator(bpy.types.Operator, _ValveGameOperatorProps):
     def invoke(self, context: bpy.types.Context, event: bpy.types.Event) -> Set[str]:
         context.window_manager.fileselect_add(self)
         return {'RUNNING_MODAL'}
-
-    def draw(self, context: bpy.types.Context) -> None:
-        layout: bpy.types.UILayout = self.layout
-        layout.alignment = 'RIGHT'
-        preferences: ValveGameAddonPreferences = context.preferences.addons[__package__].preferences
-        layout.prop(self, "game")
-        if not preferences.games:
-            box = layout.box()
-            row = box.row()
-            row.label(text="Open preferences to add game definitions.", icon='INFO')
-            row.operator("io_import_vmf.open_preferences", text="", icon='PREFERENCES')
 
     def _check_valve_props(self, context: bpy.types.Context) -> Optional[Set[str]]:
         if self.game != 'NONE':
@@ -431,6 +429,33 @@ class _ValveGameOperator(bpy.types.Operator, _ValveGameOperatorProps):
             self.data_paks = []
             self.data_dirs = []
         return None
+
+
+class VMF_PT_valve_games(bpy.types.Panel):
+    bl_space_type = 'FILE_BROWSER'
+    bl_region_type = 'TOOL_PROPS'
+    bl_label = ""
+    bl_parent_id = "FILE_PT_operator"
+    bl_options = {'HIDE_HEADER'}
+
+    @classmethod
+    def poll(cls, context: bpy.types.Context) -> bool:
+        operator = context.space_data.active_operator
+        return isinstance(operator, _ValveGameOperatorProps)
+
+    def draw(self, context: bpy.types.Context) -> None:
+        layout: bpy.types.UILayout = self.layout
+        layout.use_property_split = True
+        layout.use_property_decorate = False
+        preferences: ValveGameAddonPreferences = context.preferences.addons[__package__].preferences
+        operator = context.space_data.active_operator
+        layout.prop(operator, "verbose")
+        layout.prop(operator, "game")
+        if not preferences.games:
+            row = layout.box().row()
+            row.alignment = 'RIGHT'
+            row.label(text="Open preferences to add game definitions.", icon='INFO')
+            row.operator("io_import_vmf.open_preferences", text="", icon='PREFERENCES')
 
 
 class ImportSceneVMF(_ValveGameOperator, _ValveGameOperatorProps):
@@ -577,12 +602,6 @@ class ImportSceneVMF(_ValveGameOperator, _ValveGameOperatorProps):
         default=0.01,
     )
 
-    verbose: bpy.props.BoolProperty(  # type: ignore
-        name="Verbose",
-        description="Enable to print more info into Blender console",
-        default=False,
-    )
-
     # mdl_available = False
     qc_available = False
 
@@ -644,61 +663,213 @@ class ImportSceneVMF(_ValveGameOperator, _ValveGameOperatorProps):
         return {'FINISHED'}
 
     def draw(self, context: bpy.types.Context) -> None:
+        pass
+
+
+class VMF_PT_vmf_map_data(bpy.types.Panel):
+    bl_space_type = 'FILE_BROWSER'
+    bl_region_type = 'TOOL_PROPS'
+    bl_label = ""
+    bl_parent_id = "FILE_PT_operator"
+    bl_options = {'HIDE_HEADER'}
+
+    @classmethod
+    def poll(cls, context: bpy.types.Context) -> bool:
+        operator = context.space_data.active_operator
+        return operator.bl_idname == "IMPORT_SCENE_OT_vmf"
+
+    def draw(self, context: bpy.types.Context) -> None:
         layout: bpy.types.UILayout = self.layout
-        super().draw(context)
-        layout.separator_spacer()
-        layout.prop(self, "import_solids")
-        if self.import_solids:
-            box = layout.box()
-            box.prop(self, "epsilon")
-            box.prop(self, "skip_tools")
-            box.prop(self, "import_overlays")
-        col = layout.column()
-        col.prop(self, "import_props")
-        if self.import_props:
-            box = col.box()
-            # NOTE: Imports invalid rotation, disabled
-            # if self.mdl_available:
-            #     box.label(text="Models will be imported using SourceIO.")
-            if self.qc_available:
-                box.label(text="Models will be imported using Blender Source Tools.")
-                preferences: ValveGameAddonPreferences = context.preferences.addons[__package__].preferences
-                if not preferences.dec_models_path:
-                    box.label(text="They will be decompiled into a temp directory and deleted.")
-                    row = box.row()
-                    row.label(text="You can specify a persistent path for decompiled models.", icon='INFO')
-                    row.operator("io_import_vmf.open_preferences", text="", icon='PREFERENCES')
-                else:
-                    box.label(text="Missing models will be decompiled.")
-            box.prop(self, "optimize_props")
-            box.prop(self, "reuse_old_models")
-        if not self.qc_available:
-            self.import_props = False
-            col.enabled = False
-            col.label(text="Blender Source tools must be installed to import props.")
-        if self.import_solids or self.import_props:
-            layout.prop(self, "import_materials")
-            if self.import_materials:
-                box = layout.box()
-                box.alignment = 'RIGHT'
-                box.prop(self, "simple_materials")
-                box.prop(self, "texture_interpolation")
-                box.prop(self, "cull_materials")
-                box.prop(self, "reuse_old_materials")
-        layout.prop(self, "import_lights")
-        if self.import_lights:
-            box = layout.box()
-            box.prop(self, "light_factor")
-            box.prop(self, "sun_factor")
-            box.prop(self, "ambient_factor")
-        layout.prop(self, "import_sky_origin")
-        layout.prop(self, "import_sky")
-        if self.import_sky:
-            box = layout.box()
-            box.prop(self, "sky_resolution")
-        layout.separator_spacer()
-        layout.prop(self, "global_scale")
-        layout.prop(self, "verbose")
+        layout.use_property_split = True
+        layout.use_property_decorate = False
+        operator = context.space_data.active_operator
+        layout.prop(operator, "map_data_path_prop", icon='FILE_FOLDER')
+
+
+class VMF_PT_vmf_import_solids(bpy.types.Panel):
+    bl_space_type = 'FILE_BROWSER'
+    bl_region_type = 'TOOL_PROPS'
+    bl_label = "Solids"
+    bl_parent_id = "FILE_PT_operator"
+    bl_options = {'DEFAULT_CLOSED'}
+
+    @classmethod
+    def poll(cls, context: bpy.types.Context) -> bool:
+        operator = context.space_data.active_operator
+        return operator.bl_idname == "IMPORT_SCENE_OT_vmf"
+
+    def draw_header(self, context: bpy.types.Context) -> None:
+        layout: bpy.types.UILayout = self.layout
+        operator = context.space_data.active_operator
+        layout.prop(operator, "import_solids", text="")
+
+    def draw(self, context: bpy.types.Context) -> None:
+        layout: bpy.types.UILayout = self.layout
+        layout.use_property_split = True
+        layout.use_property_decorate = False
+        operator = context.space_data.active_operator
+
+        layout.enabled = operator.import_solids
+        layout.prop(operator, "epsilon")
+        layout.prop(operator, "skip_tools")
+        layout.prop(operator, "import_overlays")
+
+
+class VMF_PT_vmf_import_props(bpy.types.Panel):
+    bl_space_type = 'FILE_BROWSER'
+    bl_region_type = 'TOOL_PROPS'
+    bl_label = "Props"
+    bl_parent_id = "FILE_PT_operator"
+    bl_options = {'DEFAULT_CLOSED'}
+
+    @classmethod
+    def poll(cls, context: bpy.types.Context) -> bool:
+        operator = context.space_data.active_operator
+        return operator.bl_idname == "IMPORT_SCENE_OT_vmf"
+
+    def draw_header(self, context: bpy.types.Context) -> None:
+        layout: bpy.types.UILayout = self.layout
+        operator = context.space_data.active_operator
+        layout.prop(operator, "import_props", text="")
+
+    def draw(self, context: bpy.types.Context) -> None:
+        layout: bpy.types.UILayout = self.layout
+        layout.use_property_split = True
+        layout.use_property_decorate = False
+        operator = context.space_data.active_operator
+
+        if operator.qc_available:
+            layout.label(text="Models will be imported using Blender Source Tools.")
+            preferences: ValveGameAddonPreferences = context.preferences.addons[__package__].preferences
+            if not preferences.dec_models_path:
+                layout.label(text="They will be decompiled into a temp directory and deleted.")
+                row = layout.row()
+                row.label(text="You can specify a persistent path for decompiled models.", icon='INFO')
+                row.operator("io_import_vmf.open_preferences", text="", icon='PREFERENCES')
+            else:
+                layout.label(text="Missing models will be decompiled.")
+        else:
+            operator.import_props = False
+            layout.label(text="Blender Source tools must be installed to import props.")
+        layout.prop(operator, "optimize_props")
+        layout.prop(operator, "reuse_old_models")
+        layout.enabled = operator.import_props
+
+
+class VMF_PT_import_materials(bpy.types.Panel):
+    bl_space_type = 'FILE_BROWSER'
+    bl_region_type = 'TOOL_PROPS'
+    bl_label = "Materials"
+    bl_parent_id = "FILE_PT_operator"
+    bl_options = {'DEFAULT_CLOSED'}
+
+    @classmethod
+    def poll(cls, context: bpy.types.Context) -> bool:
+        operator = context.space_data.active_operator
+        return operator.bl_idname in (
+            "IMPORT_SCENE_OT_vmf",
+            "IMPORT_SCENE_OT_sourcemodel_enhanced",
+            "IMPORT_SCENE_OT_agr_enhanced",
+        )
+
+    def draw_header(self, context: bpy.types.Context) -> None:
+        layout: bpy.types.UILayout = self.layout
+        operator = context.space_data.active_operator
+        if operator.bl_idname == "IMPORT_SCENE_OT_vmf" and not operator.import_solids and not operator.import_props:
+            layout.enabled = False
+            operator.import_materials = False
+        layout.prop(operator, "import_materials", text="")
+
+    def draw(self, context: bpy.types.Context) -> None:
+        layout: bpy.types.UILayout = self.layout
+        layout.use_property_split = True
+        layout.use_property_decorate = False
+        operator = context.space_data.active_operator
+
+        layout.enabled = operator.import_materials
+        layout.prop(operator, "simple_materials")
+        layout.prop(operator, "texture_interpolation")
+        layout.prop(operator, "cull_materials")
+        layout.prop(operator, "reuse_old_materials")
+
+
+class VMF_PT_vmf_import_lights(bpy.types.Panel):
+    bl_space_type = 'FILE_BROWSER'
+    bl_region_type = 'TOOL_PROPS'
+    bl_label = "Lights"
+    bl_parent_id = "FILE_PT_operator"
+    bl_options = {'DEFAULT_CLOSED'}
+
+    @classmethod
+    def poll(cls, context: bpy.types.Context) -> bool:
+        operator = context.space_data.active_operator
+        return operator.bl_idname == "IMPORT_SCENE_OT_vmf"
+
+    def draw_header(self, context: bpy.types.Context) -> None:
+        layout: bpy.types.UILayout = self.layout
+        operator = context.space_data.active_operator
+        layout.prop(operator, "import_lights", text="")
+
+    def draw(self, context: bpy.types.Context) -> None:
+        layout: bpy.types.UILayout = self.layout
+        layout.use_property_split = True
+        layout.use_property_decorate = False
+        operator = context.space_data.active_operator
+
+        layout.enabled = operator.import_lights
+        layout.prop(operator, "light_factor")
+        layout.prop(operator, "sun_factor")
+        layout.prop(operator, "ambient_factor")
+
+
+class VMF_PT_vmf_import_sky(bpy.types.Panel):
+    bl_space_type = 'FILE_BROWSER'
+    bl_region_type = 'TOOL_PROPS'
+    bl_label = "Sky"
+    bl_parent_id = "FILE_PT_operator"
+    bl_options = {'DEFAULT_CLOSED'}
+
+    @classmethod
+    def poll(cls, context: bpy.types.Context) -> bool:
+        operator = context.space_data.active_operator
+        return operator.bl_idname == "IMPORT_SCENE_OT_vmf"
+
+    def draw_header(self, context: bpy.types.Context) -> None:
+        layout: bpy.types.UILayout = self.layout
+        operator = context.space_data.active_operator
+        layout.prop(operator, "import_sky", text="")
+
+    def draw(self, context: bpy.types.Context) -> None:
+        layout: bpy.types.UILayout = self.layout
+        layout.use_property_split = True
+        layout.use_property_decorate = False
+        operator = context.space_data.active_operator
+
+        layout.enabled = operator.import_sky
+        layout.prop(operator, "sky_resolution")
+
+
+class VMF_PT_vmf_import_main(bpy.types.Panel):
+    bl_space_type = 'FILE_BROWSER'
+    bl_region_type = 'TOOL_PROPS'
+    bl_label = ""
+    bl_parent_id = "FILE_PT_operator"
+    bl_options = {'HIDE_HEADER'}
+
+    @classmethod
+    def poll(cls, context: bpy.types.Context) -> bool:
+        operator = context.space_data.active_operator
+        return operator.bl_idname == "IMPORT_SCENE_OT_vmf"
+
+    def draw(self, context: bpy.types.Context) -> None:
+        layout: bpy.types.UILayout = self.layout
+        layout.use_property_split = True
+        layout.use_property_decorate = False
+        operator = context.space_data.active_operator
+
+        layout.prop(operator, "import_sky_origin")
+        layout.separator()
+        layout.prop(operator, "global_scale")
 
 
 class ObjectTransform3DSky(bpy.types.Operator):
@@ -742,9 +913,9 @@ class ImportSceneSourceModel(_ValveGameOperator, _ValveGameOperatorProps):
     filter_glob: bpy.props.StringProperty(default="*.qc;*.mdl", options={'HIDDEN'})  # type: ignore
 
     strategy: bpy.props.EnumProperty(  # type: ignore
-        name="MDL import strategy",
+        name="MDL strategy",
         items=(
-            ('BST', "Blender Source Tools", "Decompile model and import using Blender Source Tools"),
+            ('BST', "BST", "Decompile model and import using Blender Source Tools"),
             ('SOURCEIO', "SourceIO", "Import model directly using SourceIO"),
         ),
         default='BST',
@@ -783,12 +954,6 @@ class ImportSceneSourceModel(_ValveGameOperator, _ValveGameOperatorProps):
         name="Reuse old materials",
         description="Reuse previously imported materials and images instead of reimporting them.",
         default=True,
-    )
-
-    verbose: bpy.props.BoolProperty(  # type: ignore
-        name="Verbose",
-        description="Enable to print more info into console",
-        default=False,
     )
 
     @classmethod
@@ -857,18 +1022,28 @@ class ImportSceneSourceModel(_ValveGameOperator, _ValveGameOperatorProps):
         return {'FINISHED'}
 
     def draw(self, context: bpy.types.Context) -> None:
+        pass
+
+
+class VMF_PT_sourcemodel_import_main(bpy.types.Panel):
+    bl_space_type = 'FILE_BROWSER'
+    bl_region_type = 'TOOL_PROPS'
+    bl_label = ""
+    bl_parent_id = "FILE_PT_operator"
+    bl_options = {'HIDE_HEADER'}
+
+    @classmethod
+    def poll(cls, context: bpy.types.Context) -> bool:
+        operator = context.space_data.active_operator
+        return operator.bl_idname == "IMPORT_SCENE_OT_sourcemodel_enhanced"
+
+    def draw(self, context: bpy.types.Context) -> None:
         layout: bpy.types.UILayout = self.layout
-        super().draw(context)
-        layout.prop(self, "strategy")
-        layout.prop(self, "import_materials")
-        if self.import_materials:
-            box = layout.box()
-            box.alignment = 'RIGHT'
-            box.prop(self, "simple_materials")
-            box.prop(self, "texture_interpolation")
-            box.prop(self, "cull_materials")
-            box.prop(self, "reuse_old_materials")
-        layout.prop(self, "verbose")
+        layout.use_property_split = True
+        layout.use_property_decorate = False
+        operator = context.space_data.active_operator
+
+        layout.prop(operator, "strategy", expand=True)
 
 
 class ImportSceneVMT(_ValveGameOperator, _ValveGameOperatorProps):
@@ -911,12 +1086,6 @@ class ImportSceneVMT(_ValveGameOperator, _ValveGameOperatorProps):
         default=True,
     )
 
-    verbose: bpy.props.BoolProperty(  # type: ignore
-        name="Verbose",
-        description="Enable to print more info into console",
-        default=False,
-    )
-
     def execute(self, context: bpy.types.Context) -> Set[str]:
         result = self._check_valve_props(context)
         if result is not None:
@@ -943,13 +1112,30 @@ class ImportSceneVMT(_ValveGameOperator, _ValveGameOperatorProps):
         return {'FINISHED'}
 
     def draw(self, context: bpy.types.Context) -> None:
+        pass
+
+
+class VMF_PT_vmt_import_main(bpy.types.Panel):
+    bl_space_type = 'FILE_BROWSER'
+    bl_region_type = 'TOOL_PROPS'
+    bl_label = "Materials"
+    bl_parent_id = "FILE_PT_operator"
+
+    @classmethod
+    def poll(cls, context: bpy.types.Context) -> bool:
+        operator = context.space_data.active_operator
+        return operator.bl_idname == "IMPORT_SCENE_OT_vmt"
+
+    def draw(self, context: bpy.types.Context) -> None:
         layout: bpy.types.UILayout = self.layout
-        super().draw(context)
-        layout.prop(self, "simple_materials")
-        layout.prop(self, "texture_interpolation")
-        layout.prop(self, "cull_materials")
-        layout.prop(self, "reuse_old_images")
-        layout.prop(self, "verbose")
+        layout.use_property_split = True
+        layout.use_property_decorate = False
+        operator = context.space_data.active_operator
+
+        layout.prop(operator, "simple_materials")
+        layout.prop(operator, "texture_interpolation")
+        layout.prop(operator, "cull_materials")
+        layout.prop(operator, "reuse_old_images")
 
 
 class ImportSceneAGREnhanced(_ValveGameOperator, _ValveGameOperatorProps):
@@ -1022,12 +1208,6 @@ class ImportSceneAGREnhanced(_ValveGameOperator, _ValveGameOperatorProps):
         default=True,
     )
 
-    verbose: bpy.props.BoolProperty(  # type: ignore
-        name="Verbose",
-        description="Enable to print more info into console",
-        default=False,
-    )
-
     @classmethod
     def poll(cls, context: bpy.types.Context) -> bool:
         return "advancedfx" in context.preferences.addons
@@ -1061,31 +1241,59 @@ class ImportSceneAGREnhanced(_ValveGameOperator, _ValveGameOperatorProps):
         return {'FINISHED'}
 
     def draw(self, context: bpy.types.Context) -> None:
+        pass
+
+
+class VMF_PT_agr_import_models(bpy.types.Panel):
+    bl_space_type = 'FILE_BROWSER'
+    bl_region_type = 'TOOL_PROPS'
+    bl_label = "Models"
+    bl_parent_id = "FILE_PT_operator"
+
+    @classmethod
+    def poll(cls, context: bpy.types.Context) -> bool:
+        operator = context.space_data.active_operator
+        return operator.bl_idname == "IMPORT_SCENE_OT_agr_enhanced"
+
+    def draw(self, context: bpy.types.Context) -> None:
         layout: bpy.types.UILayout = self.layout
-        super().draw(context)
-        box = layout.box()
-        box.label(text="Models will be imported using Blender Source Tools.")
+        layout.use_property_split = True
+        layout.use_property_decorate = False
+        operator = context.space_data.active_operator
+
+        layout.label(text="Models will be imported using Blender Source Tools.")
         preferences: ValveGameAddonPreferences = context.preferences.addons[__package__].preferences
         if not preferences.dec_models_path:
-            box.label(text="They will be decompiled into a temp directory and deleted.")
-            row = box.row()
+            layout.label(text="They will be decompiled into a temp directory and deleted.")
+            row = layout.row()
             row.label(text="You can specify a persistent path for decompiled models.", icon='INFO')
             row.operator("io_import_vmf.open_preferences", text="", icon='PREFERENCES')
         else:
-            box.label(text="Missing models will be decompiled.")
-        layout.prop(self, "import_materials")
-        if self.import_materials:
-            box = layout.box()
-            box.alignment = 'RIGHT'
-            box.prop(self, "simple_materials")
-            box.prop(self, "texture_interpolation")
-            box.prop(self, "cull_materials")
-            box.prop(self, "reuse_old_materials")
-        layout.prop(self, "reuse_old_models")
-        layout.prop(self, "inter_key")
-        layout.prop(self, "global_scale")
-        layout.prop(self, "scale_invisible_zero")
-        layout.prop(self, "verbose")
+            layout.label(text="Missing models will be decompiled.")
+        layout.separator()
+        layout.prop(operator, "reuse_old_models")
+
+
+class VMF_PT_agr_import_main(bpy.types.Panel):
+    bl_space_type = 'FILE_BROWSER'
+    bl_region_type = 'TOOL_PROPS'
+    bl_label = "AGR"
+    bl_parent_id = "FILE_PT_operator"
+
+    @classmethod
+    def poll(cls, context: bpy.types.Context) -> bool:
+        operator = context.space_data.active_operator
+        return operator.bl_idname == "IMPORT_SCENE_OT_agr_enhanced"
+
+    def draw(self, context: bpy.types.Context) -> None:
+        layout: bpy.types.UILayout = self.layout
+        layout.use_property_split = True
+        layout.use_property_decorate = False
+        operator = context.space_data.active_operator
+
+        layout.prop(operator, "inter_key")
+        layout.prop(operator, "global_scale")
+        layout.prop(operator, "scale_invisible_zero")
 
 
 class MaterialVMTData(bpy.types.PropertyGroup):
@@ -1169,6 +1377,18 @@ classes = (
     QCMeshItem,
     ArmatureQCData,
     ImageVTFData,
+    VMF_PT_valve_games,
+    VMF_PT_agr_import_main,
+    VMF_PT_agr_import_models,
+    VMF_PT_sourcemodel_import_main,
+    VMF_PT_vmf_map_data,
+    VMF_PT_vmf_import_solids,
+    VMF_PT_vmf_import_props,
+    VMF_PT_import_materials,
+    VMF_PT_vmf_import_lights,
+    VMF_PT_vmf_import_sky,
+    VMF_PT_vmf_import_main,
+    VMF_PT_vmt_import_main,
 )
 
 
