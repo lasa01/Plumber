@@ -4,7 +4,6 @@ import os
 from os.path import join, relpath, abspath, dirname, basename, splitext, isdir, isabs
 from shutil import rmtree
 import glob
-from pathlib import PurePosixPath
 from typing import Set, Optional, Tuple, List, Dict, Sequence, Iterator
 sys.path.append(join(dirname(abspath(__file__)), "deps"))
 
@@ -434,108 +433,17 @@ class _ValveGameOperator(bpy.types.Operator, _ValveGameOperatorProps):
         return None
 
 
-class _VMFOperatorProps(_ValveGameOperatorProps):
+class ImportSceneVMF(_ValveGameOperator, _ValveGameOperatorProps):
+    """Load a Source Engine VMF file"""
+    bl_idname = "import_scene.vmf"
+    bl_label = "Import VMF"
+    bl_options = {'UNDO', 'PRESET'}
+
     filepath: bpy.props.StringProperty(subtype='FILE_PATH', options={'HIDDEN'})  # type: ignore
     filter_glob: bpy.props.StringProperty(default="*.vmf", options={'HIDDEN'})  # type: ignore
 
     map_data_path_prop: bpy.props.StringProperty(name="Embedded files path", default="",  # type: ignore
                                                  description="Leave empty to auto-detect")
-
-
-class _VMFOperator(_ValveGameOperator, _VMFOperatorProps):
-    map_data_path: Optional[str]
-
-    def draw(self, context: bpy.types.Context) -> None:
-        layout: bpy.types.UILayout = self.layout
-        super().draw(context)
-        layout.prop(self, "map_data_path_prop", icon='FILE_FOLDER')
-
-    def _check_vmf_props(self) -> Optional[Set[str]]:
-        map_data_path: str = self.map_data_path_prop
-        if map_data_path == "":
-            map_data_path = splitext(self.filepath)[0]
-            if not isdir(map_data_path):
-                self.map_data_path = None
-            else:
-                self.map_data_path = map_data_path
-        else:
-            if not isabs(map_data_path):
-                map_data_path = join(dirname(self.filepath), map_data_path)
-            if not isdir(map_data_path):
-                self.report({'ERROR_INVALID_INPUT'}, "The specified embedded files directory doesn't exist.")
-                return {'CANCELLED'}
-            self.map_data_path = map_data_path
-        return None
-
-
-class ExportVMFMDLs(_VMFOperator, _VMFOperatorProps):
-    """Export required MDL files for a VMF"""
-    bl_idname = "export.vmf_mdls"
-    bl_label = "Export VMF MDLs for decompilation"
-    bl_options: Set[str] = set()
-
-    out_path: bpy.props.StringProperty(name="Output directory", default="",  # type: ignore
-                                       description="Leave empty to use a directory next to input file")
-
-    def execute(self, context: bpy.types.Context) -> Set[str]:
-        result = self._check_valve_props(context)
-        if result is not None:
-            return result
-        result = self._check_vmf_props()
-        if result is not None:
-            return result
-        if self.out_path == "":
-            self.out_path = join(dirname(self.filepath), f"{splitext(basename(self.filepath))[0]}_models")
-        os.makedirs(self.out_path, exist_ok=True)
-        print(f"Output path: {self.out_path}")
-        print(f"Map data path: {self.map_data_path}")
-        print("Loading VMF...")
-        import vmfpy
-        print("Indexing game files...")
-        data_dirs = self.data_dirs + [self.map_data_path] if self.map_data_path is not None else self.data_dirs
-        vmf_fs = vmfpy.VMFFileSystem(data_dirs, self.data_paks, index_files=True)
-        vmf = vmfpy.VMF(open(self.filepath, encoding="utf-8"), vmf_fs)
-        print("Saving model files...")
-        saved: Set[PurePosixPath] = set()
-        not_found: Set[PurePosixPath] = set()
-        for prop in vmf.prop_entities:
-            model = PurePosixPath(prop.model.lower())
-            if model in saved or model in not_found:
-                continue
-            if model not in vmf.fs:
-                print(f"Not found: {model}")
-                not_found.add(model)
-                continue
-            saved.add(model)
-            match = model.stem
-            dirn = model.parent
-            content = vmf.fs.tree[dirn]
-            for file_name in content.files:
-                if not file_name.startswith(match):
-                    continue
-                file_out_path = join(self.out_path, dirn, file_name)
-                print(f"Saving: {dirn / file_name}")
-                os.makedirs(dirname(file_out_path), exist_ok=True)
-                with vmf.fs[dirn / file_name] as in_f:
-                    with open(file_out_path, 'wb') as out_f:
-                        for line in in_f:
-                            out_f.write(line)
-        print("Done!")
-        print(f"Saved models: {len(saved)}")
-        print(f"Not found: {len(not_found)}")
-        return {'FINISHED'}
-
-    def draw(self, context: bpy.types.Context) -> None:
-        layout: bpy.types.UILayout = self.layout
-        super().draw(context)
-        layout.prop(self, "out_path", icon='FILE_FOLDER')
-
-
-class ImportSceneVMF(_VMFOperator, _VMFOperatorProps):
-    """Load a Source Engine VMF file"""
-    bl_idname = "import_scene.vmf"
-    bl_label = "Import VMF"
-    bl_options = {'UNDO', 'PRESET'}
 
     import_solids: bpy.props.BoolProperty(  # type: ignore
         name="Import brushes",
@@ -677,6 +585,23 @@ class ImportSceneVMF(_VMFOperator, _VMFOperatorProps):
 
     # mdl_available = False
     qc_available = False
+
+    def _check_vmf_props(self) -> Optional[Set[str]]:
+        map_data_path: str = self.map_data_path_prop
+        if map_data_path == "":
+            map_data_path = splitext(self.filepath)[0]
+            if not isdir(map_data_path):
+                self.map_data_path = None
+            else:
+                self.map_data_path = map_data_path
+        else:
+            if not isabs(map_data_path):
+                map_data_path = join(dirname(self.filepath), map_data_path)
+            if not isdir(map_data_path):
+                self.report({'ERROR_INVALID_INPUT'}, "The specified embedded files directory doesn't exist.")
+                return {'CANCELLED'}
+            self.map_data_path = map_data_path
+        return None
 
     def invoke(self, context: bpy.types.Context, event: bpy.types.Event) -> Set[str]:
         # self.mdl_available = "SourceIO" in context.preferences.addons
@@ -1234,7 +1159,6 @@ classes = (
     DetectValveGameOperator,
     ValveGameAddonPreferences,
     ValveGameOpenPreferencesOperator,
-    ExportVMFMDLs,
     ImportSceneVMF,
     ImportSceneSourceModel,
     ImportSceneVMT,
