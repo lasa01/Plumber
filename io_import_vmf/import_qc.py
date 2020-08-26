@@ -275,6 +275,8 @@ class QCImporter():
                     mdl_name = mdl_path.stem
                     # save required files
                     saved_files = 0
+                    if mdl_dir not in self.vmf_fs.tree:
+                        raise FileNotFoundError(mdl_dir)
                     for filename in self.vmf_fs.tree[mdl_dir].files:
                         if not filename.startswith(mdl_name):
                             continue
