@@ -80,3 +80,7 @@ def fallback_material(material_name: str, truncated_name: str) -> bpy.types.Mate
     material: bpy.types.Material = bpy.data.materials.new(truncated_name)
     material.vmt_data.full_name = material_name
     return material
+
+
+def filesystemify(s: str) -> str:
+    return "".join(c if c.isalnum() or c in "._- " else "_" for c in s)

@@ -1,4 +1,5 @@
 import bpy
+from .utils import filesystemify
 import sys
 import os
 from os.path import join, relpath, abspath, dirname, basename, splitext, isdir, isabs
@@ -216,7 +217,31 @@ fs_dict: Dict[str, VMFFileSystem] = {}
 
 
 class ValveGameSettings(bpy.types.PropertyGroup):
-    name: bpy.props.StringProperty(name="Name", default="Source Game")  # type: ignore
+    def get_name(self) -> str:
+        return self.get("name", "")
+
+    def set_name(self, value: str) -> None:
+        preferences: 'ValveGameAddonPreferences' = bpy.context.preferences.addons[__package__].preferences
+        for game in preferences.games:
+            if game == self:
+                continue
+            if game.name == value:
+                number = 1
+                while any(game.name == f"{value} {number}" for game in preferences.games):
+                    number += 1
+                value = f"{value} {number}"
+                break
+        cache_path = preferences.cache_path
+        if self.name != "" and cache_path != "" and value != "":
+            old_dir = join(cache_path, filesystemify(self.name))
+            if isdir(old_dir):
+                os.rename(old_dir, join(cache_path, filesystemify(value)))
+        self["name"] = value
+
+    name: bpy.props.StringProperty(  # type: ignore
+        name="Name", default="Source Game",
+        get=get_name, set=set_name,
+    )
 
     pakfiles: bpy.props.CollectionProperty(type=ValveGamePak)  # type: ignore
     pakfile_index: bpy.props.IntProperty(name="Game VPK archive")  # type: ignore
@@ -245,6 +270,17 @@ class ValveGameSettings(bpy.types.PropertyGroup):
         fs_dict[self.name] = VMFFileSystem(data_dirs, data_paks, index_files=True)
         print(f"Indexing done in {time.time() - start} s")
         return fs_dict[self.name]
+
+    def get_dec_models_path(self, context: bpy.types.Context) -> Tuple[bool, str]:
+        preferences: ValveGameAddonPreferences = context.preferences.addons[__package__].preferences
+        cache_path = preferences.cache_path
+        if cache_path == "":
+            return True, join(
+                context.preferences.filepaths.temporary_directory,
+                "blender_io_import_vmf_cache",
+                "dec_models",
+            )
+        return False, join(cache_path, filesystemify(self.name), "dec_models")
 
 
 class ValveGameSettingsList(bpy.types.UIList):
@@ -346,18 +382,18 @@ class ValveGameAddonPreferences(bpy.types.AddonPreferences):
     games: bpy.props.CollectionProperty(type=ValveGameSettings)  # type: ignore
     game_index: bpy.props.IntProperty(name="Game definition")  # type: ignore
 
-    def get_dec_models_path(self) -> str:
-        return self.get("dec_models_path", "")
+    def get_cache_path(self) -> str:
+        return self.get("cache_path", "")
 
-    def set_dec_models_path(self, value: str) -> None:
-        self["dec_models_path"] = bpy.path.abspath(value)
+    def set_cache_path(self, value: str) -> None:
+        self["cache_path"] = bpy.path.abspath(value)
 
-    dec_models_path: bpy.props.StringProperty(  # type: ignore
-        name="Models path",
+    cache_path: bpy.props.StringProperty(  # type: ignore
+        name="Cache directory path",
         default="",
-        description="Path to the directory for decompiled models.",
+        description="A path to cache external game assets into for faster reimports",
         subtype='DIR_PATH',
-        get=get_dec_models_path, set=set_dec_models_path,
+        get=get_cache_path, set=set_cache_path,
     )
 
     @staticmethod
@@ -369,6 +405,8 @@ class ValveGameAddonPreferences(bpy.types.AddonPreferences):
 
     def draw(self, context: bpy.types.Context) -> None:
         layout: bpy.types.UILayout = self.layout
+        layout.prop(self, "cache_path")
+        layout.separator_spacer()
         layout.label(text="Valve game definitions:")
         row = layout.row()
         row.template_list("IO_IMPORT_VMF_UL_valvegameslist", "", self, "games", self, "game_index")
@@ -399,9 +437,6 @@ class ValveGameAddonPreferences(bpy.types.AddonPreferences):
             col = row.column()
             col.operator("io_import_vmf.valvewildcarddir_add", text="", icon='ADD')
             col.operator("io_import_vmf.valvewildcarddir_remove", text="", icon='REMOVE')
-        layout.separator_spacer()
-        layout.prop(self, "dec_models_path")
-        layout.label(text="Specifies a persistent path to save decompiled models to.", icon='INFO')
 
 
 class ValveGameOpenPreferencesOperator(bpy.types.Operator):
@@ -436,6 +471,17 @@ class _ValveGameOperator(bpy.types.Operator, _ValveGameOperatorProps):
         preferences: ValveGameAddonPreferences = context.preferences.addons[__package__].preferences
         game_def: ValveGameSettings = preferences.games[int(self.game)]
         return game_def.get_indexed_filesystem()
+
+    def get_dec_models_path(self, context: bpy.types.Context) -> Tuple[bool, str]:
+        if self.game == 'NONE':
+            return True, join(
+                context.preferences.filepaths.temporary_directory,
+                "blender_io_import_vmf_cache",
+                "dec_models",
+            )
+        preferences: ValveGameAddonPreferences = context.preferences.addons[__package__].preferences
+        game_def: ValveGameSettings = preferences.games[int(self.game)]
+        return game_def.get_dec_models_path(context)
 
     def invoke(self, context: bpy.types.Context, event: bpy.types.Event) -> Set[str]:
         context.window_manager.fileselect_add(self)
@@ -642,17 +688,14 @@ class ImportSceneVMF(_ValveGameOperator, _ValveGameOperatorProps):
         result = self._check_vmf_props()
         if result is not None:
             return result
-        preferences: ValveGameAddonPreferences = context.preferences.addons[__package__].preferences
-        dec_models_path = preferences.dec_models_path
         delete_files = False
-        if dec_models_path == "":
-            delete_files = True
-            dec_models_path = join(context.preferences.filepaths.temporary_directory, "blender_io_import_vmf_models")
+        dec_models_path = None
         if self.import_props or self.import_materials or self.import_sky:
             fs = self.get_filesystem(context)
             if fs is None:
                 self.report({'ERROR_INVALID_INPUT'}, "A game must be specified for the current import settings.")
                 return {'CANCELLED'}
+            delete_files, dec_models_path = self.get_dec_models_path(context)
         else:
             fs = None
         from . import import_vmf
@@ -673,7 +716,7 @@ class ImportSceneVMF(_ValveGameOperator, _ValveGameOperatorProps):
                                           verbose=self.verbose, skip_tools=self.skip_tools)
         with importer:
             importer.load(self.filepath, context, self.map_data_path)
-        if delete_files:
+        if delete_files and dec_models_path is not None:
             rmtree(dec_models_path, ignore_errors=True)
         return {'FINISHED'}
 
@@ -756,10 +799,10 @@ class VMF_PT_vmf_import_props(bpy.types.Panel):
         if operator.qc_available:
             layout.label(text="Models will be imported using Blender Source Tools.")
             preferences: ValveGameAddonPreferences = context.preferences.addons[__package__].preferences
-            if not preferences.dec_models_path:
+            if not preferences.cache_path:
                 layout.label(text="They will be decompiled into a temp directory and deleted.")
                 row = layout.row()
-                row.label(text="You can specify a persistent path for decompiled models.", icon='INFO')
+                row.label(text="You can specify a persistent cache path.", icon='INFO')
                 row.operator("io_import_vmf.open_preferences", text="", icon='PREFERENCES')
             else:
                 layout.label(text="Missing models will be decompiled.")
@@ -1011,13 +1054,7 @@ class ImportSceneSourceModel(_ValveGameOperator, _ValveGameOperatorProps):
             except ImportError:
                 self.report({'ERROR'}, "Blender Source Tools is not installed")
                 return {'CANCELLED'}
-            preferences: ValveGameAddonPreferences = context.preferences.addons[__package__].preferences
-            dec_models_path = preferences.dec_models_path
-            delete_files = False
-            if dec_models_path == "":
-                delete_files = True
-                dec_models_path = join(context.preferences.filepaths.temporary_directory,
-                                       "blender_io_import_vmf_models")
+            delete_files, dec_models_path = self.get_dec_models_path(context)
             print("Importing model...")
             qc_importer = import_qc.QCImporter(
                 dec_models_path, fs, vmt_importer,
@@ -1225,17 +1262,12 @@ class ImportSceneAGREnhanced(_ValveGameOperator, _ValveGameOperatorProps):
         return "advancedfx" in context.preferences.addons
 
     def execute(self, context: bpy.types.Context) -> Set[str]:
-        preferences: ValveGameAddonPreferences = context.preferences.addons[__package__].preferences
-        dec_models_path = preferences.dec_models_path
-        delete_files = False
-        if dec_models_path == "":
-            delete_files = True
-            dec_models_path = join(context.preferences.filepaths.temporary_directory, "blender_io_import_vmf_models")
         from . import import_agr
         fs = self.get_filesystem(context)
         if fs is None:
             self.report({'ERROR_INVALID_INPUT'}, "A game must be specified to import AGR files.")
             return {'CANCELLED'}
+        delete_files, dec_models_path = self.get_dec_models_path(context)
         importer = import_agr.AgrImporter(
             dec_models_path, fs,
             import_materials=self.import_materials, simple_materials=self.simple_materials,
@@ -1273,10 +1305,10 @@ class VMF_PT_agr_import_models(bpy.types.Panel):
 
         layout.label(text="Models will be imported using Blender Source Tools.")
         preferences: ValveGameAddonPreferences = context.preferences.addons[__package__].preferences
-        if not preferences.dec_models_path:
+        if not preferences.cache_path:
             layout.label(text="They will be decompiled into a temp directory and deleted.")
             row = layout.row()
-            row.label(text="You can specify a persistent path for decompiled models.", icon='INFO')
+            row.label(text="You can specify a persistent cache path.", icon='INFO')
             row.operator("io_import_vmf.open_preferences", text="", icon='PREFERENCES')
         else:
             layout.label(text="Missing models will be decompiled.")
