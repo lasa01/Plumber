@@ -4,8 +4,10 @@ import os
 from os.path import join, relpath, abspath, dirname, basename, splitext, isdir, isabs
 from shutil import rmtree
 import glob
+import time
 from typing import Set, Optional, Tuple, List, Dict, Sequence, Iterator
 sys.path.append(join(dirname(abspath(__file__)), "deps"))
+from vmfpy.fs import VMFFileSystem  # noqa: 402
 
 
 bl_info = {
@@ -210,6 +212,9 @@ class RemoveValveWildcardDirOperator(bpy.types.Operator):
         return {'FINISHED'}
 
 
+fs_dict: Dict[str, VMFFileSystem] = {}
+
+
 class ValveGameSettings(bpy.types.PropertyGroup):
     name: bpy.props.StringProperty(name="Name", default="Source Game")  # type: ignore
 
@@ -221,6 +226,25 @@ class ValveGameSettings(bpy.types.PropertyGroup):
 
     wildcard_dirs: bpy.props.CollectionProperty(type=ValveGameWildcardDir)  # type: ignore
     wildcard_dir_index: bpy.props.IntProperty(name="Game wildcard directory")  # type: ignore
+
+    def get_indexed_filesystem(self) -> VMFFileSystem:
+        global fs_dict
+        if self.name in fs_dict:
+            print("Game files already indexed")
+            return fs_dict[self.name]
+        data_paks = [pak.filepath for pak in self.pakfiles]
+        data_dirs = [gamedir.dirpath for gamedir in self.gamedirs]
+        for wildcard_dir in self.wildcard_dirs:
+            for dir_entry in os.scandir(wildcard_dir.dirpath):
+                if dir_entry.is_dir():
+                    data_dirs.append(dir_entry.path)
+                elif dir_entry.name.endswith(".vpk"):
+                    data_paks.append(dir_entry.path)
+        print("Indexing game files...")
+        start = time.time()
+        fs_dict[self.name] = VMFFileSystem(data_dirs, data_paks, index_files=True)
+        print(f"Indexing done in {time.time() - start} s")
+        return fs_dict[self.name]
 
 
 class ValveGameSettingsList(bpy.types.UIList):
@@ -406,29 +430,16 @@ class _ValveGameOperatorProps():
 
 
 class _ValveGameOperator(bpy.types.Operator, _ValveGameOperatorProps):
-    data_dirs: List[str]
-    data_paks: List[str]
+    def get_filesystem(self, context: bpy.types.Context) -> Optional[VMFFileSystem]:
+        if self.game == 'NONE':
+            return None
+        preferences: ValveGameAddonPreferences = context.preferences.addons[__package__].preferences
+        game_def: ValveGameSettings = preferences.games[int(self.game)]
+        return game_def.get_indexed_filesystem()
 
     def invoke(self, context: bpy.types.Context, event: bpy.types.Event) -> Set[str]:
         context.window_manager.fileselect_add(self)
         return {'RUNNING_MODAL'}
-
-    def _check_valve_props(self, context: bpy.types.Context) -> Optional[Set[str]]:
-        if self.game != 'NONE':
-            preferences: ValveGameAddonPreferences = context.preferences.addons[__package__].preferences
-            game_def: ValveGameSettings = preferences.games[int(self.game)]
-            self.data_paks = [pak.filepath for pak in game_def.pakfiles]
-            self.data_dirs = [gamedir.dirpath for gamedir in game_def.gamedirs]
-            for wildcard_dir in game_def.wildcard_dirs:
-                for dir_entry in os.scandir(wildcard_dir.dirpath):
-                    if dir_entry.is_dir():
-                        self.data_dirs.append(dir_entry.path)
-                    elif dir_entry.name.endswith(".vpk"):
-                        self.data_paks.append(dir_entry.path)
-        else:
-            self.data_paks = []
-            self.data_dirs = []
-        return None
 
 
 class VMF_PT_valve_games(bpy.types.Panel):
@@ -628,9 +639,6 @@ class ImportSceneVMF(_ValveGameOperator, _ValveGameOperatorProps):
         return super().invoke(context, event)
 
     def execute(self, context: bpy.types.Context) -> Set[str]:
-        result = self._check_valve_props(context)
-        if result is not None:
-            return result
         result = self._check_vmf_props()
         if result is not None:
             return result
@@ -640,8 +648,15 @@ class ImportSceneVMF(_ValveGameOperator, _ValveGameOperatorProps):
         if dec_models_path == "":
             delete_files = True
             dec_models_path = join(context.preferences.filepaths.temporary_directory, "blender_io_import_vmf_models")
+        if self.import_props or self.import_materials or self.import_sky:
+            fs = self.get_filesystem(context)
+            if fs is None:
+                self.report({'ERROR_INVALID_INPUT'}, "A game must be specified for the current import settings.")
+                return {'CANCELLED'}
+        else:
+            fs = None
         from . import import_vmf
-        importer = import_vmf.VMFImporter(self.data_dirs, self.data_paks, dec_models_path,
+        importer = import_vmf.VMFImporter(fs, dec_models_path,
                                           import_solids=self.import_solids, import_overlays=self.import_overlays,
                                           import_props=self.import_props, optimize_props=self.optimize_props,
                                           import_sky_origin=self.import_sky_origin,
@@ -962,18 +977,16 @@ class ImportSceneSourceModel(_ValveGameOperator, _ValveGameOperatorProps):
         return "io_scene_valvesource" in addons or "SourceIO" in addons
 
     def execute(self, context: bpy.types.Context) -> Set[str]:
-        result = self._check_valve_props(context)
-        if result is not None:
-            return result
         root = _get_source_path_root(self.filepath)
         if root is None:
             root = dirname(self.filepath)
         vmt_importer = None
         if self.import_materials:
             from . import import_vmt
-            from vmfpy.fs import VMFFileSystem
-            print("Indexing game files...")
-            fs = VMFFileSystem(self.data_dirs, self.data_paks, index_files=True)
+            fs = self.get_filesystem(context)
+            if fs is None:
+                self.report({'ERROR_INVALID_INPUT'}, "A game must be specified to import materials.")
+                return {'CANCELLED'}
             vmt_importer = import_vmt.VMTImporter(
                 self.verbose, self.simple_materials,
                 self.texture_interpolation, self.cull_materials,
@@ -1087,17 +1100,16 @@ class ImportSceneVMT(_ValveGameOperator, _ValveGameOperatorProps):
     )
 
     def execute(self, context: bpy.types.Context) -> Set[str]:
-        result = self._check_valve_props(context)
-        if result is not None:
-            return result
         from . import import_vmt
-        from vmfpy.fs import VMFFileSystem
         from vmfpy.vmt import VMT
-        print("Indexing game files...")
         root = _get_source_path_root(self.directory, "materials")
-        if root is not None and root not in self.data_dirs:
-            self.data_dirs.append(root)
-        fs = VMFFileSystem(self.data_dirs, self.data_paks, index_files=True)
+        fs = self.get_filesystem(context)
+        if fs is None:
+            self.report({'ERROR_INVALID_INPUT'}, "A game must be specified to import VMT files.")
+            return {'CANCELLED'}
+        if root is not None:
+            print("Indexing local root directory...")
+            fs.index_dir(root)
         print("Loading materials...")
         importer = import_vmt.VMTImporter(self.verbose, self.simple_materials,
                                           self.texture_interpolation, self.cull_materials,
@@ -1213,9 +1225,6 @@ class ImportSceneAGREnhanced(_ValveGameOperator, _ValveGameOperatorProps):
         return "advancedfx" in context.preferences.addons
 
     def execute(self, context: bpy.types.Context) -> Set[str]:
-        result = self._check_valve_props(context)
-        if result is not None:
-            return result
         preferences: ValveGameAddonPreferences = context.preferences.addons[__package__].preferences
         dec_models_path = preferences.dec_models_path
         delete_files = False
@@ -1223,9 +1232,10 @@ class ImportSceneAGREnhanced(_ValveGameOperator, _ValveGameOperatorProps):
             delete_files = True
             dec_models_path = join(context.preferences.filepaths.temporary_directory, "blender_io_import_vmf_models")
         from . import import_agr
-        from vmfpy.fs import VMFFileSystem
-        print("Indexing game files...")
-        fs = VMFFileSystem(self.data_dirs, self.data_paks, index_files=True)
+        fs = self.get_filesystem(context)
+        if fs is None:
+            self.report({'ERROR_INVALID_INPUT'}, "A game must be specified to import AGR files.")
+            return {'CANCELLED'}
         importer = import_agr.AgrImporter(
             dec_models_path, fs,
             import_materials=self.import_materials, simple_materials=self.simple_materials,

@@ -1,4 +1,4 @@
-from typing import Iterable, Tuple, Optional, List, Dict, Any
+from typing import Tuple, Optional, List, Dict, Any
 from .utils import truncate_name, is_invisible_tool, fallback_material
 import vmfpy
 from os import path
@@ -53,7 +53,7 @@ def _vertices_center(verts: List[Vector]) -> Vector:
 
 
 class VMFImporter():
-    def __init__(self, data_dirs: Iterable[str], data_paks: Iterable[str], dec_models_path: str = None,
+    def __init__(self, fs: Optional[vmfpy.fs.VMFFileSystem], dec_models_path: str = None,
                  import_solids: bool = True, import_overlays: bool = True,
                  import_props: bool = True, optimize_props: bool = True,
                  import_materials: bool = True, import_lights: bool = True,
@@ -81,7 +81,7 @@ class VMFImporter():
         self.verbose = verbose
         self.skip_tools = skip_tools
         self.dec_models_path = "" if dec_models_path is None else dec_models_path
-        self._vmf_fs = vmfpy.fs.VMFFileSystem(data_dirs, data_paks, index_files=False)
+        self._vmf_fs = fs
         self._vmt_importer: Optional['import_vmt.VMTImporter']
         if import_overlays:
             self._side_vertices: Dict[int, List[Vector]] = {}
@@ -113,12 +113,6 @@ class VMFImporter():
             )
             if self.optimize_props:
                 self._props: List[bpy.types.Object] = []
-        self.need_files = import_materials or import_props or import_sky
-        if self.need_files:
-            print("Indexing game files...")
-            start = time.time()
-            self._vmf_fs.index_all()
-            print(f"Indexing done in {time.time() - start} s")
 
     def __enter__(self) -> 'VMFImporter':
         if self._qc_importer is not None:
@@ -133,7 +127,7 @@ class VMFImporter():
         if context.mode != 'OBJECT':
             bpy.ops.object.mode_set(mode='OBJECT')
         start = time.time()
-        if data_dir is not None and self.need_files:
+        if data_dir is not None and self._vmf_fs is not None:
             print("Indexing map files...")
             self._vmf_fs.index_dir(data_dir)
         print(f"Started importing VMF '{file_path}'")
