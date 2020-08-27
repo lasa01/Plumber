@@ -542,7 +542,7 @@ class ImportSceneVMF(_ValveGameOperator, _ValveGameOperatorProps):
 
     skip_tools: bpy.props.BoolProperty(  # type: ignore
         name="Skip invisible brushes",
-        description="Skip importing brushes containing only invisible textures.",
+        description="Skip importing brushes containing only invisible textures",
         default=True,
     )
 
@@ -554,7 +554,7 @@ class ImportSceneVMF(_ValveGameOperator, _ValveGameOperatorProps):
     import_props: bpy.props.BoolProperty(  # type: ignore
         name="Import props",
         default=True,
-        description="SourceIO or Blender Source Tools must be installed for this to work.",
+        description="SourceIO or Blender Source Tools must be installed for this to work",
     )
 
     optimize_props: bpy.props.BoolProperty(  # type: ignore
@@ -580,7 +580,7 @@ class ImportSceneVMF(_ValveGameOperator, _ValveGameOperatorProps):
 
     sky_resolution: bpy.props.IntProperty(  # type: ignore
         name="Sky resolution",
-        description="The imported sky texture height in pixels. Higher values increase quality.",
+        description="The imported sky texture height in pixels. Higher values increase quality",
         min=1, max=32768,
         soft_min=256, soft_max=8192,
         default=1024,
@@ -617,13 +617,13 @@ class ImportSceneVMF(_ValveGameOperator, _ValveGameOperatorProps):
 
     simple_materials: bpy.props.BoolProperty(  # type: ignore
         name="Simple materials",
-        description="Import simple, exporter-friendly versions of materials.",
+        description="Import simple, exporter-friendly versions of materials",
         default=False,
     )
 
     texture_interpolation: bpy.props.EnumProperty(  # type: ignore
         name="Texture interpolation",
-        description="Interpolation type to use for image textures.",
+        description="Interpolation type to use for image textures",
         items=[
             ('Linear', "Linear", "Linear interpolation"),
             ('Closest', "Closest", "No interpolation"),
@@ -635,19 +635,19 @@ class ImportSceneVMF(_ValveGameOperator, _ValveGameOperatorProps):
 
     cull_materials: bpy.props.BoolProperty(  # type: ignore
         name="Allow backface culling",
-        description="Enable backface culling for materials which don't disable it.",
+        description="Enable backface culling for materials which don't disable it",
         default=False,
     )
 
     reuse_old_materials: bpy.props.BoolProperty(  # type: ignore
         name="Reuse old materials",
-        description="Reuse previously imported materials and images instead of reimporting them.",
+        description="Reuse previously imported materials and images instead of reimporting them",
         default=True,
     )
 
     reuse_old_models: bpy.props.BoolProperty(  # type: ignore
         name="Reuse old models",
-        description="Reuse previously imported models instead of reimporting them.",
+        description="Reuse previously imported models instead of reimporting them",
         default=True,
     )
 
@@ -986,13 +986,13 @@ class ImportSceneSourceModel(_ValveGameOperator, _ValveGameOperatorProps):
 
     simple_materials: bpy.props.BoolProperty(  # type: ignore
         name="Simple materials",
-        description="Import simple, exporter-friendly versions of materials.",
+        description="Import simple, exporter-friendly versions of materials",
         default=False,
     )
 
     texture_interpolation: bpy.props.EnumProperty(  # type: ignore
         name="Texture interpolation",
-        description="Interpolation type to use for image textures.",
+        description="Interpolation type to use for image textures",
         items=[
             ('Linear', "Linear", "Linear interpolation"),
             ('Closest', "Closest", "No interpolation"),
@@ -1004,13 +1004,13 @@ class ImportSceneSourceModel(_ValveGameOperator, _ValveGameOperatorProps):
 
     cull_materials: bpy.props.BoolProperty(  # type: ignore
         name="Allow backface culling",
-        description="Enable backface culling for materials which don't disable it.",
+        description="Enable backface culling for materials which don't disable it",
         default=False,
     )
 
     reuse_old_materials: bpy.props.BoolProperty(  # type: ignore
         name="Reuse old materials",
-        description="Reuse previously imported materials and images instead of reimporting them.",
+        description="Reuse previously imported materials and images instead of reimporting them",
         default=True,
     )
 
@@ -1108,13 +1108,13 @@ class ImportSceneVMT(_ValveGameOperator, _ValveGameOperatorProps):
 
     simple_materials: bpy.props.BoolProperty(  # type: ignore
         name="Simple materials",
-        description="Import simple, exporter-friendly versions of materials.",
+        description="Import simple, exporter-friendly versions of materials",
         default=False,
     )
 
     texture_interpolation: bpy.props.EnumProperty(  # type: ignore
         name="Texture interpolation",
-        description="Interpolation type to use for image textures.",
+        description="Interpolation type to use for image textures",
         items=[
             ('Linear', "Linear", "Linear interpolation"),
             ('Closest', "Closest", "No interpolation"),
@@ -1126,13 +1126,13 @@ class ImportSceneVMT(_ValveGameOperator, _ValveGameOperatorProps):
 
     cull_materials: bpy.props.BoolProperty(  # type: ignore
         name="Allow backface culling",
-        description="Enable backface culling for materials which don't disable it.",
+        description="Enable backface culling for materials which don't disable it",
         default=False,
     )
 
     reuse_old_images: bpy.props.BoolProperty(  # type: ignore
         name="Reuse old images",
-        description="Reuse previously imported images instead of reimporting them.",
+        description="Reuse previously imported images instead of reimporting them",
         default=True,
     )
 
@@ -1203,13 +1203,13 @@ class ImportSceneAGREnhanced(_ValveGameOperator, _ValveGameOperatorProps):
 
     simple_materials: bpy.props.BoolProperty(  # type: ignore
         name="Simple materials",
-        description="Import simple, exporter-friendly versions of materials.",
+        description="Import simple, exporter-friendly versions of materials",
         default=False,
     )
 
     texture_interpolation: bpy.props.EnumProperty(  # type: ignore
         name="Texture interpolation",
-        description="Interpolation type to use for image textures.",
+        description="Interpolation type to use for image textures",
         items=[
             ('Linear', "Linear", "Linear interpolation"),
             ('Closest', "Closest", "No interpolation"),
@@ -1221,13 +1221,13 @@ class ImportSceneAGREnhanced(_ValveGameOperator, _ValveGameOperatorProps):
 
     cull_materials: bpy.props.BoolProperty(  # type: ignore
         name="Allow backface culling",
-        description="Enable backface culling for materials which don't disable it.",
+        description="Enable backface culling for materials which don't disable it",
         default=False,
     )
 
     inter_key: bpy.props.BoolProperty(  # type: ignore
         name="Add interpolated key frames",
-        description="Create interpolated key frames for frames in-between the original key frames.",
+        description="Create interpolated key frames for frames in-between the original key frames",
         default=False,
     )
 
@@ -1241,19 +1241,19 @@ class ImportSceneAGREnhanced(_ValveGameOperator, _ValveGameOperatorProps):
 
     scale_invisible_zero: bpy.props.BoolProperty(  # type: ignore
         name="Scale invisible to zero",
-        description="If set entities will scaled to zero when not visible.",
+        description="If set entities will scaled to zero when not visible",
         default=False,
     )
 
     reuse_old_materials: bpy.props.BoolProperty(  # type: ignore
         name="Reuse old materials",
-        description="Reuse previously imported materials and images instead of reimporting them.",
+        description="Reuse previously imported materials and images instead of reimporting them",
         default=True,
     )
 
     reuse_old_models: bpy.props.BoolProperty(  # type: ignore
         name="Reuse old models",
-        description="Reuse previously imported models instead of reimporting them.",
+        description="Reuse previously imported models instead of reimporting them",
         default=True,
     )
 
