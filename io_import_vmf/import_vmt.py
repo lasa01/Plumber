@@ -1212,6 +1212,8 @@ def load_sky(fs: VMFFileSystem, skyname: str, output_res: int = 1024, context: b
             textures.append(sky_vmt.param_open_texture("$basetexture"))
     image = import_vtf.load_as_equi(skyname, textures, output_res, hdr=hdr)
 
+    if context.scene.world is None:
+        context.scene.world = bpy.data.worlds.new("World")
     context.scene.world.use_nodes = True
     nt = context.scene.world.node_tree
     nt.nodes.clear()
