@@ -1312,7 +1312,7 @@ class ImportSceneAGREnhanced(_ValveGameOperator, _ValveGameOperatorProps):
     reuse_old_models: bpy.props.BoolProperty(  # type: ignore
         name="Reuse old models",
         description="Reuse previously imported models instead of reimporting them",
-        default=True,
+        default=False,
     )
 
     @classmethod
@@ -1375,7 +1375,7 @@ class VMF_PT_agr_import_models(bpy.types.Panel):
         layout.separator()
         layout.prop(operator, "skip_collision")
         layout.prop(operator, "skip_lod")
-        layout.prop(operator, "reuse_old_models")
+        # layout.prop(operator, "reuse_old_models")
 
 
 class VMF_PT_agr_import_main(bpy.types.Panel):
