@@ -1178,8 +1178,7 @@ class ImportSceneVMT(_ValveGameOperator, _ValveGameOperatorProps):
         root = _get_source_path_root(self.directory, "materials")
         fs = self.get_filesystem(context)
         if fs is None:
-            self.report({'ERROR_INVALID_INPUT'}, "A game must be specified to import VMT files.")
-            return {'CANCELLED'}
+            fs = VMFFileSystem()
         if root is not None:
             print("Indexing local root directory...")
             fs.index_dir(root)
