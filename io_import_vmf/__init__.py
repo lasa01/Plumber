@@ -561,6 +561,18 @@ class ImportSceneVMF(_ValveGameOperator, _ValveGameOperatorProps):
         description="SourceIO or Blender Source Tools must be installed for this to work",
     )
 
+    skip_collision: bpy.props.BoolProperty(  # type: ignore
+        name="Skip collision meshes",
+        default=True,
+        description="Skips importing collision meshes",
+    )
+
+    skip_lod: bpy.props.BoolProperty(  # type: ignore
+        name="Skip LOD meshes",
+        default=True,
+        description="Skips importing LOD meshes",
+    )
+
     optimize_props: bpy.props.BoolProperty(  # type: ignore
         name="Optimize props",
         default=True,
@@ -706,6 +718,7 @@ class ImportSceneVMF(_ValveGameOperator, _ValveGameOperatorProps):
         importer = import_vmf.VMFImporter(fs, dec_models_path,
                                           import_solids=self.import_solids, import_overlays=self.import_overlays,
                                           import_props=self.import_props, optimize_props=self.optimize_props,
+                                          skip_collision=self.skip_collision, skip_lod=self.skip_lod,
                                           import_sky_origin=self.import_sky_origin,
                                           import_sky=self.import_sky, sky_resolution=self.sky_resolution,
                                           import_materials=self.import_materials,
@@ -815,6 +828,8 @@ class VMF_PT_vmf_import_props(bpy.types.Panel):
         else:
             operator.import_props = False
             layout.label(text="Blender Source tools must be installed to import props.")
+        layout.prop(operator, "skip_collision")
+        layout.prop(operator, "skip_lod")
         layout.prop(operator, "optimize_props")
         layout.prop(operator, "reuse_old_models")
         layout.enabled = operator.import_props
@@ -985,6 +1000,18 @@ class ImportSceneSourceModel(_ValveGameOperator, _ValveGameOperatorProps):
         default='BST',
     )
 
+    skip_collision: bpy.props.BoolProperty(  # type: ignore
+        name="Skip collision meshes",
+        default=True,
+        description="Skips importing collision meshes",
+    )
+
+    skip_lod: bpy.props.BoolProperty(  # type: ignore
+        name="Skip LOD meshes",
+        default=True,
+        description="Skips importing LOD meshes",
+    )
+
     import_materials: bpy.props.BoolProperty(  # type: ignore
         name="Import materials",
         default=True,
@@ -1064,6 +1091,7 @@ class ImportSceneSourceModel(_ValveGameOperator, _ValveGameOperatorProps):
             print("Importing model...")
             qc_importer = import_qc.QCImporter(
                 dec_models_path, fs, vmt_importer,
+                skip_collision=self.skip_collision, skip_lod=self.skip_lod,
                 reuse_old=False, verbose=self.verbose,
             )
             with qc_importer:
@@ -1099,6 +1127,8 @@ class VMF_PT_sourcemodel_import_main(bpy.types.Panel):
         layout.use_property_decorate = False
         operator = context.space_data.active_operator
 
+        layout.prop(operator, "skip_collision")
+        layout.prop(operator, "skip_lod")
         layout.prop(operator, "strategy", expand=True)
 
 
@@ -1251,6 +1281,18 @@ class ImportSceneAGREnhanced(_ValveGameOperator, _ValveGameOperatorProps):
         default=False,
     )
 
+    skip_collision: bpy.props.BoolProperty(  # type: ignore
+        name="Skip collision meshes",
+        default=True,
+        description="Skips importing collision meshes",
+    )
+
+    skip_lod: bpy.props.BoolProperty(  # type: ignore
+        name="Skip LOD meshes",
+        default=True,
+        description="Skips importing LOD meshes",
+    )
+
     reuse_old_materials: bpy.props.BoolProperty(  # type: ignore
         name="Reuse old materials",
         description="Reuse previously imported materials and images instead of reimporting them",
@@ -1279,6 +1321,7 @@ class ImportSceneAGREnhanced(_ValveGameOperator, _ValveGameOperatorProps):
             import_materials=self.import_materials, simple_materials=self.simple_materials,
             texture_interpolation=self.texture_interpolation, cull_materials=self.cull_materials,
             reuse_old_materials=self.reuse_old_materials, reuse_old_models=self.reuse_old_models,
+            skip_collision=self.skip_collision, skip_lod=self.skip_lod,
             verbose=self.verbose,
             inter_key=self.inter_key, global_scale=self.global_scale, scale_invisible_zero=self.scale_invisible_zero,
         )
@@ -1319,6 +1362,8 @@ class VMF_PT_agr_import_models(bpy.types.Panel):
         else:
             layout.label(text="Missing models will be decompiled.")
         layout.separator()
+        layout.prop(operator, "skip_collision")
+        layout.prop(operator, "skip_lod")
         layout.prop(operator, "reuse_old_models")
 
 

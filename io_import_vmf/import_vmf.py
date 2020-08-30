@@ -56,6 +56,7 @@ class VMFImporter():
     def __init__(self, fs: Optional[vmfpy.fs.VMFFileSystem], dec_models_path: str = None,
                  import_solids: bool = True, import_overlays: bool = True,
                  import_props: bool = True, optimize_props: bool = True,
+                 skip_collision: bool = True, skip_lod: bool = True,
                  import_materials: bool = True, import_lights: bool = True,
                  import_sky_origin: bool = True, import_sky: bool = True,
                  scale: float = 0.01, epsilon: float = 0.001, sky_resolution: int = 1024,
@@ -110,6 +111,7 @@ class VMFImporter():
             from . import import_qc
             self._qc_importer = import_qc.QCImporter(
                 self.dec_models_path, self._vmf_fs, self._vmt_importer,
+                skip_collision=skip_collision, skip_lod=skip_lod,
                 reuse_old=reuse_old_models, verbose=verbose,
             )
             if self.optimize_props:

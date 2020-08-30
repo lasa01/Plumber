@@ -71,6 +71,7 @@ class AgrImporter():
                  import_materials: bool = True, simple_materials: bool = False,
                  texture_interpolation: str = 'Linear', cull_materials: bool = False,
                  reuse_old_materials: bool = True, reuse_old_models: bool = True,
+                 skip_collision: bool = True, skip_lod: bool = True,
                  inter_key: bool = False, global_scale: float = 0.01, scale_invisible_zero: bool = False,
                  verbose: bool = False):
         self.verbose = verbose
@@ -86,6 +87,7 @@ class AgrImporter():
             self.vmt_importer = None
         AgrImporterWrapper.qc_importer = import_qc.QCImporter(
             dec_models_path, vmf_fs, self.vmt_importer,
+            skip_collision=skip_collision, skip_lod=skip_lod,
             reuse_old=reuse_old_models, verbose=verbose,
         )
         AgrImporterWrapper.vmf_fs = vmf_fs

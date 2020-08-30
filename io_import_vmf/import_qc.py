@@ -49,6 +49,9 @@ class SmdImporterWrapper(import_smd.SmdImporter):
     boneMode: bpy.props.StringProperty(default='NONE')  # type: ignore
     createCollections: bpy.props.BoolProperty(default=False)  # type: ignore
 
+    skip_collision: bpy.props.BoolProperty(default=True)  # type: ignore
+    skip_lod: bpy.props.BoolProperty(default=True)  # type: ignore
+
     vmt_importer: Optional['import_vmt.VMTImporter']
     vmf_fs: VMFFileSystem
     collection: bpy.types.Collection
@@ -93,9 +96,9 @@ class SmdImporterWrapper(import_smd.SmdImporter):
 
     def readSMD(self, filepath: str, upAxis: str, rotMode: str,
                 newscene: bool = False, smd_type: Any = None, target_layer: int = 0) -> int:
-        if smd_type == utils.PHYS:  # skip collision meshes
+        if self.skip_collision and smd_type == utils.PHYS:  # skip collision meshes
             return 0
-        if splitext(basename(filepath))[0].rstrip("123456789").endswith("_lod"):  # skip lod meshes
+        if self.skip_lod and splitext(basename(filepath))[0].rstrip("123456789").endswith("_lod"):  # skip lod meshes
             return 0
         result = super().readSMD(filepath, upAxis, rotMode, newscene, smd_type, target_layer)
         if self.smd.g and self.smd.g != self.collection:
@@ -166,6 +169,7 @@ class StagedQC():
 class QCImporter():
     def __init__(self, dec_models_path: str, vmf_fs: VMFFileSystem = VMFFileSystem(),
                  vmt_importer: Optional['import_vmt.VMTImporter'] = None,
+                 skip_collision: bool = True, skip_lod: bool = True,
                  reuse_old: bool = True, verbose: bool = False):
         self._cache: Dict[str, FakeSmd] = {}
         self._cache_uniqueness: DefaultDict[str, bool] = defaultdict(lambda: True)
@@ -173,6 +177,8 @@ class QCImporter():
         self.dec_models_path = dec_models_path
         self.vmf_fs = vmf_fs
         self.reuse_old = reuse_old
+        self.skip_collision = skip_collision
+        self.skip_lod = skip_lod
         self.progress_callback: Callable[[int, int], None] = lambda current, total: None
         self._staging: Dict[str, StagedQC] = {}
         self._loaded: Dict[str, StagedQC] = {}
@@ -324,7 +330,11 @@ class QCImporter():
         log_capture = StringIO()
         try:
             with redirect_stdout(log_capture):
-                bpy.ops.import_scene._io_import_vmf_smd_wrapper(filepath=path)
+                bpy.ops.import_scene._io_import_vmf_smd_wrapper(
+                    filepath=path,
+                    skip_collision=self.skip_collision,
+                    skip_lod=self.skip_lod,
+                )
         except Exception:
             print(log_capture.getvalue())
             raise
