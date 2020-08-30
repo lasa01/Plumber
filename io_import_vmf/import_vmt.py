@@ -565,7 +565,7 @@ class _MaterialBuilder():
     def __init__(self, vtf_importer: import_vtf.VTFImporter, name: str, vmt_data: vmt.VMT,
                  simple: bool = False, interpolation: str = 'Linear', cull: bool = False):
         self._vtf_importer = vtf_importer
-        self.material: bpy.types.Material = bpy.data.materials.new(name)
+        self._material: Optional[bpy.types.Material] = None
         self.name = name
         self.simple = simple
         self.size_reference: Optional[import_vtf.StagedImage] = None
@@ -968,8 +968,14 @@ class _MaterialBuilder():
             return 1, 1
         return self.size_reference.get_image().size
 
+    def get_material(self) -> bpy.types.Material:
+        if self._material is None:
+            self._material = bpy.data.materials.new(self.name)
+            self._material.vmt_data.nodraw = self.nodraw
+        return self._material
+
     def build(self) -> bpy.types.Material:
-        material = self.material
+        material = self.get_material()
         material.use_nodes = True
         material.blend_method = self.blend_method
         material.shadow_method = self.shadow_method
@@ -1035,7 +1041,7 @@ class StagedMaterial():
             return self.reused
         if self.builder is None:
             raise Exception("a builder was not specified for non-reused staged material")
-        return self.builder.material
+        return self.builder.get_material()
 
     @staticmethod
     def from_existing(importer: 'VMTImporter', material: bpy.types.Material) -> 'StagedMaterial':
@@ -1072,6 +1078,12 @@ class VMTImporter():
         truncated_name = truncate_name(material_name)
         if material_name in self._nodraw_cache:
             return self._nodraw_cache[material_name]
+        if self.reuse_old and truncated_name in bpy.data.materials:
+            material: bpy.types.Material = bpy.data.materials[truncated_name]
+            if material.use_nodes and len(material.node_tree.nodes) != 0:
+                is_nodraw = material.vmt_data.nodraw
+                self._nodraw_cache[material_name] = is_nodraw
+                return is_nodraw
         try:
             builder = _MaterialBuilder(self._vtf_importer, truncated_name, vmt_data(),
                                        simple=self.simple, interpolation=self.interpolation, cull=self.cull)
@@ -1117,6 +1129,7 @@ class VMTImporter():
             else:
                 builder = _MaterialBuilder(self._vtf_importer, truncated_name, vmt_data(),
                                            simple=self.simple, interpolation=self.interpolation, cull=self.cull)
+                self._nodraw_cache[material_name] = builder.nodraw
         except FileNotFoundError:
             print(f"[WARNING] MATERIAL {material_name} NOT FOUND")
             data = _fallback_material(material_name, truncated_name)

@@ -1348,6 +1348,7 @@ class MaterialVMTData(bpy.types.PropertyGroup):
     width: bpy.props.IntProperty(default=1)  # type: ignore
     height: bpy.props.IntProperty(default=1)  # type: ignore
     full_name: bpy.props.StringProperty()  # type: ignore
+    nodraw: bpy.props.BoolProperty()  # type: ignore
 
 
 class QCBoneIdItem(bpy.types.PropertyGroup):
