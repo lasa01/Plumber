@@ -1281,6 +1281,17 @@ class ImportSceneAGREnhanced(_ValveGameOperator, _ValveGameOperatorProps):
         default=False,
     )
 
+    keyframe_interpolation: bpy.props.EnumProperty(  # type: ignore
+        name="Keyframe interpolation",
+        description="Keyframe interpolation type used for animations. Bezier imports fastest.",
+        items=[
+            ('CONSTANT', "Constant", "No interpolation"),
+            ('LINEAR', "Linear", "Linear interpolation"),
+            ('BEZIER', "Bezier (fast import)", "Smooth interpolation"),
+        ],
+        default='BEZIER',
+    )
+
     skip_collision: bpy.props.BoolProperty(  # type: ignore
         name="Skip collision meshes",
         default=True,
@@ -1324,6 +1335,7 @@ class ImportSceneAGREnhanced(_ValveGameOperator, _ValveGameOperatorProps):
             skip_collision=self.skip_collision, skip_lod=self.skip_lod,
             verbose=self.verbose,
             inter_key=self.inter_key, global_scale=self.global_scale, scale_invisible_zero=self.scale_invisible_zero,
+            keyframe_interpolation=self.keyframe_interpolation,
         )
         with importer:
             importer.load(self.filepath, context.collection)
@@ -1387,6 +1399,7 @@ class VMF_PT_agr_import_main(bpy.types.Panel):
         layout.prop(operator, "inter_key")
         layout.prop(operator, "global_scale")
         layout.prop(operator, "scale_invisible_zero")
+        layout.prop(operator, "keyframe_interpolation")
 
 
 class MaterialVMTData(bpy.types.PropertyGroup):

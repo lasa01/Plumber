@@ -73,6 +73,7 @@ class AgrImporter():
                  reuse_old_materials: bool = True, reuse_old_models: bool = True,
                  skip_collision: bool = True, skip_lod: bool = True,
                  inter_key: bool = False, global_scale: float = 0.01, scale_invisible_zero: bool = False,
+                 keyframe_interpolation: str = 'BEZIER',
                  verbose: bool = False):
         self.verbose = verbose
         self.dec_models_path = dec_models_path
@@ -94,6 +95,7 @@ class AgrImporter():
         self.inter_key = inter_key
         self.global_scale = global_scale
         self.scale_invisible_zero = scale_invisible_zero
+        self.keyframe_interpolation = keyframe_interpolation
 
     def __enter__(self) -> 'AgrImporter':
         bpy.utils.register_class(AgrImporterWrapper)
@@ -109,6 +111,7 @@ class AgrImporter():
         bpy.ops.import_scene._io_import_vmf_agr_wrapper(
             filepath=file_path, interKey=self.inter_key,
             global_scale=self.global_scale, scaleInvisibleZero=self.scale_invisible_zero,
+            keyframeInterpolation=self.keyframe_interpolation,
         )
         if self.vmt_importer is not None:
             reusable_t, importable_t = self.vmt_importer.texture_amounts()
