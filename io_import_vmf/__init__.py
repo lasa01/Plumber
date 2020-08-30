@@ -540,10 +540,14 @@ class ImportSceneVMF(_ValveGameOperator, _ValveGameOperatorProps):
         default=0.001, precision=4,
     )
 
-    skip_tools: bpy.props.BoolProperty(  # type: ignore
-        name="Skip invisible brushes",
-        description="Skip importing brushes containing only invisible textures",
-        default=True,
+    invisible_behaviour: bpy.props.EnumProperty(  # type: ignore
+        name="Invisible brushes",
+        items=(
+            ('NORMAL', "Normal", "Invisible brushes will be imported normally."),
+            ('SKIP', "Skip", "Invisible brushes will not be imported."),
+            ('SEPARATE', "Separate", "Invisible brushes will be imported into a separate collection."),
+        ),
+        default='SKIP',
     )
 
     import_overlays: bpy.props.BoolProperty(  # type: ignore
@@ -713,7 +717,9 @@ class ImportSceneVMF(_ValveGameOperator, _ValveGameOperatorProps):
                                           scale=self.global_scale, epsilon=self.epsilon,
                                           light_factor=self.light_factor, sun_factor=self.sun_factor,
                                           ambient_factor=self.ambient_factor,
-                                          verbose=self.verbose, skip_tools=self.skip_tools)
+                                          verbose=self.verbose,
+                                          skip_tools=self.invisible_behaviour == 'SKIP',
+                                          separate_tools=self.invisible_behaviour == 'SEPARATE')
         with importer:
             importer.load(self.filepath, context, self.map_data_path)
         if delete_files and dec_models_path is not None:
@@ -769,7 +775,7 @@ class VMF_PT_vmf_import_solids(bpy.types.Panel):
 
         layout.enabled = operator.import_solids
         layout.prop(operator, "epsilon")
-        layout.prop(operator, "skip_tools")
+        layout.prop(operator, "invisible_behaviour", expand=True)
         layout.prop(operator, "import_overlays")
 
 

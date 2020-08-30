@@ -63,7 +63,7 @@ class VMFImporter():
                  cull_materials: bool = False, reuse_old_materials: bool = True,
                  reuse_old_models: bool = True,
                  light_factor: float = 0.1, sun_factor: float = 0.01, ambient_factor: float = 0.001,
-                 verbose: bool = False, skip_tools: bool = False):
+                 verbose: bool = False, skip_tools: bool = False, separate_tools: bool = False):
         self.epsilon = epsilon
         self.import_solids = import_solids
         self.import_overlays = import_solids and import_overlays
@@ -80,6 +80,7 @@ class VMFImporter():
         self.scale = scale
         self.verbose = verbose
         self.skip_tools = skip_tools
+        self.separate_tools = separate_tools
         self.dec_models_path = "" if dec_models_path is None else dec_models_path
         self._vmf_fs = fs
         self._vmt_importer: Optional['import_vmt.VMTImporter']
@@ -186,13 +187,17 @@ class VMFImporter():
 
         if self.import_solids:
             print("[6/12] Building geometry...")
+            tool_collection = None
+            if self.separate_tools:
+                tool_collection = bpy.data.collections.new("tool")
+                map_collection.children.link(tool_collection)
             world_collection = bpy.data.collections.new(vmf.world.classname)
             map_collection.children.link(world_collection)
             c = 0
             t = len(vmf.world.solids) + sum(len(e.solids) for e in vmf.func_entities)
             for solid in vmf.world.solids:
                 try:
-                    self._load_solid(solid, vmf.world.classname, world_collection)
+                    self._load_solid(solid, vmf.world.classname, world_collection, tool_collection)
                 except Exception as err:
                     print(f"[ERROR] LOADING SOLID FAILED: {err}")
                     if self.verbose:
@@ -208,7 +213,7 @@ class VMFImporter():
             for func_entity in vmf.func_entities:
                 for solid in func_entity.solids:
                     try:
-                        self._load_solid(solid, func_entity.classname, func_collection)
+                        self._load_solid(solid, func_entity.classname, func_collection, tool_collection)
                     except Exception as err:
                         print(f"[ERROR] LOADING SOLID FAILED: {err}")
                         if self.verbose:
@@ -457,13 +462,16 @@ class VMFImporter():
             self._vmt_importer.stage(material, getter)
 
     # based on http://mattn.ufoai.org/files/MAPFiles.pdf
-    def _load_solid(self, solid: vmfpy.VMFSolid, parent: str, collection: bpy.types.Collection) -> None:
+    def _load_solid(self, solid: vmfpy.VMFSolid, parent: str,
+                    collection: bpy.types.Collection, tool_collection: Optional[bpy.types.Collection] = None) -> None:
         if self._vmt_importer is not None:
             is_tool = all(self._vmt_importer.is_nodraw(side.material, side.get_material) for side in solid.sides)
         else:
             is_tool = is_invisible_tool(side.material.lower() for side in solid.sides)
         if self.skip_tools and is_tool:
             return
+        if tool_collection is not None and is_tool:
+            collection = tool_collection
         name = f"{parent}_{solid.id}"
         if self.verbose:
             print(f"[VERBOSE] Building {name}...")
