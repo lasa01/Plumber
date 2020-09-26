@@ -25,6 +25,7 @@ Also includes helpful wrappers for importing [HLAE .agr files](https://www.advan
 
 The importer can automatically extract the required files from the game files.
 Materials and props, for example, require external game files for the import to succeed.
+You can specify a game file cache path in the preferences to reuse some previously processed data for slightly faster reimports.
 
 You need to go to the addon preferences to add game definitions which are used for loading these files.
 Click the + button to add a new game definition. Press the "Detect from a game directory" button and select the game directory.
@@ -60,8 +61,6 @@ Importing the 3D sky origin allows you to select the 3D sky after importing and 
 After the import has finished, you need to manually select every object that belongs to the 3D sky.
 Ensure you have the 3D sky origin (sky_camera) also selected and as the active object, and press `Object -> Transform VMF 3D sky` to transform the objects.
 
-### **The following features are only supported on Windows:**
-
 ### Materials
 `File -> Import -> Valve Material Type (.vmt)`
 
@@ -73,6 +72,8 @@ You should check it if you plan to export the materials outside Blender, since e
 
 There are also options to select the texture interpolation type
 and whether to allow backface culling in materials that don't disable it.
+
+### **The following features are only supported on Windows:**
 
 ### QC / MDL (requires [Blender Source Tools](https://steamreview.org/BlenderSourceTools/) or [SourceIO](https://github.com/REDxEYE/SourceIO))
 `File -> Import -> Source Engine Model (enhanced) (.qc/.mdl)`
@@ -88,6 +89,8 @@ and whether to allow backface culling in materials that don't disable it.
 - ZeqMacaw and UltraTechX for [Crowbar](https://steamcommunity.com/groups/CrowbarTool) and [Crowbar-Command-Line](https://github.com/UltraTechX/Crowbar-Command-Line).
 - REDxEYE for [SourceIO](https://github.com/REDxEYE/SourceIO).
 - Devostated for testing and bug reporting.
+- Alex Flint and Pete Florence for [bilinear interpolation code](https://stackoverflow.com/a/12729229).
+- adamb70 for [Python-Spherical-Projection](https://github.com/adamb70/Python-Spherical-Projection).
 
 ## License
 This project is licensed under the MIT license. See LICENSE for more information.
