@@ -317,7 +317,7 @@ class QCImporter():
                         filepath = join(alternate_qc_dir, filename)
                         try:
                             move(filepath, qc_dir)
-                        except FileExistsError or ShError:
+                        except (FileExistsError, ShError):
                             os.remove(filepath)
                     os.rmdir(alternate_qc_dir)
                 if result.returncode != 0 or not isfile(qc_path):
