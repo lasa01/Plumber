@@ -8,7 +8,7 @@ from typing import DefaultDict, Dict, Any, NamedTuple, Tuple, Set, Optional, Cal
 import bpy
 import os
 from os.path import splitext, basename, dirname, isfile, isdir, isabs, join, relpath
-from shutil import move
+from shutil import move, Error as ShError
 import subprocess
 import sys
 from contextlib import redirect_stdout
@@ -317,7 +317,7 @@ class QCImporter():
                         filepath = join(alternate_qc_dir, filename)
                         try:
                             move(filepath, qc_dir)
-                        except FileExistsError:
+                        except FileExistsError or ShError:
                             os.remove(filepath)
                     os.rmdir(alternate_qc_dir)
                 if result.returncode != 0 or not isfile(qc_path):
