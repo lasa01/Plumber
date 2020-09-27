@@ -57,6 +57,7 @@ class SmdImporterWrapper(import_smd.SmdImporter):
     collection: bpy.types.Collection
     root: str
     name: str
+    full_name: str
 
     def execute(self, context: bpy.types.Context) -> set:
         self.existingBones = []  # type: ignore
@@ -98,7 +99,9 @@ class SmdImporterWrapper(import_smd.SmdImporter):
                 newscene: bool = False, smd_type: Any = None, target_layer: int = 0) -> int:
         if self.skip_collision and smd_type == utils.PHYS:  # skip collision meshes
             return 0
-        if self.skip_lod and splitext(basename(filepath))[0].rstrip("123456789").endswith("_lod"):  # skip lod meshes
+        filepath_without_ext = splitext(filepath)[0].replace("\\", "/")
+        if self.skip_lod and (filepath_without_ext.rstrip("123456789").endswith("_lod")
+                              and not filepath_without_ext.endswith(SmdImporterWrapper.full_name)):  # skip lod meshes
             return 0
         result = super().readSMD(filepath, upAxis, rotMode, newscene, smd_type, target_layer)
         if self.smd.g and self.smd.g != self.collection:
@@ -271,6 +274,7 @@ class QCImporter():
             print(f"[VERBOSE] Importing model {name}...")
         SmdImporterWrapper.collection = staged.context.scene.collection
         SmdImporterWrapper.name = truncated_name
+        SmdImporterWrapper.full_name = name
         if path.endswith(".mdl"):
             qc_path = join(self.dec_models_path, name + ".qc")
             if not isfile(qc_path):
