@@ -52,6 +52,7 @@ You can also check the [video tutorial](https://www.youtube.com/watch?v=tMQt8RHk
 - Make sure you are using Blender 2.82 or newer.
 - Download [Blender Source Tools](https://steamreview.org/BlenderSourceTools/).
 - Download the latest addon release from the [releases](https://github.com/lasa01/io_import_vmf/releases) tab.
+Make sure you download a file called `io_import_vmf.zip`, not the source code.
 - Do **not** extract the downloaded files.
 - Open Blender and install Blender Source Tools:
 ![Install addons](img/install_addon.gif)
