@@ -88,7 +88,7 @@ class AgrImporter():
             self.vmt_importer = None
         AgrImporterWrapper.qc_importer = import_qc.QCImporter(
             dec_models_path, vmf_fs, self.vmt_importer,
-            skip_collision=skip_collision, skip_lod=skip_lod,
+            skip_collision=skip_collision, skip_lod=skip_lod, skip_anim=True,
             reuse_old=reuse_old_models, verbose=verbose,
         )
         AgrImporterWrapper.vmf_fs = vmf_fs

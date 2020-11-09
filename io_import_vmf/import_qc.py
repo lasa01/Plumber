@@ -51,6 +51,7 @@ class SmdImporterWrapper(import_smd.SmdImporter):
 
     skip_collision: bpy.props.BoolProperty(default=True)  # type: ignore
     skip_lod: bpy.props.BoolProperty(default=True)  # type: ignore
+    skip_anim: bpy.props.BoolProperty(default=False)  # type: ignore
 
     vmt_importer: Optional['import_vmt.VMTImporter']
     vmf_fs: VMFFileSystem
@@ -70,7 +71,7 @@ class SmdImporterWrapper(import_smd.SmdImporter):
             content = fp.read()
             for match in _CDMATERIALS_REGEX.finditer(content):
                 self._cdmaterials.append(vmf_path(match.group(1)))
-            animations = "$staticprop" not in content.lower()
+            animations = False if self.skip_anim else "$staticprop" not in content.lower()
         self.readQC(self.filepath, False, animations, False, 'QUATERNION', outer_qc=True)
         return {'FINISHED'}
 
@@ -172,7 +173,7 @@ class StagedQC():
 class QCImporter():
     def __init__(self, dec_models_path: str, vmf_fs: VMFFileSystem = VMFFileSystem(),
                  vmt_importer: Optional['import_vmt.VMTImporter'] = None,
-                 skip_collision: bool = True, skip_lod: bool = True,
+                 skip_collision: bool = True, skip_lod: bool = True, skip_anim: bool = False,
                  reuse_old: bool = True, verbose: bool = False):
         self._cache: Dict[str, FakeSmd] = {}
         self._cache_uniqueness: DefaultDict[str, bool] = defaultdict(lambda: True)
@@ -182,6 +183,7 @@ class QCImporter():
         self.reuse_old = reuse_old
         self.skip_collision = skip_collision
         self.skip_lod = skip_lod
+        self.skip_anim = skip_anim
         self.progress_callback: Callable[[int, int], None] = lambda current, total: None
         self._staging: Dict[str, StagedQC] = {}
         self._loaded: Dict[str, StagedQC] = {}
@@ -338,6 +340,7 @@ class QCImporter():
                     filepath=path,
                     skip_collision=self.skip_collision,
                     skip_lod=self.skip_lod,
+                    skip_anim=self.skip_anim,
                 )
         except Exception:
             print(log_capture.getvalue())
