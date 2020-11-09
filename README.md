@@ -48,9 +48,11 @@ The addon ships bundled with [Crowbar-Command-Line](https://github.com/UltraTech
 - Open the Blender console to get progress updates and start importing from the `File -> Import` menu.
 
 ## Installation
+You can also check the [video tutorial](https://www.youtube.com/watch?v=tMQt8RHkDzA).
 - Make sure you are using Blender 2.82 or newer.
 - Download [Blender Source Tools](https://steamreview.org/BlenderSourceTools/).
 - Download the latest addon release from the [releases](https://github.com/lasa01/io_import_vmf/releases) tab.
+Make sure you download a file called `io_import_vmf.zip`, not the source code.
 - Do **not** extract the downloaded files.
 - Open Blender and install Blender Source Tools:
 ![Install addons](img/install_addon.gif)
