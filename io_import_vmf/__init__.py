@@ -1325,7 +1325,8 @@ class ImportSceneAGREnhanced(_ValveGameOperator, _ValveGameOperatorProps):
         if fs is None:
             self.report({'ERROR_INVALID_INPUT'}, "A game must be specified to import AGR files.")
             return {'CANCELLED'}
-        delete_files, dec_models_path = self.get_dec_models_path(context)
+        _, dec_models_path = self.get_dec_models_path(context)
+        dec_models_path = join(dec_models_path, "agr_temp")
         importer = import_agr.AgrImporter(
             dec_models_path, fs,
             import_materials=self.import_materials, simple_materials=self.simple_materials,
@@ -1338,8 +1339,7 @@ class ImportSceneAGREnhanced(_ValveGameOperator, _ValveGameOperatorProps):
         )
         with importer:
             importer.load(self.filepath, context.collection)
-        if delete_files:
-            rmtree(dec_models_path, ignore_errors=True)
+        rmtree(dec_models_path, ignore_errors=True)
         return {'FINISHED'}
 
     def draw(self, context: bpy.types.Context) -> None:
