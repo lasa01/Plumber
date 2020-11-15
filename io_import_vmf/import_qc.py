@@ -17,8 +17,9 @@ import time
 import traceback
 
 
-_CROWBARCMD_PATH = join(dirname(__file__), "bin/CrowbarCommandLineDecomp.exe")
+_CROWBARCMD_PATH = join(dirname(__file__), "bin", "CrowbarCommandLineDecomp.exe")
 _CDMATERIALS_REGEX = re.compile(r'\$CDMaterials[ \t]+"([^"\n]+)"', re.IGNORECASE)
+_IS_LINUX = sys.platform.startswith("linux")
 
 
 if TYPE_CHECKING:
@@ -195,10 +196,14 @@ class QCImporter():
 
     def __enter__(self) -> 'QCImporter':
         bpy.utils.register_class(SmdImporterWrapper)
+        if _IS_LINUX:
+            subprocess.run(("wineserver", "--persistent"), check=True)
         return self
 
     def __exit__(self, exc_type: Any, exc_value: Any, traceback: Any) -> None:
         bpy.utils.unregister_class(SmdImporterWrapper)
+        if _IS_LINUX:
+            subprocess.run(("wineserver", "--kill"))
 
     def stage(self, name: str, path: str, context: bpy.types.Context, root: str = "") -> StagedQC:
         name = name.lower()
@@ -315,7 +320,13 @@ class QCImporter():
                 # call the decompiler
                 result = subprocess.run(
                     (
-                        _CROWBARCMD_PATH,
+                        (
+                            "wine",
+                            _CROWBARCMD_PATH,
+                        ) if _IS_LINUX else (
+                            _CROWBARCMD_PATH,
+                        )
+                    ) + (
                         "-p", full_mdl_path,
                         "-o", str(self.dec_models_path / mdl_dir)
                     ),
