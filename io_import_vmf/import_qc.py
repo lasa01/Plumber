@@ -14,6 +14,7 @@ import sys
 from contextlib import redirect_stdout
 from io import StringIO
 import time
+import traceback
 
 
 _CROWBARCMD_PATH = join(dirname(__file__), "bin/CrowbarCommandLineDecomp.exe")
@@ -231,8 +232,14 @@ class QCImporter():
         current = 0
         for name in self._staging:
             staged = self._staging[name]
-            self._load(name, staged)
-            self._loaded[name] = staged
+            try:
+                self._load(name, staged)
+            except Exception as err:
+                print(f"[ERROR]: MODEL {name} LOADING FAILED: {err}")
+                if self.verbose:
+                    traceback.print_exception(type(err), err, err.__traceback__)
+            else:
+                self._loaded[name] = staged
             current += 1
             if current % 5 == 0 or current == total:
                 self.progress_callback(current, total)
