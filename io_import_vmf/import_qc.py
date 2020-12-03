@@ -330,7 +330,7 @@ class QCImporter():
                         "-p", full_mdl_path,
                         "-o", str(self.dec_models_path / mdl_dir)
                     ),
-                    text=True, stdout=subprocess.PIPE, stderr=subprocess.STDOUT,
+                    text=True, errors='replace', stdout=subprocess.PIPE, stderr=subprocess.STDOUT,
                 )
                 alternate_qc_dir = splitext(qc_path)[0]
                 alternate_qc_path = join(alternate_qc_dir, basename(name) + ".qc")
