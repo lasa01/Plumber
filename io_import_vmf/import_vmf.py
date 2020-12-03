@@ -381,7 +381,7 @@ class VMFImporter():
         light.energy = (vmf_light.brightness if use_sdr
                         else vmf_light.hdr_brightness * vmf_light.hdr_scale) * self.light_factor
         light.spot_size = radians(vmf_light.cone)
-        light.spot_blend = 1 - (vmf_light.inner_cone / 90)  # TODO: more accurate conversion for this
+        light.spot_blend = 1 - (vmf_light.inner_cone / vmf_light.cone)
         obj: bpy.types.Object = bpy.data.objects.new(name, object_data=light)
         collection.objects.link(obj)
         obj.location = (vmf_light.origin.x * self.scale,
