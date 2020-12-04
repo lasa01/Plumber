@@ -557,13 +557,19 @@ _SUPPORTED_PARAMS = frozenset((
     "$color2", "$allowdiffusemodulation", "$notint", "$blendtintbybasealpha", "$tintmasktexture",
     # ignored parameters
     "%keywords", "%compilepassbullets", "%compilenonsolid", "%tooltexture",
-    "$surfaceprop", "$surfaceprop2", "$model", "$reflectivity", "$decal", "$decalscale"
+    "$surfaceprop", "$surfaceprop2", "$model", "$reflectivity", "$decal", "$decalscale",
+    # nodraw parameters
+    "%compilenodraw", "%compileinvisible", "%compilehint", "%compileskip",
+    "%compilesky", "%compile2dsky", "%compiletrigger", "%compileorigin", "%compilefog",
+    "%compilenpcclip", "%compileplayerclip", "%compiledroneclip", "%compilegrenadeclip", "%compileclip",
+    "$no_draw"
 ))
 
 
 class _MaterialBuilder():
     def __init__(self, vtf_importer: import_vtf.VTFImporter, name: str, vmt_data: vmt.VMT,
-                 simple: bool = False, interpolation: str = 'Linear', cull: bool = False):
+                 simple: bool = False, interpolation: str = 'Linear', cull: bool = False,
+                 editor_materials: bool = False):
         self._vtf_importer = vtf_importer
         self._material: Optional[bpy.types.Material] = None
         self.name = name
@@ -575,10 +581,12 @@ class _MaterialBuilder():
         self.shadow_method = 'OPAQUE'
         self.alpha_reference = 0.7
         self.cull = cull
+        self.editor_materials = editor_materials
         params = vmt_data.parameters
 
         # flags that imply nodraw
-        if any(p in _NODRAW_PARAMS and vmt_data.param_as_bool(p) for p in params) or name in _NODRAW_MATERIALS:
+        if not self.editor_materials and (name in _NODRAW_MATERIALS or
+                                          any(p in _NODRAW_PARAMS and vmt_data.param_as_bool(p) for p in params)):
             self.blend_method = 'CLIP'
             self.shadow_method = 'CLIP'
             self.nodraw = True
@@ -1055,11 +1063,13 @@ def _fallback_material(material_name: str, truncated_name: str) -> VMTData:
 class VMTImporter():
     def __init__(self, verbose: bool = False, simple: bool = False,
                  interpolation: str = 'Linear', cull: bool = False,
+                 editor_materials: bool = False,
                  reuse_old: bool = True, reuse_old_images: bool = True) -> None:
         self.verbose = verbose
         self.simple = simple
         self.interpolation = interpolation
         self.cull = cull
+        self.editor_materials = editor_materials
         self.reuse_old = reuse_old
         self.progress_callback: Callable[[int, int], None] = lambda current, total: None
         self.texture_progress_callback: Callable[[int, int], None] = lambda current, total: None
@@ -1086,7 +1096,8 @@ class VMTImporter():
                 return is_nodraw
         try:
             builder = _MaterialBuilder(self._vtf_importer, truncated_name, vmt_data(),
-                                       simple=self.simple, interpolation=self.interpolation, cull=self.cull)
+                                       simple=self.simple, interpolation=self.interpolation,
+                                       cull=self.cull, editor_materials=self.editor_materials)
         except FileNotFoundError:
             print(f"[WARNING] MATERIAL {material_name} NOT FOUND")
             self._cache[material_name] = _fallback_material(material_name, truncated_name)
@@ -1128,7 +1139,8 @@ class VMTImporter():
                 builder = self._precache[material_name]
             else:
                 builder = _MaterialBuilder(self._vtf_importer, truncated_name, vmt_data(),
-                                           simple=self.simple, interpolation=self.interpolation, cull=self.cull)
+                                           simple=self.simple, interpolation=self.interpolation,
+                                           cull=self.cull, editor_materials=self.editor_materials)
                 self._nodraw_cache[material_name] = builder.nodraw
         except FileNotFoundError:
             print(f"[WARNING] MATERIAL {material_name} NOT FOUND")

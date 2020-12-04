@@ -655,6 +655,12 @@ class ImportSceneVMF(_ValveGameOperator, _ValveGameOperatorProps):
         default=False,
     )
 
+    editor_materials: bpy.props.BoolProperty(  # type: ignore
+        name="Import editor materials",
+        description="Import materials visible inside Hammer instead of invisible materials.",
+        default=False,
+    )
+
     reuse_old_materials: bpy.props.BoolProperty(  # type: ignore
         name="Reuse old materials",
         description="Reuse previously imported materials and images instead of reimporting them",
@@ -724,6 +730,7 @@ class ImportSceneVMF(_ValveGameOperator, _ValveGameOperatorProps):
                                           import_materials=self.import_materials,
                                           simple_materials=self.simple_materials, cull_materials=self.cull_materials,
                                           texture_interpolation=self.texture_interpolation,
+                                          editor_materials=self.editor_materials,
                                           reuse_old_materials=self.reuse_old_materials,
                                           reuse_old_models=self.reuse_old_models,
                                           import_lights=self.import_lights,
@@ -869,6 +876,7 @@ class VMF_PT_import_materials(bpy.types.Panel):
         layout.prop(operator, "simple_materials")
         layout.prop(operator, "texture_interpolation")
         layout.prop(operator, "cull_materials")
+        layout.prop(operator, "editor_materials")
         layout.prop(operator, "reuse_old_materials")
 
 
@@ -1041,6 +1049,12 @@ class ImportSceneSourceModel(_ValveGameOperator, _ValveGameOperatorProps):
         default=False,
     )
 
+    editor_materials: bpy.props.BoolProperty(  # type: ignore
+        name="Import editor materials",
+        description="Import materials visible inside Hammer instead of invisible materials.",
+        default=False,
+    )
+
     reuse_old_materials: bpy.props.BoolProperty(  # type: ignore
         name="Reuse old materials",
         description="Reuse previously imported materials and images instead of reimporting them",
@@ -1066,6 +1080,7 @@ class ImportSceneSourceModel(_ValveGameOperator, _ValveGameOperatorProps):
             vmt_importer = import_vmt.VMTImporter(
                 self.verbose, self.simple_materials,
                 self.texture_interpolation, self.cull_materials,
+                editor_materials=self.editor_materials,
                 reuse_old=self.reuse_old_materials, reuse_old_images=self.reuse_old_materials
             )
         else:
@@ -1166,6 +1181,12 @@ class ImportSceneVMT(_ValveGameOperator, _ValveGameOperatorProps):
         default=False,
     )
 
+    editor_materials: bpy.props.BoolProperty(  # type: ignore
+        name="Import editor materials",
+        description="Import materials visible inside Hammer instead of invisible materials.",
+        default=False,
+    )
+
     reuse_old_images: bpy.props.BoolProperty(  # type: ignore
         name="Reuse old images",
         description="Reuse previously imported images instead of reimporting them",
@@ -1185,6 +1206,7 @@ class ImportSceneVMT(_ValveGameOperator, _ValveGameOperatorProps):
         print("Loading materials...")
         importer = import_vmt.VMTImporter(self.verbose, self.simple_materials,
                                           self.texture_interpolation, self.cull_materials,
+                                          editor_materials=self.editor_materials,
                                           reuse_old=False, reuse_old_images=self.reuse_old_images)
         for file_obj in self.files:
             filepath = join(self.directory, file_obj.name)
@@ -1219,6 +1241,7 @@ class VMF_PT_vmt_import_main(bpy.types.Panel):
         layout.prop(operator, "simple_materials")
         layout.prop(operator, "texture_interpolation")
         layout.prop(operator, "cull_materials")
+        layout.prop(operator, "editor_materials")
         layout.prop(operator, "reuse_old_images")
 
 
@@ -1257,6 +1280,12 @@ class ImportSceneAGREnhanced(_ValveGameOperator, _ValveGameOperatorProps):
     cull_materials: bpy.props.BoolProperty(  # type: ignore
         name="Allow backface culling",
         description="Enable backface culling for materials which don't disable it",
+        default=False,
+    )
+
+    editor_materials: bpy.props.BoolProperty(  # type: ignore
+        name="Import editor materials",
+        description="Import materials visible inside Hammer instead of invisible materials.",
         default=False,
     )
 
@@ -1331,6 +1360,7 @@ class ImportSceneAGREnhanced(_ValveGameOperator, _ValveGameOperatorProps):
             dec_models_path, fs,
             import_materials=self.import_materials, simple_materials=self.simple_materials,
             texture_interpolation=self.texture_interpolation, cull_materials=self.cull_materials,
+            editor_materials=self.editor_materials,
             reuse_old_materials=self.reuse_old_materials, reuse_old_models=self.reuse_old_models,
             skip_collision=self.skip_collision, skip_lod=self.skip_lod,
             verbose=self.verbose,
