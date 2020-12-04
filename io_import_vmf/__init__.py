@@ -595,11 +595,11 @@ class ImportSceneVMF(_ValveGameOperator, _ValveGameOperatorProps):
     )
 
     sky_resolution: bpy.props.IntProperty(  # type: ignore
-        name="Sky resolution",
-        description="The imported sky texture height in pixels. Higher values increase quality",
-        min=1, max=32768,
-        soft_min=256, soft_max=8192,
-        default=1024,
+        name="Sky resolution override",
+        description="0 uses automatic resolution. Higher values may increase quality at the cost of import time.",
+        min=0, max=32768,
+        soft_min=0, soft_max=8192,
+        default=0,
     )
 
     light_factor: bpy.props.FloatProperty(  # type: ignore

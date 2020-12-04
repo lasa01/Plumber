@@ -59,7 +59,7 @@ class VMFImporter():
                  skip_collision: bool = True, skip_lod: bool = True,
                  import_materials: bool = True, import_lights: bool = True,
                  import_sky_origin: bool = True, import_sky: bool = True,
-                 scale: float = 0.01, epsilon: float = 0.001, sky_resolution: int = 1024,
+                 scale: float = 0.01, epsilon: float = 0.001, sky_resolution: int = 0,
                  simple_materials: bool = False, texture_interpolation: str = 'Linear',
                  cull_materials: bool = False, reuse_old_materials: bool = True,
                  reuse_old_models: bool = True,

@@ -1209,7 +1209,7 @@ _CUBEMAP_SUFFIXES = (
 )
 
 
-def load_sky(fs: VMFFileSystem, skyname: str, output_res: int = 1024, context: bpy.types.Context = bpy.context) -> None:
+def load_sky(fs: VMFFileSystem, skyname: str, output_res: int = 0, context: bpy.types.Context = bpy.context) -> None:
     hdr = False
     textures = []
     for suffix in _CUBEMAP_SUFFIXES:

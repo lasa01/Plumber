@@ -115,7 +115,6 @@ class VTFImporter():
 
 def load_as_equi(cubemap_name: str, files: List[AnyBinaryIO], out_height: int, hdr: bool = False) -> bpy.types.Image:
     cubemap_name = cubemap_name.lower()
-    out_width = 2 * out_height
     images: List[numpy.ndarray] = []
     cubemap_dim: int = -1
     with VTFLib() as vtflib:
@@ -156,6 +155,10 @@ def load_as_equi(cubemap_name: str, files: List[AnyBinaryIO], out_height: int, h
                 pixels /= 255
             pixels.shape = (height, width, 4)
             images.append(pixels)
+
+    if out_height == 0:
+        out_height = 2 * cubemap_dim
+    out_width = 2 * out_height
 
     faces, (input_xs, input_ys) = find_corresponding_pixels(out_width, out_height, cubemap_dim)
     output_pixels = numpy.empty((out_height, out_width, 4), dtype=numpy.float16)
