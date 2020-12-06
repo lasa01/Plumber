@@ -195,6 +195,7 @@ class QCImporter():
         SmdImporterWrapper.vmf_fs = vmf_fs
 
     def __enter__(self) -> 'QCImporter':
+        bpy.utils.unregister_class(import_smd.SmdImporter)
         bpy.utils.register_class(SmdImporterWrapper)
         if _IS_LINUX:
             subprocess.run(("wineserver", "--persistent"), check=True)
@@ -202,6 +203,7 @@ class QCImporter():
 
     def __exit__(self, exc_type: Any, exc_value: Any, traceback: Any) -> None:
         bpy.utils.unregister_class(SmdImporterWrapper)
+        bpy.utils.register_class(import_smd.SmdImporter)
         if _IS_LINUX:
             subprocess.run(("wineserver", "--kill"))
 

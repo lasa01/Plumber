@@ -100,12 +100,14 @@ class AgrImporter():
         self.keyframe_interpolation = keyframe_interpolation
 
     def __enter__(self) -> 'AgrImporter':
+        bpy.utils.unregister_class(import_agr.AgrImporter)
         bpy.utils.register_class(AgrImporterWrapper)
         AgrImporterWrapper.qc_importer.__enter__()
         return self
 
     def __exit__(self, exc_type: Any, exc_value: Any, traceback: Any) -> None:
         bpy.utils.unregister_class(AgrImporterWrapper)
+        bpy.utils.register_class(import_agr.AgrImporter)
         AgrImporterWrapper.qc_importer.__exit__(exc_type, exc_value, traceback)
 
     def load(self, file_path: str, collection: bpy.types.Collection) -> None:
