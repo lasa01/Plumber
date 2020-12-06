@@ -217,9 +217,13 @@ class QCImporter():
         if self.reuse_old and truncated_name in bpy.data.armatures:
             meshes = bpy.data.armatures[truncated_name].qc_data.read_meshes()
             # mesh needs to be reimported if some materials failed for now
-            if (SmdImporterWrapper.vmt_importer is None or
-                all(material.use_nodes and len(material.node_tree.nodes) != 0
-                    for mesh in meshes for material in mesh.data.materials)):
+            # make sure no meshes of the prop have been manually deleted
+            if all(mesh is not None for mesh in meshes) and (
+                    SmdImporterWrapper.vmt_importer is None or
+                    all(
+                        material.use_nodes and len(material.node_tree.nodes) != 0
+                        for mesh in meshes for material in mesh.data.materials
+                    )):
                 self._staging[name] = StagedQC.from_existing(self, bpy.data.armatures[truncated_name], context)
                 self.reusable_amount += 1
                 return self._staging[name]
