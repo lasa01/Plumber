@@ -197,7 +197,9 @@ class VMFImporter():
             world_collection = bpy.data.collections.new(vmf.world.classname)
             map_collection.children.link(world_collection)
             c = 0
-            t = len(vmf.world.solids) + sum(len(e.solids) for e in vmf.func_entities)
+            t = len(vmf.world.solids)
+            t += sum(len(e.solids) for e in vmf.func_entities)
+            t += sum(len(e.solids) for e in vmf.trigger_entities)
             for solid in vmf.world.solids:
                 try:
                     self._load_solid(solid, vmf.world.classname, world_collection, tool_collection)
@@ -217,6 +219,22 @@ class VMFImporter():
                 for solid in func_entity.solids:
                     try:
                         self._load_solid(solid, func_entity.classname, func_collection, tool_collection)
+                    except Exception as err:
+                        print(f"[ERROR] LOADING SOLID FAILED: {err}")
+                        if self.verbose:
+                            traceback.print_exception(type(err), err, err.__traceback__)
+                        failed_solids += 1
+                    else:
+                        success_solids += 1
+                    c += 1
+                    if c % 100 == 0 or c == t:
+                        print(f"[6/12] Building geometry... {c / t * 100:.4f} %")
+            trigger_collection = bpy.data.collections.new("trigger")
+            map_collection.children.link(trigger_collection)
+            for trigger_entity in vmf.trigger_entities:
+                for solid in trigger_entity.solids:
+                    try:
+                        self._load_solid(solid, trigger_entity.classname, trigger_collection, tool_collection)
                     except Exception as err:
                         print(f"[ERROR] LOADING SOLID FAILED: {err}")
                         if self.verbose:
