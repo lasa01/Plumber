@@ -556,7 +556,7 @@ _SUPPORTED_PARAMS = frozenset((
     "%compilewater", "$normalmap", "$fogenable", "$fogcolor",
     "$color2", "$allowdiffusemodulation", "$notint", "$blendtintbybasealpha", "$tintmasktexture",
     # ignored parameters
-    "%keywords", "%compilepassbullets", "%compilenonsolid", "%tooltexture",
+    "%keywords", "%compilepassbullets", "%compilenonsolid", "%tooltexture", "%noportal",
     "$surfaceprop", "$surfaceprop2", "$model", "$reflectivity", "$decal", "$decalscale",
     # nodraw parameters
     "%compilenodraw", "%compileinvisible", "%compilehint", "%compileskip",
