@@ -31,14 +31,14 @@ The addon ships bundled with [Crowbar-Command-Line](https://github.com/UltraTech
 - [License](https://github.com/lasa01/io_import_vmf#license)
 
 ## Requirements
-- OS: Windows recommended. Everything except model/prop importing is also supported on Linux.
+- OS: Windows recommended. Linux supported (wine required for model/prop importing).
 - Blender: 2.82 or newer.
-- [Blender Source Tools](https://steamreview.org/BlenderSourceTools/) must be installed to import props or .qc models!
+- [Blender Source Tools](https://steamreview.org/BlenderSourceTools/) must be installed and enabled to import props or .qc models!
 
 ## Quick start
 - Make sure you are using Blender 2.82 or newer.
-- Install [Blender Source Tools](https://steamreview.org/BlenderSourceTools/).
-- Install the latest release of this addon.
+- Install [Blender Source Tools](https://steamreview.org/BlenderSourceTools/) and enable it.
+- Install the latest release of this addon and enable it.
 - Open the addon's preferences.
 - (Optional) Specify a cache directory (used for caching processed game files).
 - Add a game definition using the "+" button.
@@ -114,6 +114,7 @@ Options:
 - `Sky`: Imports the skybox as the world background.
     - `Sky resolution`: Controls the quality of the imported sky.
     The skybox is converted into a different format, so quality might suffer if this is set too low.
+    The default setting is 0, which automatically calculates an optimal resolution.
 - `Import 3D sky origin`: Imports the origin point of the 3D sky used in 3D skybox transforming.
 - `Scale`: Scales everything by this value. Usually you don't need to touch this.
 
@@ -129,12 +130,13 @@ Options:
 - `Simple materials`: You should enable this if you plan on exporting outside Blender.
 - `Texture interpolation`: Selects the interpolation type for textures, the default value is a good choice.
 - `Allow backface culling`: You can enable this if you know you need it.
+- `Import editor materials`: Imports the materials visible inside Hammer instead of invisible materials for tool materials etc.
 - `Reuse old textures`: Reuses previously imported textures in the current .blend file.
 
 ### QC / MDL (requires [Blender Source Tools](https://steamreview.org/BlenderSourceTools/) or [SourceIO](https://github.com/REDxEYE/SourceIO))
 `File -> Import -> Source Engine Model (enhanced) (.qc/.mdl)`
 
-**Only supported on Windows!**
+Requires wine on Linux.
 
 Options:
 - `Skip collision meshes`: Skips collision meshes. You should leave this on.
@@ -146,7 +148,7 @@ Options:
 ### AGR (requires [afx-blender-scripts](https://github.com/advancedfx/afx-blender-scripts))
 `File -> Import -> HLAE afxGameRecord (enhanced) (.agr)`
 
-**Only supported on Windows!**
+Requires wine on Linux.
 
 Options:
 - See [QC / MDL](https://github.com/lasa01/io_import_vmf#qc--mdl-requires-blender-source-tools-or-sourceio) for options.
