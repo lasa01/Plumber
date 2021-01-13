@@ -1,5 +1,5 @@
 from typing import Tuple, Optional, List, Dict, Any
-from .utils import truncate_name, is_invisible_tool, fallback_material
+from .utils import find_armature_modifier, truncate_name, is_invisible_tool, fallback_material
 import vmfpy
 from os import path
 from mathutils import geometry, Vector, Euler, Matrix
@@ -842,7 +842,9 @@ class VMFImporter():
                 for child in children:
                     # remove parent and armature
                     child.parent = None
-                    child.modifiers.remove(child.modifiers["Armature"])
+                    armature_modifier = find_armature_modifier(child)
+                    if armature_modifier is not None:
+                        child.modifiers.remove(armature_modifier)
                     # apply armature's location and rotation and scale
                     child.location += prop.location
                     child.rotation_euler.rotate(prop.rotation_euler)

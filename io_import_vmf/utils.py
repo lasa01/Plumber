@@ -1,7 +1,7 @@
 from hashlib import md5
 from base64 import urlsafe_b64encode
 from posixpath import split, splitext
-from typing import Iterable
+from typing import Iterable, Optional
 import numpy
 import bpy
 
@@ -84,3 +84,10 @@ def fallback_material(material_name: str, truncated_name: str) -> bpy.types.Mate
 
 def filesystemify(s: str) -> str:
     return "".join(c if c.isalnum() or c in "._- " else "_" for c in s)
+
+
+def find_armature_modifier(obj: bpy.types.Object) -> Optional[bpy.types.Modifier]:
+    for modifier in obj.modifiers:
+        if modifier.type == 'ARMATURE':
+            return modifier
+    return None

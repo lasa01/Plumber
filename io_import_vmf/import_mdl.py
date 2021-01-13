@@ -1,3 +1,4 @@
+from io_import_vmf.utils import find_armature_modifier
 from SourceIO import byte_io_mdl
 try:
     from SourceIO import mdl2model
@@ -182,8 +183,9 @@ class MDLImporter():
             for child in original.children:
                 twin = child.copy()
                 twin.parent = copy
-                if "Armature" in twin.modifiers:
-                    twin.modifiers["Armature"].object = copy
+                armature_modifier = find_armature_modifier(twin)
+                if armature_modifier is not None:
+                    armature_modifier.object = copy
                 collection.objects.link(twin)
             return copy
         importer = Source2BlenderWrapper(name + ".mdl", path, self.vmf_fs, self.vmt_importer)

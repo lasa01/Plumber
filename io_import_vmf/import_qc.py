@@ -1,5 +1,5 @@
 from io_scene_valvesource import import_smd, utils
-from .utils import truncate_name
+from .utils import find_armature_modifier, truncate_name
 from vmfpy.fs import VMFFileSystem, vmf_path
 from vmfpy.vmt import VMT
 import re
@@ -277,9 +277,10 @@ class QCImporter():
                 new_obj.scale = (1, 1, 1)
                 new_obj.location = (0, 0, 0)
                 new_obj.rotation_euler = (0, 0, 0)
-                if "Armature" not in new_obj.modifiers:
-                    new_obj.modifiers.new("Armature", 'ARMATURE')
-                new_obj.modifiers["Armature"].object = armature_obj
+                armature_modifier = find_armature_modifier(new_obj)
+                if armature_modifier is None:
+                    armature_modifier = new_obj.modifiers.new("Armature", 'ARMATURE')
+                armature_modifier.object = armature_obj
                 scene_collection.objects.link(new_obj)
             if qc_data.action is not None:
                 anim_data = armature_obj.animation_data_create()
@@ -417,8 +418,9 @@ class QCImporter():
         for child in original_arm.children:
             twin = child.copy()
             twin.parent = copy_arm
-            if "Armature" in twin.modifiers:
-                twin.modifiers["Armature"].object = copy_arm
+            armature_modifier = find_armature_modifier(twin)
+            if armature_modifier is not None:
+                armature_modifier.object = copy_arm
             collection.objects.link(twin)
         smd.a = copy_arm
         return smd
