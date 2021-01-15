@@ -153,6 +153,10 @@ Requires wine on Linux.
 Options:
 - See [QC / MDL](https://github.com/lasa01/io_import_vmf#qc--mdl-requires-blender-source-tools-or-sourceio) for options.
 
+## Troubleshooting
+The [FAQ](https://github.com/lasa01/io_import_vmf/wiki/FAQ) has instructions for dealing with some common problems and errors.
+If you can't find your problem there, you can open a new issue.
+
 ## Credits
 - Me for the addon, [VMF and VMT parser](https://github.com/lasa01/vmfpy) and [VTFLib wrapper](https://github.com/lasa01/pyvtflib).
 - ValvePython for [VPK](https://github.com/ValvePython/vpk) and [Valve KeyValues](https://github.com/ValvePython/vdf) parser.
