@@ -29,6 +29,7 @@ The addon ships bundled with [Crowbar-Command-Line](https://github.com/UltraTech
     - [AGR](https://github.com/lasa01/io_import_vmf#agr-requires-afx-blender-scripts)
 - [Credits](https://github.com/lasa01/io_import_vmf#credits)
 - [License](https://github.com/lasa01/io_import_vmf#license)
+- [Troubleshooting](https://github.com/lasa01/io_import_vmf#troubleshooting)
 
 ## Requirements
 - OS: Windows recommended. Linux supported (wine required for model/prop importing).
