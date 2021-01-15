@@ -52,7 +52,7 @@ The addon ships bundled with [Crowbar-Command-Line](https://github.com/UltraTech
 You can also check the [video tutorial](https://www.youtube.com/watch?v=tMQt8RHkDzA).
 - Make sure you are using Blender 2.82 or newer.
 - Download [Blender Source Tools](https://steamreview.org/BlenderSourceTools/).
-- Download the latest addon release from the [releases](/releases) tab.
+- Download the latest addon release from the [releases](https://github.com/lasa01/io_import_vmf/releases) tab.
 Make sure you download a file called `io_import_vmf.zip`, not the source code.
 - Do **not** extract the downloaded files.
 - Open Blender and install Blender Source Tools:
@@ -155,7 +155,7 @@ Options:
 - See [QC / MDL](#qc--mdl-requires-blender-source-tools-or-sourceio) for options.
 
 ## Troubleshooting
-The [FAQ](/wiki/FAQ) has instructions for dealing with some common problems and errors.
+The [FAQ](https://github.com/lasa01/io_import_vmf/wiki/FAQ) has instructions for dealing with some common problems and errors.
 If you can't find your problem there, you can open a new issue.
 
 ## Credits
