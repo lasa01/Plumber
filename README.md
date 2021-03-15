@@ -16,19 +16,20 @@ The addon ships bundled with [Crowbar-Command-Line](https://github.com/UltraTech
 ![Import dialog](img/import_dialog.png)
 
 ## Table of contents
-- [Requirements](https://github.com/lasa01/io_import_vmf#requirements)
-- [Quick start](https://github.com/lasa01/io_import_vmf#quick-start)
-- [Installation](https://github.com/lasa01/io_import_vmf#installation)
-    - [Configuration](https://github.com/lasa01/io_import_vmf#configuration)
-    - [Installing latest from source (advanced users)](https://github.com/lasa01/io_import_vmf#installing-latest-from-source-advanced-users)
-- [Usage](https://github.com/lasa01/io_import_vmf#usage)
-    - [Common import options](https://github.com/lasa01/io_import_vmf#common-import-options)
-    - [Maps](https://github.com/lasa01/io_import_vmf#maps)
-    - [Materials](https://github.com/lasa01/io_import_vmf#materials)
-    - [QC / MDL](https://github.com/lasa01/io_import_vmf#qc--mdl-requires-blender-source-tools-or-sourceio)
-    - [AGR](https://github.com/lasa01/io_import_vmf#agr-requires-afx-blender-scripts)
-- [Credits](https://github.com/lasa01/io_import_vmf#credits)
-- [License](https://github.com/lasa01/io_import_vmf#license)
+- [Requirements](#requirements)
+- [Quick start](#quick-start)
+- [Installation](#installation)
+    - [Configuration](#configuration)
+    - [Installing latest from source (advanced users)](#installing-latest-from-source-advanced-users)
+- [Usage](#usage)
+    - [Common import options](#common-import-options)
+    - [Maps](#maps)
+    - [Materials](#materials)
+    - [QC / MDL](#qc--mdl-requires-blender-source-tools-or-sourceio)
+    - [AGR](#agr-requires-afx-blender-scripts)
+- [Troubleshooting](#troubleshooting)
+- [Credits](#credits)
+- [License](#license)
 
 ## Requirements
 - OS: Windows recommended. Linux supported (wine required for model/prop importing).
@@ -106,9 +107,9 @@ Options:
 - `Props`: Imports all complex models in the map, such as cars and crates.
     - `Optimize props`: Optimizes props by removing empty armatures. You should leave this on.
     - `Reuse old models`: Reuses previously imported models in the current .blend file.
-    - See [QC / MDL](https://github.com/lasa01/io_import_vmf#qc--mdl-requires-blender-source-tools-or-sourceio) for more options.
+    - See [QC / MDL](#qc--mdl-requires-blender-source-tools-or-sourceio) for more options.
 - `Materials`: Imports materials for solids, overlays and props.
-    - See [Materials](https://github.com/lasa01/io_import_vmf#materials) for more options.
+    - See [Materials](#materials) for more options.
 - `Lights`: Imports point lights and spotlights and the environment light (the sun).
     - `Brightness factors`: Controls how the brightnesses are converted into Blender. The default values are not fully accurate but good enough for most use cases.
 - `Sky`: Imports the skybox as the world background.
@@ -143,7 +144,7 @@ Options:
 - `Skip LOD meshes`: Skips importing different LOD levels for meshes. You should leave this on.
 - `MDL strategy`: Selects which addon to use for .mdl importing. BST is recommended.
 - `Materials`: Imports materials for the model.
-    - See [Materials](https://github.com/lasa01/io_import_vmf#materials) for more options.
+    - See [Materials](#materials) for more options.
 
 ### AGR (requires [afx-blender-scripts](https://github.com/advancedfx/afx-blender-scripts))
 `File -> Import -> HLAE afxGameRecord (enhanced) (.agr)`
@@ -151,7 +152,11 @@ Options:
 Requires wine on Linux.
 
 Options:
-- See [QC / MDL](https://github.com/lasa01/io_import_vmf#qc--mdl-requires-blender-source-tools-or-sourceio) for options.
+- See [QC / MDL](#qc--mdl-requires-blender-source-tools-or-sourceio) for options.
+
+## Troubleshooting
+The [FAQ](https://github.com/lasa01/io_import_vmf/wiki/FAQ) has instructions for dealing with some common problems and errors.
+If you can't find your problem there, you can open a new issue.
 
 ## Credits
 - Me for the addon, [VMF and VMT parser](https://github.com/lasa01/vmfpy) and [VTFLib wrapper](https://github.com/lasa01/pyvtflib).
