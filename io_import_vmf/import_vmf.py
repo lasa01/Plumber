@@ -478,7 +478,7 @@ class VMFImporter():
     def _stage_solid(self, solid: vmfpy.VMFSolid) -> None:
         if self._vmt_importer is None:
             return
-        materials = [(side.material, side.get_material) for side in solid.sides]
+        materials = [(side.material, lambda: side.get_material(allow_patch=True)) for side in solid.sides]
         if self.skip_tools and all(self._vmt_importer.is_nodraw(material, getter) for material, getter in materials):
             return
         for material, getter in materials:
@@ -488,7 +488,10 @@ class VMFImporter():
     def _load_solid(self, solid: vmfpy.VMFSolid, parent: str,
                     collection: bpy.types.Collection, tool_collection: Optional[bpy.types.Collection] = None) -> None:
         if self._vmt_importer is not None:
-            is_tool = all(self._vmt_importer.is_nodraw(side.material, side.get_material) for side in solid.sides)
+            is_tool = all(self._vmt_importer.is_nodraw(
+                side.material,
+                lambda: side.get_material(allow_patch=True),
+            ) for side in solid.sides)
         else:
             is_tool = is_invisible_tool(side.material.lower() for side in solid.sides)
         if self.skip_tools and is_tool:
