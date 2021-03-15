@@ -235,17 +235,30 @@ class _SubtractMaterialNode(_MaterialNode):
 
 class _SsbumpToNormalMaterialNode(_MaterialNode):
     def __init__(self) -> None:
-        super().__init__('ShaderNodeVectorMath', 0, 0)
-        self.dimension_x = 850
+        super().__init__('ShaderNodeNormalMap', 0, 1)
+        self.dimension_x = 1300
         self.dimension_y = 600
 
     def connect(self, node_tree: NodeTree, input_s: NodeSocket, pos: _PosRef) -> NodeSocket:
-        input_s = super().connect(node_tree, input_s, pos.copy(700, 0))
-        self.node.operation = 'NORMALIZE'
+        input_s = super().connect(node_tree, input_s, pos.copy(1150, 0))
+        add_node: Node = node_tree.nodes.new('ShaderNodeVectorMath')
+        add_node.location = pos.loc(1000, 0)
+        add_node.operation = 'ADD'
+        add_node.inputs[1].default_value = (0.5, 0.5, 0.5)
+        node_tree.links.new(add_node.outputs[0], input_s)
+        multiply_node: Node = node_tree.nodes.new('ShaderNodeVectorMath')
+        multiply_node.location = pos.loc(850, 0)
+        multiply_node.operation = 'MULTIPLY'
+        multiply_node.inputs[1].default_value = (0.5, 0.5, 0.5)
+        node_tree.links.new(multiply_node.outputs[0], add_node.inputs[0])
+        normalize_node: Node = node_tree.nodes.new('ShaderNodeVectorMath')
+        normalize_node.location = pos.loc(700, 0)
+        normalize_node.operation = 'NORMALIZE'
+        node_tree.links.new(normalize_node.outputs[0], multiply_node.inputs[0])
         add_node2: Node = node_tree.nodes.new('ShaderNodeVectorMath')
         add_node2.location = pos.loc(550, 0)
         add_node2.operation = 'ADD'
-        node_tree.links.new(add_node2.outputs[0], input_s)
+        node_tree.links.new(add_node2.outputs[0], normalize_node.inputs[0])
         add_node1: Node = node_tree.nodes.new('ShaderNodeVectorMath')
         add_node1.location = pos.loc(400, 0)
         add_node1.operation = 'ADD'
