@@ -1,0 +1,9 @@
+[submodule "autocomplete/SourceIO"]
+	path = autocomplete/SourceIO
+	url = https://github.com/redxEYE/SourceIO
+[submodule "autocomplete/afx-blender-scripts"]
+	path = autocomplete/afx-blender-scripts
+	url = https://github.com/advancedfx/afx-blender-scripts
+[submodule "autocomplete/BlenderSourceTools"]
+	path = autocomplete/BlenderSourceTools
+	url = https://github.com/Artfunkel/BlenderSourceTools
