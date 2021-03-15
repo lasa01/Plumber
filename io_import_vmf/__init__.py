@@ -1081,7 +1081,8 @@ class ImportSceneSourceModel(_ValveGameOperator, _ValveGameOperatorProps):
                 self.verbose, self.simple_materials,
                 self.texture_interpolation, self.cull_materials,
                 editor_materials=self.editor_materials,
-                reuse_old=self.reuse_old_materials, reuse_old_images=self.reuse_old_materials
+                reuse_old=self.reuse_old_materials and self.strategy != 'SOURCEIO',
+                reuse_old_images=self.reuse_old_materials
             )
         else:
             fs = None

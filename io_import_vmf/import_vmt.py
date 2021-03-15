@@ -995,6 +995,11 @@ class _MaterialBuilder():
             self._material.vmt_data.nodraw = self.nodraw
         return self._material
 
+    def set_material(self, material: bpy.types.Material) -> None:
+        self._material = material
+        material.name = self.name
+        self._material.vmt_data.nodraw = self.nodraw
+
     def build(self) -> bpy.types.Material:
         material = self.get_material()
         material.use_nodes = True
@@ -1063,6 +1068,10 @@ class StagedMaterial():
         if self.builder is None:
             raise Exception("a builder was not specified for non-reused staged material")
         return self.builder.get_material()
+
+    def set_material(self, material: bpy.types.Material) -> None:
+        if self.builder is not None:
+            self.builder.set_material(material)
 
     @staticmethod
     def from_existing(importer: 'VMTImporter', material: bpy.types.Material) -> 'StagedMaterial':
