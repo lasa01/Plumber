@@ -71,9 +71,10 @@ Make sure you download a file called `io_import_vmf.zip`, not the source code.
 - (Advanced users) If the automatic detection fails to detect some required files, you can add them manually using the "+" buttons.
 
 ### Installing latest from source (advanced users)
-- Make sure Python 3 is installed.
-- Clone the repository (or download the repository as a .zip and extract).
-- Open terminal/PowerShell and run `install.sh` or `install.ps1` depending on your OS.
+- Make sure Python 3 is installed and that you selected "Add python to environment variables" in the installer.
+- Make sure Git is installed and that you selected "Git from the command line and also from 3rd-party software" in the installer.
+- Download the repository as a .zip from the green "Code" button in the top right corner and extract it somewhere (or alternatively, clone it).
+- Run `install.sh` or `install.ps1` depending on your OS.
 - Make sure there are no errors in the terminal/PowerShell window.
 - Follow the installation instructions above for the newly created .zip file.
 
