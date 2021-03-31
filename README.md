@@ -157,7 +157,7 @@ Options:
 
 ## Troubleshooting
 The [FAQ](https://github.com/lasa01/io_import_vmf/wiki/FAQ) has instructions for dealing with some common problems and errors.
-If you can't find your problem there, you can open a new issue.
+If you can't find your problem there, you can ask on the [AGR TechSupport Discord's](https://discord.gg/wd8Rcdj) #blender channel or open a new issue.
 
 ## Credits
 - Me for the addon, [VMF and VMT parser](https://github.com/lasa01/vmfpy) and [VTFLib wrapper](https://github.com/lasa01/pyvtflib).
