@@ -398,6 +398,8 @@ class ValveGameAddonPreferences(bpy.types.AddonPreferences):
 
     @staticmethod
     def game_enum_items(self: bpy.types.EnumProperty, context: bpy.types.Context) -> List[Tuple[str, str, str]]:
+        if context is None:
+            context = bpy.context
         preferences: ValveGameAddonPreferences = context.preferences.addons[__package__].preferences
         items = [(str(i), game.name, "") for i, game in enumerate(preferences.games.values())]
         items.append(('NONE', "None", ""))
