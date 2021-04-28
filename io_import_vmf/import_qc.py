@@ -55,7 +55,7 @@ class SmdImporterWrapper(import_smd.SmdImporter):
     skip_lod: bpy.props.BoolProperty(default=True)  # type: ignore
     skip_anim: bpy.props.BoolProperty(default=False)  # type: ignore
 
-    vmt_importer: Optional['import_vmt.VMTImporter']
+    vmt_importer: Optional[Any]
     vmf_fs: VMFFileSystem
     collection: bpy.types.Collection
     root: str
