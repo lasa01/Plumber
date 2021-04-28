@@ -5,6 +5,7 @@ from os import path
 from mathutils import geometry, Vector, Euler, Matrix
 from math import inf, radians, floor, ceil, isclose
 from itertools import chain, combinations
+from functools import partial
 import bpy
 import time
 import traceback
@@ -478,7 +479,7 @@ class VMFImporter():
     def _stage_solid(self, solid: vmfpy.VMFSolid) -> None:
         if self._vmt_importer is None:
             return
-        materials = [(side.material, lambda: side.get_material(allow_patch=True)) for side in solid.sides]
+        materials = [(side.material, partial(side.get_material, allow_patch=True)) for side in solid.sides]
         if self.skip_tools and all(self._vmt_importer.is_nodraw(material, getter) for material, getter in materials):
             return
         for material, getter in materials:
@@ -490,7 +491,7 @@ class VMFImporter():
         if self._vmt_importer is not None:
             is_tool = all(self._vmt_importer.is_nodraw(
                 side.material,
-                lambda: side.get_material(allow_patch=True),
+                partial(side.get_material, allow_patch=True),
             ) for side in solid.sides)
         else:
             is_tool = is_invisible_tool(side.material.lower() for side in solid.sides)
