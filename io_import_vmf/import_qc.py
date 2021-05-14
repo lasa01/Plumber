@@ -8,7 +8,6 @@ from typing import DefaultDict, Dict, Any, NamedTuple, Tuple, Set, Optional, Cal
 import bpy
 import os
 from os.path import splitext, basename, dirname, isfile, isdir, isabs, join, relpath
-from shutil import move, Error as ShError
 import subprocess
 import sys
 from contextlib import redirect_stdout
@@ -346,10 +345,8 @@ class QCImporter():
                     qc_dir = dirname(qc_path)
                     for filename in os.listdir(alternate_qc_dir):
                         filepath = join(alternate_qc_dir, filename)
-                        try:
-                            move(filepath, qc_dir)
-                        except (FileExistsError, ShError):
-                            os.remove(filepath)
+                        new_filepath = join(qc_dir, filename)
+                        os.replace(filepath, new_filepath)
                     os.rmdir(alternate_qc_dir)
                 if result.returncode != 0 or not isfile(qc_path):
                     print(result.stdout)
@@ -374,6 +371,9 @@ class QCImporter():
             fake_smd = FakeSmd.from_bst(SmdImporterWrapper.smd)
         except Exception as err:
             raise Exception(f"Error importing {name}: {err}")
+        if name.startswith("models/props/autocombine/"):
+            # cannot cache autocombine props, they have conflicting smd files
+            os.remove(path)
         self._cache[name] = fake_smd
         if fake_smd.a.name in bpy.context.scene.collection.objects:
             bpy.context.scene.collection.objects.unlink(fake_smd.a)
