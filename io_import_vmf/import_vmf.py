@@ -12,14 +12,14 @@ import traceback
 
 
 # maximum distance to a side plane before cutting a vertice off
-_CUT_EPSILON = 0.01
+_CUT_EPSILON = 0.001
 
 
 VectorPair = Tuple[Vector, Vector]
 
 
-def _plane_from_points(p1: vmfpy.VMFVector, p2: vmfpy.VMFVector, p3: vmfpy.VMFVector) -> VectorPair:
-    vectors = (Vector(p3), Vector(p2), Vector(p1))
+def _plane_from_points(p1: Vector, p2: Vector, p3: Vector) -> VectorPair:
+    vectors = (p3, p2, p1)
     normal = geometry.normal(vectors)
     return ((vectors[0] + vectors[2]) / 2, normal)
 
@@ -31,10 +31,10 @@ def _intersect_planes(p1: VectorPair, p2: VectorPair, p3: VectorPair) -> Optiona
     return geometry.intersect_line_plane(line[0], line[0] + line[1], *p3)
 
 
-def _vec_isclose(a: Vector, b: Vector, ref: Vector, rel_tol: float = 1e-6, abs_tol: float = 0.005) -> bool:
-    return (isclose(a.x - ref.x, b.x - ref.x, rel_tol=rel_tol, abs_tol=abs_tol)
-            and isclose(a.y - ref.y, b.y - ref.y, rel_tol=rel_tol, abs_tol=abs_tol)
-            and isclose(a.z - ref.z, b.z - ref.z, rel_tol=rel_tol, abs_tol=abs_tol))
+def _vec_isclose(a: Vector, b: Vector, rel_tol: float = 1e-6, abs_tol: float = 1e-6) -> bool:
+    return (isclose(a.x, b.x, rel_tol=rel_tol, abs_tol=abs_tol)
+            and isclose(a.y, b.y, rel_tol=rel_tol, abs_tol=abs_tol)
+            and isclose(a.z, b.z, rel_tol=rel_tol, abs_tol=abs_tol))
 
 
 def _tuple_lerp(a: Tuple[float, float], b: Tuple[float, float], amount: float) -> Tuple[float, float]:
@@ -502,7 +502,11 @@ class VMFImporter():
         name = f"{parent}_{solid.id}"
         if self.verbose:
             print(f"[VERBOSE] Building {name}...")
-        side_planes: List[VectorPair] = [_plane_from_points(*side.plane) for side in solid.sides]
+        # minimize floating point precision issues
+        planes_center = _vertices_center([Vector(point) for side in solid.sides for point in side.plane])
+        side_planes: List[VectorPair] = [
+            _plane_from_points(*(Vector(point) - planes_center for point in side.plane)) for side in solid.sides
+        ]
         vertices: List[Vector] = []  # all vertices for this solid
         materials: List[bpy.types.Material] = []
         # vertices for each face: face_vertices[face_index] = list of indices to vertices
@@ -526,9 +530,8 @@ class VMFImporter():
                     break
             else:
                 # check if the point is close enough to any other vertice on the planes to be within error margin
-                plane_center = (side_planes[idx_a][0] + side_planes[idx_b][0] + side_planes[idx_c][0]) / 3
                 for v_idx in chain(face_vertices[idx_a], face_vertices[idx_b], face_vertices[idx_c]):
-                    if _vec_isclose(vertices[v_idx], point, plane_center, self.epsilon, 0.005):
+                    if _vec_isclose(vertices[v_idx], point, self.epsilon, self.epsilon):
                         point_idx = v_idx
                         break
                 else:
@@ -581,7 +584,7 @@ class VMFImporter():
         if self.import_overlays:
             for side_idx, side in enumerate(solid.sides):
                 self._side_face_vertices[side.id] = [[i for i in range(len(face_vertices[side_idx]))]]
-                self._side_vertices[side.id] = [vertices[i] for i in face_vertices[side_idx]]
+                self._side_vertices[side.id] = [vertices[i] + planes_center for i in face_vertices[side_idx]]
                 self._side_normals[side.id] = side_planes[side_idx][1]
 
         # create uvs and materials
@@ -595,9 +598,9 @@ class VMFImporter():
             face_materials.append(material_idx)
             for vertice_idx in face_vertices[side_idx]:
                 face_loop_uvs[side_idx].append((
-                    ((vertices[vertice_idx] @ Vector(side.uaxis[:3]))
+                    (((vertices[vertice_idx] + planes_center) @ Vector(side.uaxis[:3]))
                      / (texture_width * side.uaxis.scale) + side.uaxis.trans / texture_width),
-                    ((vertices[vertice_idx] @ Vector(side.vaxis[:3]))
+                    (((vertices[vertice_idx] + planes_center) @ Vector(side.vaxis[:3]))
                      / (texture_height * side.vaxis.scale) + side.vaxis.trans / texture_height) * -1,
                 ))
 
@@ -649,7 +652,7 @@ class VMFImporter():
                     raise Exception(err)
 
                 # figure out which corner the start position is from original face vertices by finding closest vertice
-                start_pos = Vector(side.dispinfo.startposition)
+                start_pos = Vector(side.dispinfo.startposition) - planes_center
                 start_idx = min(range(len(old_face_vertices[side_idx])),
                                 key=lambda i: (old_vertices[old_face_vertices[side_idx][i]] - start_pos).length)
                 # these are based on empirical research
@@ -714,7 +717,7 @@ class VMFImporter():
                 disp_loop_cols = [[(0., 0., 0., a / 255) for a in row] for row in side.dispinfo.alphas]
 
                 if self.import_overlays:
-                    self._side_vertices[side.id] = [vertices[i] for row in disp_vertices for i in row]
+                    self._side_vertices[side.id] = [vertices[i] + planes_center for row in disp_vertices for i in row]
                     side_vertice_lookup = {v_i: i for i, v_i in enumerate(i for row in disp_vertices for i in row)}
 
                 # create displacement faces
@@ -752,7 +755,7 @@ class VMFImporter():
                                                   * side.dispinfo.distances[row_idx][col_idx])
                                                + side_planes[side_idx][1] * side.dispinfo.elevation)
                         if self.import_overlays:
-                            self._side_vertices[side.id].append(vertices[vert_idx])
+                            self._side_vertices[side.id].append(vertices[vert_idx] + planes_center)
 
         center = _vertices_center(vertices)
 
@@ -781,7 +784,7 @@ class VMFImporter():
             mesh.flip_normals()
         obj: bpy.types.Object = bpy.data.objects.new(name, object_data=mesh)
         collection.objects.link(obj)
-        obj.location = center * self.scale
+        obj.location = (planes_center + center) * self.scale
         if is_tool:
             obj.display_type = 'WIRE'
 
@@ -899,7 +902,7 @@ class VMFImporter():
                     vertice = self._side_vertices[side_id][vertice_idx]
                     vertice.freeze()
                     for other_idx, other_vert in enumerate(vertices):
-                        if _vec_isclose(other_vert, vertice, Vector((0, 0, 0)), self.epsilon, 0.005):
+                        if _vec_isclose(other_vert, vertice, self.epsilon, self.epsilon):
                             vert_idx = other_idx
                             break
                     else:
@@ -941,7 +944,7 @@ class VMFImporter():
             # find out which vertices are outside this uv side
             outside_vertices = {
                 i for i, v in enumerate(uv_rot_vertices)
-                if geometry.distance_point_to_plane(v, side_vert_a, cut_plane_normal) > 0.005
+                if geometry.distance_point_to_plane(v, side_vert_a, cut_plane_normal) > _CUT_EPSILON
             }
             if len(outside_vertices) == 0:
                 continue
@@ -973,7 +976,7 @@ class VMFImporter():
                 for other_idx, other_vert in enumerate(vertices):
                     if other_idx in remove_vertices:
                         continue
-                    if _vec_isclose(other_vert, new_vertice, Vector((0, 0, 0)), self.epsilon, 0.005):
+                    if _vec_isclose(other_vert, new_vertice, self.epsilon, self.epsilon):
                         new_vert_idx1 = other_idx
                         break
                 else:
@@ -990,7 +993,7 @@ class VMFImporter():
                 for other_idx, other_vert in enumerate(vertices):
                     if other_idx in remove_vertices:
                         continue
-                    if _vec_isclose(other_vert, new_vertice, Vector((0, 0, 0)), self.epsilon, 0.005):
+                    if _vec_isclose(other_vert, new_vertice, self.epsilon, self.epsilon):
                         new_vert_idx2 = other_idx
                         break
                 else:
@@ -1005,7 +1008,7 @@ class VMFImporter():
             cut_plane_normal = up_vector.cross(side_vert_b - side_vert_a)
             remove_vertices |= {
                 i for i, v in enumerate(uv_rot_vertices)
-                if geometry.distance_point_to_plane(v, side_vert_a, cut_plane_normal) > 0.005
+                if geometry.distance_point_to_plane(v, side_vert_a, cut_plane_normal) > _CUT_EPSILON
             }
 
         # remove marked vertices and faces referencing them

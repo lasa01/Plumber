@@ -538,8 +538,8 @@ class ImportSceneVMF(_ValveGameOperator, _ValveGameOperatorProps):
         name="Brush epsilon",
         description="Error threshold for slicing brushes",
         min=0, max=1.0,
-        soft_min=0.0001, soft_max=0.1,
-        default=0.001, precision=4,
+        soft_min=0.0001, soft_max=0.01,
+        default=0.001, precision=6,
     )
 
     invisible_behaviour: bpy.props.EnumProperty(  # type: ignore
