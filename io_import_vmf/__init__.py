@@ -722,6 +722,8 @@ class ImportSceneVMF(_ValveGameOperator, _ValveGameOperatorProps):
             delete_files, dec_models_path = self.get_dec_models_path(context)
         else:
             fs = None
+        if delete_files and dec_models_path is not None:
+            rmtree(dec_models_path, ignore_errors=True)
         from . import import_vmf
         importer = import_vmf.VMFImporter(fs, dec_models_path,
                                           import_solids=self.import_solids, import_overlays=self.import_overlays,
@@ -1106,6 +1108,8 @@ class ImportSceneSourceModel(_ValveGameOperator, _ValveGameOperatorProps):
                 self.report({'ERROR'}, "Blender Source Tools is not installed")
                 return {'CANCELLED'}
             delete_files, dec_models_path = self.get_dec_models_path(context)
+            if delete_files:
+                rmtree(dec_models_path, ignore_errors=True)
             print("Importing model...")
             qc_importer = import_qc.QCImporter(
                 dec_models_path, fs, vmt_importer,
@@ -1359,6 +1363,7 @@ class ImportSceneAGREnhanced(_ValveGameOperator, _ValveGameOperatorProps):
             return {'CANCELLED'}
         _, dec_models_path = self.get_dec_models_path(context)
         dec_models_path = join(dec_models_path, "agr_temp")
+        rmtree(dec_models_path, ignore_errors=True)
         importer = import_agr.AgrImporter(
             dec_models_path, fs,
             import_materials=self.import_materials, simple_materials=self.simple_materials,
