@@ -32,7 +32,7 @@ The addon ships bundled with [Crowbar-Command-Line](https://github.com/UltraTech
 - [License](#license)
 
 ## Requirements
-- OS: Windows recommended. Linux supported, apart from model/prop importing which is [currently not working](https://github.com/lasa01/io_import_vmf/issues/67), causes freezes.
+- OS: Windows recommended. Linux supported (requires .NET Core 3.1 for model importing).
 - Blender: 2.82 or newer.
 - [Blender Source Tools](https://steamreview.org/BlenderSourceTools/) must be installed and enabled to import props or .qc models!
 
@@ -105,7 +105,7 @@ Options:
     - `Invisible brushes`: By default, invisible brushes are not imported.
     If you want, you can import them by changing this.
     - `Import overlays`: Imports overlays that are on top of solids, such as bomb site sprays.
-- `Props`: Imports all complex models in the map, such as cars and crates. Usually doesn't work on Linux.
+- `Props`: Imports all complex models in the map, such as cars and crates.
     - `Optimize props`: Optimizes props by removing empty armatures. You should leave this on.
     - `Reuse old models`: Reuses previously imported models in the current .blend file.
     - See [QC / MDL](#qc--mdl-requires-blender-source-tools-or-sourceio) for more options.
@@ -138,7 +138,7 @@ Options:
 ### QC / MDL (requires [Blender Source Tools](https://steamreview.org/BlenderSourceTools/) or [SourceIO](https://github.com/REDxEYE/SourceIO))
 `File -> Import -> Source Engine Model (enhanced) (.qc/.mdl)`
 
-Usually doesn't work on Linux.
+Requires .NET Core 3.1 on Linux.
 
 Options:
 - `Skip collision meshes`: Skips collision meshes. You should leave this on.
@@ -150,7 +150,7 @@ Options:
 ### AGR (requires [afx-blender-scripts](https://github.com/advancedfx/afx-blender-scripts))
 `File -> Import -> HLAE afxGameRecord (enhanced) (.agr)`
 
-Usually doesn't work on Linux.
+Requires .NET Core 3.1 on Linux.
 
 Options:
 - See [QC / MDL](#qc--mdl-requires-blender-source-tools-or-sourceio) for options.

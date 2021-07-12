@@ -131,4 +131,4 @@ dmypy.json
 # Addon dependencies and packed addon
 io_import_vmf/deps
 io_import_vmf/bin
-io_import_vmf.zip
+io_import_vmf*.zip
