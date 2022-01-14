@@ -552,6 +552,16 @@ class ImportSceneVMF(_ValveGameOperator, _ValveGameOperatorProps):
         default='SKIP',
     )
 
+    vertex_blend_channel: bpy.props.EnumProperty(  # type: ignore
+        name="Material blend channel",
+        description="Vertex color channel to use for material blend data",
+        items=(
+            ('COLOR', "Vertex Color", ""),
+            ('ALPHA', "Vertex Alpha", ""),
+        ),
+        default='ALPHA',
+    )
+
     import_overlays: bpy.props.BoolProperty(  # type: ignore
         name="Import overlays",
         default=True,
@@ -743,7 +753,8 @@ class ImportSceneVMF(_ValveGameOperator, _ValveGameOperatorProps):
                                           ambient_factor=self.ambient_factor,
                                           verbose=self.verbose,
                                           skip_tools=self.invisible_behaviour == 'SKIP',
-                                          separate_tools=self.invisible_behaviour == 'SEPARATE')
+                                          separate_tools=self.invisible_behaviour == 'SEPARATE',
+                                          blend_use_vertex_alpha=self.vertex_blend_channel == 'ALPHA')
         with importer:
             importer.load(self.filepath, context, self.map_data_path)
         if delete_files and dec_models_path is not None:
@@ -800,6 +811,7 @@ class VMF_PT_vmf_import_solids(bpy.types.Panel):
         layout.enabled = operator.import_solids
         layout.prop(operator, "epsilon")
         layout.prop(operator, "invisible_behaviour", expand=True)
+        layout.prop(operator, "vertex_blend_channel", expand=True)
         layout.prop(operator, "import_overlays")
 
 

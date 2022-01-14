@@ -65,7 +65,8 @@ class VMFImporter():
                  cull_materials: bool = False, editor_materials: bool = False,
                  reuse_old_materials: bool = True, reuse_old_models: bool = True,
                  light_factor: float = 0.1, sun_factor: float = 0.01, ambient_factor: float = 0.001,
-                 verbose: bool = False, skip_tools: bool = False, separate_tools: bool = False):
+                 verbose: bool = False, skip_tools: bool = False, separate_tools: bool = False,
+                 blend_use_vertex_alpha: bool = True):
         self.epsilon = epsilon
         self.import_solids = import_solids
         self.import_overlays = import_solids and import_overlays
@@ -83,6 +84,7 @@ class VMFImporter():
         self.verbose = verbose
         self.skip_tools = skip_tools
         self.separate_tools = separate_tools
+        self.blend_use_vertex_alpha = blend_use_vertex_alpha
         self.dec_models_path = "" if dec_models_path is None else dec_models_path
         self._vmf_fs = fs
         self._vmt_importer: Optional['import_vmt.VMTImporter']
@@ -96,6 +98,7 @@ class VMFImporter():
                 self.verbose, simple_materials, texture_interpolation, cull_materials,
                 editor_materials=editor_materials,
                 reuse_old=reuse_old_materials, reuse_old_images=reuse_old_materials,
+                blend_use_vertex_alpha=blend_use_vertex_alpha,
             )
         else:
             self._vmt_importer = None
@@ -714,7 +717,11 @@ class VMFImporter():
                                                       col_idx / (side.dispinfo.dimension - 1))
                         disp_vertices[row_idx].append(col_vert_i)
                         disp_loop_uvs[row_idx].append(col_vert_uv)
-                disp_loop_cols = [[(0., 0., 0., a / 255) for a in row] for row in side.dispinfo.alphas]
+
+                if self.blend_use_vertex_alpha:
+                    disp_loop_cols = [[(0., 0., 0., a / 255) for a in row] for row in side.dispinfo.alphas]
+                else:
+                    disp_loop_cols = [[(a / 255, a / 255, a / 255, 1.0) for a in row] for row in side.dispinfo.alphas]
 
                 if self.import_overlays:
                     self._side_vertices[side.id] = [vertices[i] + planes_center for row in disp_vertices for i in row]

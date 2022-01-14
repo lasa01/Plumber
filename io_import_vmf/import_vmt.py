@@ -582,7 +582,7 @@ _SUPPORTED_PARAMS = frozenset((
 class _MaterialBuilder():
     def __init__(self, vtf_importer: import_vtf.VTFImporter, name: str, vmt_data: vmt.VMT,
                  simple: bool = False, interpolation: str = 'Linear', cull: bool = False,
-                 editor_materials: bool = False):
+                 editor_materials: bool = False, blend_use_vertex_alpha: bool = True):
         self._vtf_importer = vtf_importer
         self._material: Optional[bpy.types.Material] = None
         self.name = name
@@ -595,6 +595,7 @@ class _MaterialBuilder():
         self.alpha_reference = 0.7
         self.cull = cull
         self.editor_materials = editor_materials
+        self.blend_use_vertex_alpha = blend_use_vertex_alpha
         params = vmt_data.parameters
 
         # flags that imply nodraw
@@ -652,7 +653,11 @@ class _MaterialBuilder():
 
         vertex_col_input = _VertexColorInput()
         object_col_input = _ObjectColorInput()
-        blend_input = vertex_col_input.alpha
+
+        if self.blend_use_vertex_alpha:
+            blend_input = vertex_col_input.alpha
+        else:
+            blend_input = vertex_col_input.color
 
         if vmt_data.param_flag("$nocull") or vmt_data.param_flag("$decal"):
             # don't cull overlays since imported normals are wrong
@@ -680,7 +685,7 @@ class _MaterialBuilder():
                         )
                 texture_inputs["$blendmodulatetexture"].setimage(bimage)
                 blend_input = _ModulatedBlendFactorInput(
-                    texture_inputs["$blendmodulatetexture"].channels, vertex_col_input.alpha
+                    texture_inputs["$blendmodulatetexture"].channels, blend_input
                 ).fac
             if not self.simple and "$detail" in params and ("$detailblendmode" not in params  # TODO: other blend modes
                                                             or vmt_data.param_as_int("$detailblendmode") == 0):
@@ -1086,13 +1091,15 @@ class VMTImporter():
     def __init__(self, verbose: bool = False, simple: bool = False,
                  interpolation: str = 'Linear', cull: bool = False,
                  editor_materials: bool = False,
-                 reuse_old: bool = True, reuse_old_images: bool = True) -> None:
+                 reuse_old: bool = True, reuse_old_images: bool = True,
+                 blend_use_vertex_alpha: bool = True) -> None:
         self.verbose = verbose
         self.simple = simple
         self.interpolation = interpolation
         self.cull = cull
         self.editor_materials = editor_materials
         self.reuse_old = reuse_old
+        self.blend_use_vertex_alpha = blend_use_vertex_alpha
         self.progress_callback: Callable[[int, int], None] = lambda current, total: None
         self.texture_progress_callback: Callable[[int, int], None] = lambda current, total: None
         self._nodraw_cache: Dict[str, bool] = {}
@@ -1119,7 +1126,8 @@ class VMTImporter():
         try:
             builder = _MaterialBuilder(self._vtf_importer, truncated_name, vmt_data(),
                                        simple=self.simple, interpolation=self.interpolation,
-                                       cull=self.cull, editor_materials=self.editor_materials)
+                                       cull=self.cull, editor_materials=self.editor_materials,
+                                       blend_use_vertex_alpha=self.blend_use_vertex_alpha)
         except FileNotFoundError:
             print(f"[WARNING] MATERIAL {material_name} NOT FOUND")
             self._cache[material_name] = _fallback_material(material_name, truncated_name)
@@ -1162,7 +1170,8 @@ class VMTImporter():
             else:
                 builder = _MaterialBuilder(self._vtf_importer, truncated_name, vmt_data(),
                                            simple=self.simple, interpolation=self.interpolation,
-                                           cull=self.cull, editor_materials=self.editor_materials)
+                                           cull=self.cull, editor_materials=self.editor_materials,
+                                           blend_use_vertex_alpha=self.blend_use_vertex_alpha)
                 self._nodraw_cache[material_name] = builder.nodraw
         except FileNotFoundError:
             print(f"[WARNING] MATERIAL {material_name} NOT FOUND")
