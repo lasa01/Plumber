@@ -422,6 +422,8 @@ class QCImporter():
             armature_modifier = find_armature_modifier(twin)
             if armature_modifier is not None:
                 armature_modifier.object = copy_arm
+            # children shouldn't have any animation data imported by bst
+            twin.animation_data_clear()
             collection.objects.link(twin)
         smd.a = copy_arm
         return smd
