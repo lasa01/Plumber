@@ -1,0 +1,25 @@
+{
+    // See https://go.microsoft.com/fwlink/?LinkId=733558
+    // for the documentation about the tasks.json format
+    "version": "2.0.0",
+    "tasks": [
+        {
+            "label": "Extension module",
+            "type": "shell",
+            "command": "${command:python.interpreterPath} setup.py ${input:buildCommand}",
+            "group": "build"
+        },
+    ],
+    "inputs": [
+        {
+            "id": "buildCommand",
+            "type": "pickString",
+            "description": "Build command",
+            "options": [
+                "develop",
+                "develop --release"
+            ],
+            "default": "develop --release",
+        }
+    ]
+}

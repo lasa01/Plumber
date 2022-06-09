@@ -1,16 +1,3 @@
 {
-    "python.linting.flake8Enabled": true,
-    "python.linting.mypyEnabled": true,
-    "python.linting.pylintEnabled": false,
-    "python.defaultInterpreterPath": "venv\\Scripts\\python.exe",
-    "python.analysis.extraPaths": [
-        "autocomplete",
-        "autocomplete/afx-blender-scripts",
-        "autocomplete/BlenderSourceTools"
-    ],
-    "python.linting.ignorePatterns": [
-        ".vscode/*.py",
-        "**/site-packages/**/*.py",
-        "autocomplete/**/*"
-    ]
+    "python.formatting.provider": "black",
 }

@@ -1,2 +1,0 @@
-git+https://github.com/lasa01/vmfpy.git#egg=vmfpy
-git+https://github.com/lasa01/pyvtflib.git#egg=pyvtflib

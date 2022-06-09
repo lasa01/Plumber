@@ -1,7 +1,5 @@
-flake8
-mypy
-
-# type hints
--r requirements.txt
 fake-bpy-module-2.82
-numpy
+setuptools
+setuptools-rust
+blender.distutils
+black
