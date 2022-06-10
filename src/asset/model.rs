@@ -1,6 +1,10 @@
-use std::{collections::BTreeMap, mem};
+use std::{
+    collections::{BTreeMap, BTreeSet},
+    mem,
+};
 
 use glam::{Affine3A, EulerRot, Quat, Vec3};
+use log::warn;
 use pyo3::{prelude::*, types::PyList};
 
 use plumber_core::{
@@ -78,9 +82,37 @@ impl PyModel {
             rest_positions = BTreeMap::new();
         };
 
+        let mut meshes: Vec<_> = m.meshes.into_iter().map(PyLoadedMesh::new).collect();
+
+        let mut used_mesh_names = BTreeSet::new();
+
+        for mesh in &mut meshes {
+            // prevent duplicate names
+            if used_mesh_names.contains(&mesh.name) {
+                let mut counter = 1;
+                mesh.name.push_str(".1");
+
+                while used_mesh_names.contains(&mesh.name) {
+                    counter += 1;
+
+                    if let Some(c) = char::from_digit(counter, 10) {
+                        mesh.name.pop();
+                        mesh.name.push(c);
+                    } else {
+                        // could not find unique name here,
+                        // highly unlikely that a model has over 10 meshes with the same name...
+                        warn!("model `{}`: too many meshes with the same name", m.name);
+                        break;
+                    }
+                }
+            } else {
+                used_mesh_names.insert(&mesh.name);
+            }
+        }
+
         Self {
             name: m.name.into_string(),
-            meshes: m.meshes.into_iter().map(PyLoadedMesh::new).collect(),
+            meshes,
             materials: m
                 .materials
                 .into_iter()
@@ -227,8 +259,14 @@ impl PyLoadedMesh {
             }
         }
 
+        let name = if mesh.name.is_empty() {
+            mesh.body_part_name
+        } else {
+            mesh.name
+        };
+
         Self {
-            name: mesh.name,
+            name,
             vertices: mesh.vertices,
             faces: mesh.faces,
             flat_vertices,
