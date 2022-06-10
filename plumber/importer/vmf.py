@@ -299,7 +299,7 @@ class ImportVmf(ImporterOperator, ImporterOperatorProps, MaterialToggleOperatorP
         except OSError as err:
             self.report({"ERROR"}, f"Could not parse vmf: {err}")
             return {"CANCELLED"}
-        
+
         asset_callbacks.finish()
 
         return {"FINISHED"}

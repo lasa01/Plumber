@@ -1,6 +1,7 @@
 from typing import Set
 
 from bpy.types import Context, Panel
+from bpy.props import StringProperty
 
 from . import (
     GameFileImporterOperator,
@@ -25,6 +26,14 @@ class ImportMdl(
     bl_idname = "import_scene.plumber_mdl"
     bl_label = "Import MDL"
     bl_options = {"REGISTER", "UNDO"}
+
+    filename_ext = ".mdl"
+
+    filter_glob: StringProperty(
+        default="*.mdl",
+        options={"HIDDEN"},
+        maxlen=255,
+    )
 
     def execute(self, context: Context) -> Set[str]:
         fs = self.get_game_fs(context)

@@ -1,6 +1,7 @@
 from typing import Set
 
 from bpy.types import Context, Panel
+from bpy.props import StringProperty
 
 from . import (
     GameFileImporterOperator,
@@ -23,6 +24,14 @@ class ImportVmt(
     bl_idname = "import_scene.plumber_vmt"
     bl_label = "Import VMT"
     bl_options = {"REGISTER", "UNDO"}
+
+    filename_ext = ".vmt"
+
+    filter_glob: StringProperty(
+        default="*.vmt",
+        options={"HIDDEN"},
+        maxlen=255,
+    )
 
     def execute(self, context: Context) -> Set[str]:
         fs = self.get_game_fs(context)
