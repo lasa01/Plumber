@@ -258,9 +258,9 @@ checksum = "8ce81f49ae8a0482e4c55ea62ebbd7e5a686af544c00b9d090bba3ff9be97b3d"
 
 [[package]]
 name = "flume"
-version = "0.10.12"
+version = "0.10.13"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "843c03199d0c0ca54bc1ea90ac0d507274c28abcc4f691ae8b4eaa375087c76a"
+checksum = "1ceeb589a3157cac0ab8cc585feb749bd2cea5cb55a6ee802ad72d9fd38303da"
 dependencies = [
  "futures-core",
  "futures-sink",
@@ -671,7 +671,7 @@ dependencies = [
 [[package]]
 name = "plumber_core"
 version = "0.1.0"
-source = "git+https://github.com/lasa01/plumber_core#78dbd49165958f36b64486859d9db435af7ce0ca"
+source = "git+https://github.com/lasa01/plumber_core#2f45e1cc975dde8b6b4cba531831f9f09f9bda54"
 dependencies = [
  "approx",
  "bitflags",
@@ -704,7 +704,7 @@ dependencies = [
 [[package]]
 name = "plumber_uncased"
 version = "0.1.0"
-source = "git+https://github.com/lasa01/plumber_core#78dbd49165958f36b64486859d9db435af7ce0ca"
+source = "git+https://github.com/lasa01/plumber_core#2f45e1cc975dde8b6b4cba531831f9f09f9bda54"
 dependencies = [
  "serde",
 ]
@@ -712,7 +712,7 @@ dependencies = [
 [[package]]
 name = "plumber_vdf"
 version = "0.1.0"
-source = "git+https://github.com/lasa01/plumber_core#78dbd49165958f36b64486859d9db435af7ce0ca"
+source = "git+https://github.com/lasa01/plumber_core#2f45e1cc975dde8b6b4cba531831f9f09f9bda54"
 dependencies = [
  "bytecount",
  "nom",
@@ -723,7 +723,7 @@ dependencies = [
 [[package]]
 name = "plumber_vpk"
 version = "0.1.0"
-source = "git+https://github.com/lasa01/plumber_core#78dbd49165958f36b64486859d9db435af7ce0ca"
+source = "git+https://github.com/lasa01/plumber_core#2f45e1cc975dde8b6b4cba531831f9f09f9bda54"
 dependencies = [
  "byteorder",
  "crc",
