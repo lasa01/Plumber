@@ -26,7 +26,9 @@ if version is not None:
         bl_label = "Plumber"
 
         def draw(self, context: Context):
-            self.layout.operator(ImportVmf.bl_idname, text="Valve Map Format (.vmf)")
+            self.layout.operator(
+                ImportVmf.bl_idname, text="Valve Map Format (.vmf)"
+            ).from_game_fs = False
             self.layout.operator(
                 ImportMdl.bl_idname, text="Source Model (.mdl)"
             ).from_game_fs = False

@@ -8,11 +8,12 @@ from bpy.props import (
     StringProperty,
     IntProperty,
 )
-from bpy.types import Context, Panel
+from bpy.types import Context, Panel, UILayout
 import bpy
 
 from . import (
-    ImporterOperator,
+    GameFileImporterOperator,
+    GameFileImporterOperatorProps,
     ImporterOperatorProps,
     MaterialToggleOperatorProps,
 )
@@ -20,7 +21,12 @@ from ..asset import AssetCallbacks
 from ..plumber import Importer
 
 
-class ImportVmf(ImporterOperator, ImporterOperatorProps, MaterialToggleOperatorProps):
+class ImportVmf(
+    GameFileImporterOperator,
+    ImporterOperatorProps,
+    GameFileImporterOperatorProps,
+    MaterialToggleOperatorProps,
+):
     """Import Source Engine VMF map"""
 
     bl_idname = "import_scene.plumber_vmf"
@@ -191,11 +197,14 @@ class ImportVmf(ImporterOperator, ImporterOperatorProps, MaterialToggleOperatorP
         fs = self.get_game_fs(context)
 
         if self.map_data_path == "":
-            map_data_path = splitext(self.filepath)[0]
-            if not isdir(map_data_path):
+            if self.from_game_fs:
                 map_data_path = None
+            else:
+                map_data_path = splitext(self.filepath)[0]
+                if not isdir(map_data_path):
+                    map_data_path = None
         else:
-            if isabs(self.map_data_path):
+            if isabs(self.map_data_path) or self.from_game_fs:
                 map_data_path = self.map_data_path
             else:
                 map_data_path = join(dirname(self.filepath), self.map_data_path)
@@ -209,13 +218,6 @@ class ImportVmf(ImporterOperator, ImporterOperatorProps, MaterialToggleOperatorP
 
         if map_data_path is not None:
             fs = fs.with_search_path(("DIR", map_data_path))
-
-        try:
-            with open(self.filepath, "rb") as fp:
-                vmf_bytes = fp.read()
-        except OSError as err:
-            self.report({"ERROR"}, f"Could not open vmf: {err}")
-            return {"CANCELLED"}
 
         map_name = splitext(basename(self.filepath))[0]
 
@@ -283,7 +285,8 @@ class ImportVmf(ImporterOperator, ImporterOperatorProps, MaterialToggleOperatorP
 
         try:
             importer.import_vmf(
-                vmf_bytes,
+                self.filepath,
+                self.from_game_fs,
                 import_brushes=self.import_brushes,
                 import_overlays=self.import_overlays,
                 epsilon=self.epsilon,
@@ -304,6 +307,32 @@ class ImportVmf(ImporterOperator, ImporterOperatorProps, MaterialToggleOperatorP
 
         return {"FINISHED"}
 
+    def draw(self, context: Context):
+        if self.from_game_fs:
+            draw_map_data_props(self.layout, self, context)
+
+            self.layout.prop(self, "import_brushes")
+            draw_geometry_props(self.layout.box(), self, context)
+
+            self.layout.prop(self, "import_lights")
+            draw_light_props(self.layout.box(), self, context)
+
+            self.layout.prop(self, "import_sky")
+            draw_sky_props(self.layout.box(), self, context)
+
+            self.layout.prop(self, "import_props")
+            draw_props_props(self.layout.box(), self, context)
+
+            MaterialToggleOperatorProps.draw_props(self.layout, self, context)
+
+            draw_main_props(self.layout, self, context)
+
+
+def draw_map_data_props(layout: UILayout, operator: ImportVmf, context: Context):
+    layout.use_property_split = True
+    layout.use_property_decorate = False
+    layout.prop(operator, "map_data_path", icon="FILE_FOLDER")
+
 
 class PLUMBER_PT_vmf_map_data(Panel):
     bl_space_type = "FILE_BROWSER"
@@ -318,11 +347,17 @@ class PLUMBER_PT_vmf_map_data(Panel):
         return operator.bl_idname == "IMPORT_SCENE_OT_plumber_vmf"
 
     def draw(self, context: Context) -> None:
-        layout = self.layout
-        layout.use_property_split = True
-        layout.use_property_decorate = False
-        operator = context.space_data.active_operator
-        layout.prop(operator, "map_data_path", icon="FILE_FOLDER")
+        draw_map_data_props(self.layout, context.space_data.active_operator, context)
+
+
+def draw_geometry_props(layout: UILayout, operator: ImportVmf, context: Context):
+    layout.use_property_split = True
+    layout.enabled = operator.import_brushes
+    layout.prop(operator, "import_overlays")
+    layout.prop(operator, "epsilon")
+    layout.prop(operator, "cut_threshold")
+    layout.prop(operator, "merge_solids", expand=True)
+    layout.prop(operator, "invisible_solids", expand=True)
 
 
 class PLUMBER_PT_vmf_geometry(Panel):
@@ -343,16 +378,15 @@ class PLUMBER_PT_vmf_geometry(Panel):
         layout.prop(operator, "import_brushes")
 
     def draw(self, context: Context) -> None:
-        layout = self.layout
-        layout.use_property_split = True
-        operator = context.space_data.active_operator
+        draw_geometry_props(self.layout, context.space_data.active_operator, context)
 
-        layout.enabled = operator.import_brushes
-        layout.prop(operator, "import_overlays")
-        layout.prop(operator, "epsilon")
-        layout.prop(operator, "cut_threshold")
-        layout.prop(operator, "merge_solids", expand=True)
-        layout.prop(operator, "invisible_solids", expand=True)
+
+def draw_light_props(layout: UILayout, operator: ImportVmf, context: Context):
+    layout.use_property_split = True
+    layout.enabled = operator.import_lights
+    layout.prop(operator, "light_factor")
+    layout.prop(operator, "sun_factor")
+    layout.prop(operator, "ambient_factor")
 
 
 class PLUMBER_PT_vmf_lights(Panel):
@@ -373,14 +407,13 @@ class PLUMBER_PT_vmf_lights(Panel):
         layout.prop(operator, "import_lights", text="")
 
     def draw(self, context: Context) -> None:
-        layout = self.layout
-        layout.use_property_split = True
-        operator = context.space_data.active_operator
+        draw_light_props(self.layout, context.space_data.active_operator, context)
 
-        layout.enabled = operator.import_lights
-        layout.prop(operator, "light_factor")
-        layout.prop(operator, "sun_factor")
-        layout.prop(operator, "ambient_factor")
+
+def draw_sky_props(layout: UILayout, operator: ImportVmf, context: Context):
+    layout.use_property_split = True
+    layout.enabled = operator.import_sky
+    layout.prop(operator, "sky_equi_height")
 
 
 class PLUMBER_PT_vmf_sky(Panel):
@@ -401,12 +434,13 @@ class PLUMBER_PT_vmf_sky(Panel):
         layout.prop(operator, "import_sky", text="")
 
     def draw(self, context: Context) -> None:
-        layout = self.layout
-        layout.use_property_split = True
-        operator = context.space_data.active_operator
+        draw_sky_props(self.layout, context.space_data.active_operator, context)
 
-        layout.enabled = operator.import_sky
-        layout.prop(operator, "sky_equi_height")
+
+def draw_props_props(layout: UILayout, operator: ImportVmf, context: Context):
+    layout.use_property_split = True
+    layout.enabled = operator.import_props
+    layout.prop(operator, "dynamic_props")
 
 
 class PLUMBER_PT_vmf_props(Panel):
@@ -427,12 +461,13 @@ class PLUMBER_PT_vmf_props(Panel):
         layout.prop(operator, "import_props", text="")
 
     def draw(self, context: Context) -> None:
-        layout = self.layout
-        layout.use_property_split = True
-        operator = context.space_data.active_operator
+        draw_props_props(self.layout, context.space_data.active_operator, context)
 
-        layout.enabled = operator.import_props
-        layout.prop(operator, "dynamic_props")
+
+def draw_main_props(layout: UILayout, operator: ImportVmf, context: Context):
+    layout.use_property_split = True
+    layout.prop(operator, "import_sky_camera")
+    layout.prop(operator, "scale")
 
 
 class PLUMBER_PT_vmf_main(Panel):
@@ -448,7 +483,4 @@ class PLUMBER_PT_vmf_main(Panel):
         return operator.bl_idname == "IMPORT_SCENE_OT_plumber_vmf"
 
     def draw(self, context: Context) -> None:
-        layout = self.layout
-        operator = context.space_data.active_operator
-        layout.prop(operator, "import_sky_camera")
-        layout.prop(operator, "scale")
+        draw_main_props(self.layout, context.space_data.active_operator, context)

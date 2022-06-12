@@ -45,6 +45,7 @@ def object_menu_func(self: bpy.types.Menu, context: bpy.types.Context) -> None:
 FILE_IMPORTERS = {
     "mdl": "import_scene.plumber_mdl",
     "vmt": "import_scene.plumber_vmt",
+    "vmf": "import_scene.plumber_vmf",
 }
 
 

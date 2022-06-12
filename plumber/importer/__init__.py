@@ -139,9 +139,9 @@ class MaterialToggleOperatorProps(MaterialImporterOperatorProps):
         layout: UILayout, operator: "MaterialToggleOperatorProps", context: Context
     ):
         layout.prop(operator, "import_materials")
-        col = layout.column()
-        col.enabled = operator.import_materials
-        MaterialImporterOperatorProps.draw_props(col, operator, context)
+        box = layout.box()
+        box.enabled = operator.import_materials
+        MaterialImporterOperatorProps.draw_props(box, operator, context)
 
 
 class PLUMBER_PT_importer_materials(Panel):

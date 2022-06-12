@@ -10,7 +10,7 @@ use pyo3::{
 
 use plumber_core::{
     asset::Importer,
-    fs::GamePathBuf,
+    fs::{GamePathBuf, PathBuf},
     model::loader::Settings as MdlSettings,
     vmf::loader::{
         BrushSetting, GeometrySettings, InvisibleSolids, MergeSolids, Settings as VmfSettings,
@@ -94,8 +94,14 @@ impl PyImporter {
         })
     }
 
-    #[args(bytes, kwargs = "**")]
-    fn import_vmf(&mut self, py: Python, bytes: &[u8], kwargs: Option<&PyDict>) -> PyResult<()> {
+    #[args(path, from_game, kwargs = "**")]
+    fn import_vmf(
+        &mut self,
+        py: Python,
+        path: &str,
+        from_game: bool,
+        kwargs: Option<&PyDict>,
+    ) -> PyResult<()> {
         let importer = self.consume()?;
 
         let mut import_brushes = true;
@@ -154,11 +160,21 @@ impl PyImporter {
         }
 
         let start = Instant::now();
-        let file_size_mb = bytes.len() as f32 / (1024.0 * 1024.0);
-        info!("importing vmf ({:.2} MB)...", file_size_mb);
+        info!("importing vmf `{}`...", path);
+
+        let path: PathBuf = if from_game {
+            GamePathBuf::from(path).into()
+        } else {
+            StdPathBuf::from(path).into()
+        };
+
+        let bytes = importer
+            .file_system()
+            .read(&path)
+            .map_err(|e| PyIOError::new_err(e.to_string()))?;
 
         importer
-            .import_vmf_blocking(bytes, &settings, || self.process_assets(py))
+            .import_vmf_blocking(&bytes, &settings, || self.process_assets(py))
             .map_err(|e| PyIOError::new_err(e.to_string()))?;
 
         info!("vmf imported in {:.2} s", start.elapsed().as_secs_f32());
