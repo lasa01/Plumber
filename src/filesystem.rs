@@ -1,5 +1,6 @@
 use std::{cmp::Ordering, path::PathBuf};
 
+use log::{error, warn};
 use pyo3::{
     exceptions::{PyIOError, PyTypeError, PyUnicodeDecodeError},
     prelude::*,
@@ -104,13 +105,26 @@ fn from_search_path(search_path: &SearchPath) -> PyResult<(&str, &str)> {
     .ok_or_else(|| PyUnicodeDecodeError::new_err("search path is not valid utf8"))
 }
 
-pub fn discover() -> PyResult<Vec<PyFileSystem>> {
-    let libraries = Libraries::discover().map_err(|e| PyIOError::new_err(e.to_string()))?;
+pub fn discover() -> Vec<PyFileSystem> {
+    let libraries = match Libraries::discover() {
+        Ok(libraries) => libraries,
+        Err(err) => {
+            error!("could not discover games: {}", err);
+            return Vec::new();
+        }
+    };
+
     libraries
         .apps()
         .source()
         .filesystems()
-        .map(|r| r.map_or_else(|e| Err(PyIOError::new_err(e.to_string())), |f| Ok(f.into())))
+        .filter_map(|r| match r {
+            Ok(f) => Some(f.into()),
+            Err(e) => {
+                warn!("could not discover a game: {}", e);
+                None
+            }
+        })
         .collect()
 }
 

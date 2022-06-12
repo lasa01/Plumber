@@ -288,13 +288,10 @@ class DetectGamesOperator(Operator):
         return {"FINISHED"}
 
 
-def detect_games(context: Context) -> Optional[OSError]:
+def detect_games(context: Context):
     preferences: AddonPreferences = context.preferences.addons[__package__].preferences
 
-    try:
-        filesystems = discover_filesystems()
-    except OSError as err:
-        return err
+    filesystems = discover_filesystems()
 
     for filesystem in filesystems:
         name = filesystem.name()
@@ -424,9 +421,7 @@ def register():
         preferences.threads = min(max(2, os.cpu_count() or 0), 4)
 
     if not preferences.games:
-        err = detect_games(bpy.context)
-        if err is not None:
-            log_error(f"Could not detect installed games: {err}")
+        detect_games(bpy.context)
 
 
 def unregister():

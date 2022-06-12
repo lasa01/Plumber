@@ -68,7 +68,7 @@ fn plumber(_py: Python, m: &PyModule) -> PyResult<()> {
     m.add_class::<PyImporter>()?;
 
     #[pyfn(m)]
-    fn discover_filesystems() -> PyResult<Vec<PyFileSystem>> {
+    fn discover_filesystems() -> Vec<PyFileSystem> {
         filesystem::discover()
     }
 
