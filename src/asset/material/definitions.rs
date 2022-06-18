@@ -398,7 +398,7 @@ pub mod groups {
         inputs: &[
             ("color", NodeSocketRef::new("mix", Name("Color1"))),
             ("detail", NodeSocketRef::new("mul", Name("Color1"))),
-            ("fac", NodeSocketRef::new("mul", Name("Fac"))),
+            ("fac", NodeSocketRef::new("mix", Name("Fac"))),
         ],
         outputs: &[("color", NodeSocketRef::new("mix", Name("Color")))],
         ..NodeGroup::default()

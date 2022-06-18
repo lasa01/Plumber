@@ -469,7 +469,7 @@ impl<'a, 'b> NormalMaterialBuilder<'a, 'b> {
             self.vmt.extract_param_or_default::<u8>("$detailblendmode") == 0;
 
         if !detail_mode_supported
-            || !self.handle_texture_scaled(detail, transform, scale, ColorSpace::Srgb)
+            || !self.handle_texture_scaled(detail, transform, scale, ColorSpace::NonColor)
         {
             return;
         }
