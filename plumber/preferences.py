@@ -1,6 +1,6 @@
-from .plumber import discover_filesystems, FileSystem, log_error
+from .plumber import discover_filesystems, FileSystem
 
-from typing import List, Optional, Set, Tuple
+from typing import List, Set, Tuple
 from os.path import isdir
 import os
 
@@ -12,7 +12,13 @@ from bpy.types import (
     UIList,
     AddonPreferences,
 )
-from bpy.props import CollectionProperty, EnumProperty, IntProperty, StringProperty
+from bpy.props import (
+    CollectionProperty,
+    EnumProperty,
+    IntProperty,
+    StringProperty,
+    BoolProperty,
+)
 import bpy
 
 
@@ -321,6 +327,21 @@ class AddonPreferences(AddonPreferences):
         soft_max=min(os.cpu_count() or 4, 4),
     )
 
+    def update_enable_file_browser_panel(self, context: Context):
+        from plumber.tools import GameFileBrowserPanel
+
+        if not self.enable_file_browser_panel:
+            bpy.utils.unregister_class(GameFileBrowserPanel)
+        else:
+            bpy.utils.register_class(GameFileBrowserPanel)
+
+    enable_file_browser_panel: BoolProperty(
+        name="Enable file browser panel",
+        description="Enable the game file browser panel in 3D view sidebar",
+        default=True,
+        update=update_enable_file_browser_panel,
+    )
+
     @staticmethod
     def game_enum_items(
         self: EnumProperty, context: Context
@@ -338,6 +359,7 @@ class AddonPreferences(AddonPreferences):
 
     def draw(self, context: Context) -> None:
         layout: UILayout = self.layout
+        layout.prop(self, "enable_file_browser_panel")
         layout.prop(self, "threads")
         layout.separator()
         layout.operator(
