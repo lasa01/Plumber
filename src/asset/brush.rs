@@ -4,6 +4,8 @@ use glam::Vec3;
 use plumber_core::vmf::loader::{BuiltBrushEntity, BuiltSolid, MergedSolids, SolidFace};
 use pyo3::{prelude::*, types::PyList};
 
+use super::utils::linear_to_srgb;
+
 #[pyclass(module = "plumber", name = "MergedSolids")]
 pub struct PyMergedSolids {
     no_draw: bool,
@@ -107,9 +109,11 @@ impl PyMergedSolids {
             .faces
             .iter()
             .flat_map(|f| {
-                f.vertice_alphas
-                    .iter()
-                    .flat_map(|&a| [a / 255., a / 255., a / 255., 1.0])
+                f.vertice_alphas.iter().flat_map(|&a| {
+                    let c = linear_to_srgb(a / 255.);
+
+                    [c, c, c, 1.0]
+                })
             })
             .collect();
 
@@ -239,9 +243,11 @@ impl PyBuiltSolid {
             .faces
             .iter()
             .flat_map(|f| {
-                f.vertice_alphas
-                    .iter()
-                    .flat_map(|&a| [a / 255., a / 255., a / 255., 1.0])
+                f.vertice_alphas.iter().flat_map(|&a| {
+                    let c = linear_to_srgb(a / 255.);
+
+                    [c, c, c, 1.0]
+                })
             })
             .collect();
 

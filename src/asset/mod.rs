@@ -4,6 +4,7 @@ pub mod material;
 pub mod model;
 pub mod overlay;
 pub mod sky;
+mod utils;
 
 use std::panic::{catch_unwind, AssertUnwindSafe};
 

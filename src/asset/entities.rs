@@ -2,6 +2,7 @@ use std::f32::consts::FRAC_PI_2;
 
 use glam::{EulerRot, Quat};
 use pyo3::prelude::*;
+use rgb::ComponentMap;
 
 use plumber_core::vmf::{
     entities::{
@@ -10,7 +11,8 @@ use plumber_core::vmf::{
     },
     loader::LoadedProp,
 };
-use rgb::ComponentMap;
+
+use super::utils::srgb_to_linear;
 
 #[pyclass(module = "plumber", name = "LoadedProp")]
 pub struct PyLoadedProp {
@@ -92,14 +94,6 @@ impl Default for LightSettings {
             sun_factor: 0.01,
             ambient_factor: 0.001,
         }
-    }
-}
-
-fn srgb_to_linear(srgb: f32) -> f32 {
-    if srgb <= 0.040_448_237 {
-        srgb / 12.92
-    } else {
-        ((srgb + 0.055) / 1.055).powf(2.4)
     }
 }
 
