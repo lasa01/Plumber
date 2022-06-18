@@ -139,7 +139,7 @@ impl PyFileBrowser {
         let mut entries = Vec::new();
 
         for res in self.file_system.read_dir(&GamePathBuf::from(dir)) {
-            let entry = res.map_err(|err| PyIOError::new_err(err.to_string()))?;
+            let entry = res?;
 
             entries.push(PyFileBrowserEntry {
                 name: entry.name().to_string(),

@@ -168,10 +168,7 @@ impl PyImporter {
             StdPathBuf::from(path).into()
         };
 
-        let bytes = importer
-            .file_system()
-            .read(&path)
-            .map_err(|e| PyIOError::new_err(e.to_string()))?;
+        let bytes = importer.file_system().read(&path)?;
 
         importer
             .import_vmf_blocking(&bytes, &settings, || self.process_assets(py))
