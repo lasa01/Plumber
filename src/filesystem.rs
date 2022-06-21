@@ -1,13 +1,19 @@
-use std::{cmp::Ordering, path::PathBuf};
+use std::{
+    cmp::Ordering,
+    fs::{self, File},
+    io::{BufRead, BufReader, Write},
+    path::{Path as StdPath, PathBuf as StdPathBuf},
+    time::Instant,
+};
 
-use log::{error, warn};
+use log::{error, info, warn};
 use pyo3::{
     exceptions::{PyIOError, PyTypeError, PyUnicodeDecodeError},
     prelude::*,
 };
 
 use plumber_core::{
-    fs::{DirEntryType, FileSystem, GamePathBuf, OpenFileSystem, SearchPath},
+    fs::{DirEntryType, FileSystem, GameFile, GamePathBuf, OpenFileSystem, ReadDir, SearchPath},
     steam::Libraries,
 };
 
@@ -83,15 +89,118 @@ impl PyFileSystem {
             file_system: opened,
         })
     }
+
+    fn extract(&self, path: &str, is_dir: bool, target_path: &str) -> PyResult<()> {
+        let start = Instant::now();
+        info!("opening file system of game `{}`...", self.file_system.name);
+
+        let opened = self
+            .file_system
+            .open()
+            .map_err(|e| PyIOError::new_err((e.to_string(),)))?;
+
+        info!(
+            "file system opened in {:.2} s",
+            start.elapsed().as_secs_f32()
+        );
+
+        let path = GamePathBuf::from(path);
+        let target_path = StdPath::new(target_path);
+
+        let start = Instant::now();
+        info!("extracting...");
+
+        if is_dir {
+            extract_directory_recursive(opened.read_dir(&path), target_path)?;
+        } else {
+            extract_file(opened.open_file(&path)?, path.as_str(), target_path)?;
+        }
+
+        info!(
+            "extraction finished in {:.2} s",
+            start.elapsed().as_secs_f32()
+        );
+
+        Ok(())
+    }
+}
+
+fn extract_file(file: GameFile, file_path: &str, target_path: &StdPath) -> PyResult<()> {
+    let mut target_file = File::create(target_path)?;
+
+    let mut reader = BufReader::new(file);
+
+    loop {
+        let data = reader.fill_buf()?;
+
+        if data.is_empty() {
+            break;
+        }
+
+        target_file.write_all(data)?;
+        let amt = data.len();
+
+        reader.consume(amt);
+    }
+
+    info!(
+        "extracted file `{}` into `{}`",
+        file_path,
+        target_path.display()
+    );
+
+    Ok(())
+}
+
+fn extract_directory_recursive(read_dir: ReadDir, target_dir: &StdPath) -> PyResult<()> {
+    if !target_dir.is_dir() {
+        fs::create_dir(&target_dir)?;
+    }
+
+    for res in read_dir {
+        let entry = res?;
+
+        match entry.entry_type() {
+            DirEntryType::File => {
+                if let Err(err) = extract_file(
+                    entry.open()?,
+                    entry.path().as_str(),
+                    &target_dir.join(entry.name().as_str()),
+                ) {
+                    error!(
+                        "error extracting file `{}` to `{}`: {}",
+                        entry.path(),
+                        entry.name(),
+                        err
+                    );
+                }
+            }
+            DirEntryType::Directory => {
+                if let Err(err) = extract_directory_recursive(
+                    entry.read_dir(),
+                    &target_dir.join(entry.name().as_str()),
+                ) {
+                    error!(
+                        "error extracting directory `{}` to `{}`: {}",
+                        entry.path(),
+                        entry.name(),
+                        err
+                    );
+                }
+            }
+        }
+    }
+
+    Ok(())
 }
 
 fn to_search_path(search_path: (&str, &str)) -> PyResult<SearchPath> {
     let (kind, path) = search_path;
 
     match kind {
-        "DIR" => Ok(SearchPath::Directory(PathBuf::from(path))),
-        "VPK" => Ok(SearchPath::Vpk(PathBuf::from(path))),
-        "WILDCARD" => Ok(SearchPath::Wildcard(PathBuf::from(path))),
+        "DIR" => Ok(SearchPath::Directory(StdPathBuf::from(path))),
+        "VPK" => Ok(SearchPath::Vpk(StdPathBuf::from(path))),
+        "WILDCARD" => Ok(SearchPath::Wildcard(StdPathBuf::from(path))),
         _ => Err(PyTypeError::new_err("invalid search path enum value")),
     }
 }
@@ -143,6 +252,7 @@ impl PyFileBrowser {
 
             entries.push(PyFileBrowserEntry {
                 name: entry.name().to_string(),
+                path: entry.path().to_path_buf(),
                 kind: entry.entry_type().clone(),
             });
         }
@@ -167,6 +277,7 @@ impl PyFileBrowser {
 #[derive(PartialEq)]
 pub struct PyFileBrowserEntry {
     name: String,
+    path: GamePathBuf,
     kind: DirEntryType,
 }
 
@@ -174,6 +285,10 @@ pub struct PyFileBrowserEntry {
 impl PyFileBrowserEntry {
     fn name(&self) -> &str {
         &self.name
+    }
+
+    fn path(&self) -> &str {
+        self.path.as_str()
     }
 
     fn kind(&self) -> &str {

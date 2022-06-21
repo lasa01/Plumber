@@ -1,3 +1,4 @@
+from os.path import isabs
 from typing import Collection, Optional, Set
 
 from bpy.types import Operator, Context, UIList, UILayout, PropertyGroup, Menu, Panel
@@ -10,6 +11,13 @@ from bpy.props import (
     PointerProperty,
 )
 import bpy
+
+from plumber.importer import (
+    DisableCommonPanel,
+    GameFileImporterOperator,
+    GameFileImporterOperatorProps,
+    ImporterOperatorProps,
+)
 
 from .plumber import FileBrowser
 from .preferences import Game, AddonPreferences
@@ -104,7 +112,9 @@ class DirEntryList(UIList):
         icon_value = layout.enum_item_icon(item, "kind", item.kind)
 
         if self.layout_type in {"DEFAULT", "COMPACT"}:
-            layout.label(
+            split = layout.split(factor=0.6)
+
+            split.label(
                 text=item.name,
                 icon_value=icon_value,
             )
@@ -114,10 +124,19 @@ class DirEntryList(UIList):
                 importer = FILE_IMPORTERS.get(extension)
 
                 if importer is not None:
-                    operator = layout.operator(importer, text="Import")
+                    operator = split.operator(importer, text="Import")
                     operator.from_game_fs = True
                     operator.filepath = item.path
                     operator.game = str(data.game_id)
+
+                operator: ExtractGameFile = split.operator(
+                    ExtractGameFile.bl_idname, text="Extract"
+                )
+                operator.from_game_fs = True
+                operator.source_path = item.path
+                operator.game = str(data.game_id)
+                operator.filename_ext = extension
+                operator.filename = item.name
 
         elif self.layout_type in {"GRID"}:
             layout.alignment = "CENTER"
@@ -234,6 +253,13 @@ class GameFileBrowser:
             maxrows=20,
         )
 
+        operator: ExtractGameDirectory = layout.operator(
+            ExtractGameDirectory.bl_idname, text="Extract all"
+        )
+        operator.from_game_fs = True
+        operator.source_path = self.path
+        operator.game = str(self.game_id)
+
         if self.entry_index == -1:
             layout.label(text="(select a file to import)")
         else:
@@ -343,6 +369,81 @@ class IMPORT_MT_plumber_browse(Menu):
             ).game_id = i
 
 
+class ExtractGameDirectory(
+    GameFileImporterOperator,
+    ImporterOperatorProps,
+    GameFileImporterOperatorProps,
+    DisableCommonPanel,
+):
+    """Extract a game directory"""
+
+    bl_idname = "file.plumber_extract_directory"
+    bl_label = "Extract game files"
+    bl_options = {"INTERNAL"}
+
+    source_path: StringProperty(options={"HIDDEN"})
+
+    directory: StringProperty(options={"HIDDEN"})
+    filepath: None
+    filename_ext = "."
+    use_filter_folder = True
+
+    def invoke(self, context: Context, event) -> Set[str]:
+        if not self.from_game_fs:
+            return {"CANCELLED"}
+
+        context.window_manager.fileselect_add(self)
+        return {"RUNNING_MODAL"}
+
+    def execute(self, context: Context) -> Set[str]:
+        fs = self.get_game_fs(context)
+
+        try:
+            fs.extract(self.source_path, True, self.directory)
+        except OSError as err:
+            self.report({"ERROR"}, f"could not export: {err}")
+            return {"CANCELLED"}
+
+        return {"FINISHED"}
+
+
+class ExtractGameFile(
+    GameFileImporterOperator,
+    ImporterOperatorProps,
+    GameFileImporterOperatorProps,
+    DisableCommonPanel,
+):
+    """Extract a game file"""
+
+    bl_idname = "file.plumber_extract_file"
+    bl_label = "Extract game file"
+    bl_options = {"INTERNAL"}
+
+    source_path: StringProperty(options={"HIDDEN"})
+
+    filename: StringProperty(options={"HIDDEN"})
+    check_existing: BoolProperty(options={"HIDDEN"}, default=True)
+    filename_ext: StringProperty(options={"HIDDEN"})
+
+    def invoke(self, context: Context, event) -> Set[str]:
+        if not self.from_game_fs:
+            return {"CANCELLED"}
+
+        context.window_manager.fileselect_add(self)
+        return {"RUNNING_MODAL"}
+
+    def execute(self, context: Context) -> Set[str]:
+        fs = self.get_game_fs(context)
+
+        try:
+            fs.extract(self.source_path, False, self.filepath)
+        except OSError as err:
+            self.report({"ERROR"}, f"could not export: {err}")
+            return {"CANCELLED"}
+
+        return {"FINISHED"}
+
+
 classes = [
     ObjectTransform3DSky,
     DirEntry,
@@ -351,6 +452,8 @@ classes = [
     OpenGameFileBrowser,
     GameFileBrowserOperator,
     IMPORT_MT_plumber_browse,
+    ExtractGameDirectory,
+    ExtractGameFile,
 ]
 
 

@@ -66,6 +66,10 @@ class GameFileImporterOperator(
             return {"RUNNING_MODAL"}
 
 
+class DisableCommonPanel:
+    pass
+
+
 class PLUMBER_PT_importer_common(Panel):
     bl_space_type = "FILE_BROWSER"
     bl_region_type = "TOOL_PROPS"
@@ -76,7 +80,7 @@ class PLUMBER_PT_importer_common(Panel):
     @classmethod
     def poll(cls, context: Context) -> bool:
         operator = context.space_data.active_operator
-        return isinstance(operator, ImporterOperatorProps)
+        return isinstance(operator, ImporterOperatorProps) and not isinstance(operator, DisableCommonPanel)
 
     def draw(self, context: Context) -> None:
         layout: UILayout = self.layout
