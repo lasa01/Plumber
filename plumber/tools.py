@@ -154,6 +154,9 @@ class GameFileBrowser:
         # not dependent on self
 
         def update_path(self: GameFileBrowser, context: Context):
+            if isabs(self.path):
+                self.path = ""
+
             entries = cls.browser.read_dir(self.path)
             self.entries.clear()
 
