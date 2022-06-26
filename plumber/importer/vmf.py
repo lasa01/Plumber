@@ -31,7 +31,7 @@ class ImportVmf(
 
     bl_idname = "import_scene.plumber_vmf"
     bl_label = "Import VMF"
-    bl_options = {"REGISTER", "UNDO"}
+    bl_options = {"REGISTER", "UNDO", "PRESET"}
 
     filename_ext = ".vmf"
 

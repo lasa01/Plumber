@@ -25,7 +25,7 @@ class ImportMdl(
 
     bl_idname = "import_scene.plumber_mdl"
     bl_label = "Import MDL"
-    bl_options = {"REGISTER", "UNDO"}
+    bl_options = {"REGISTER", "UNDO", "PRESET"}
 
     filename_ext = ".mdl"
 

@@ -23,7 +23,7 @@ class ImportVmt(
 
     bl_idname = "import_scene.plumber_vmt"
     bl_label = "Import VMT"
-    bl_options = {"REGISTER", "UNDO"}
+    bl_options = {"REGISTER", "UNDO", "PRESET"}
 
     filename_ext = ".vmt"
 
