@@ -1,7 +1,7 @@
 from typing import Set
 
 from bpy.types import Context, Panel
-from bpy.props import StringProperty
+from bpy.props import StringProperty, FloatProperty
 
 from . import (
     GameFileImporterOperator,
@@ -35,13 +35,23 @@ class ImportMdl(
         maxlen=255,
     )
 
+    scale: FloatProperty(
+        name="Scale",
+        default=0.01,
+        min=1e-6,
+        max=1e6,
+        soft_min=0.001,
+        soft_max=1.0,
+    )
+
     def execute(self, context: Context) -> Set[str]:
         fs = self.get_game_fs(context)
+        asset_callbacks = AssetCallbacks(context)
 
         try:
             importer = Importer(
                 fs,
-                AssetCallbacks(context),
+                asset_callbacks,
                 self.get_threads_suggestion(context),
                 target_fps=self.get_target_fps(context),
                 simple_materials=self.simple_materials,
@@ -64,12 +74,17 @@ class ImportMdl(
             self.report({"ERROR"}, f"could not import mdl: {err}")
             return {"CANCELLED"}
 
+        imported_obj = asset_callbacks.model_tracker.get_last_imported()
+        imported_obj.scale = (self.scale, self.scale, self.scale)
+
         return {"FINISHED"}
 
     def draw(self, context: Context):
         if self.from_game_fs:
             ModelImporterOperatorProps.draw_props(self.layout, self, context)
             MaterialToggleOperatorProps.draw_props(self.layout, self, context)
+
+            self.layout.prop(self, "scale")
 
 
 class PLUMBER_PT_mdl_main(Panel):
@@ -85,6 +100,7 @@ class PLUMBER_PT_mdl_main(Panel):
         return operator.bl_idname == "IMPORT_SCENE_OT_plumber_mdl"
 
     def draw(self, context: Context) -> None:
-        ModelImporterOperatorProps.draw_props(
-            self.layout, context.space_data.active_operator, context
-        )
+        operator = context.space_data.active_operator
+        ModelImporterOperatorProps.draw_props(self.layout, operator, context)
+
+        self.layout.prop(operator, "scale")

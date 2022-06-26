@@ -51,7 +51,9 @@ class ModelTracker:
         if bones:
             rest_positions = model.rest_positions()
             bone_names = []
-            parent_obj = import_armature(collection, model_name, bones, rest_positions, bone_names)
+            parent_obj = import_armature(
+                collection, model_name, bones, rest_positions, bone_names
+            )
 
             animations = model.animations()
             for animation in animations:
@@ -131,6 +133,14 @@ class ModelTracker:
             collection.objects.link(child_copy)
 
         return parent_copy
+
+    def get_last_imported(self) -> Optional[Object]:
+        last = next(reversed(self.imported_objects.values()), None)
+
+        if last is None:
+            return None
+
+        return last.object
 
 
 def import_mesh(
