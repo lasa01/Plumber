@@ -18,7 +18,7 @@ if version is not None:
     from bpy.types import Context, Menu
 
     from . import preferences, importer, tools
-    from .importer import ImportMdl, ImportVmf, ImportVmt
+    from .importer import ImportMdl, ImportVmf, ImportVmt, ImportVtf
     from .tools import IMPORT_MT_plumber_browse
 
     class IMPORT_MT_plumber(Menu):
@@ -34,6 +34,9 @@ if version is not None:
             ).from_game_fs = False
             self.layout.operator(
                 ImportVmt.bl_idname, text="Valve Material Type (.vmt)"
+            ).from_game_fs = False
+            self.layout.operator(
+                ImportVtf.bl_idname, text="Valve Texture Format (.vtf)"
             ).from_game_fs = False
 
             self.layout.menu(IMPORT_MT_plumber_browse.bl_idname)

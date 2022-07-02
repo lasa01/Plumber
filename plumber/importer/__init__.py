@@ -80,7 +80,9 @@ class PLUMBER_PT_importer_common(Panel):
     @classmethod
     def poll(cls, context: Context) -> bool:
         operator = context.space_data.active_operator
-        return isinstance(operator, ImporterOperatorProps) and not isinstance(operator, DisableCommonPanel)
+        return isinstance(operator, ImporterOperatorProps) and not isinstance(
+            operator, DisableCommonPanel
+        )
 
     def draw(self, context: Context) -> None:
         layout: UILayout = self.layout
@@ -195,6 +197,7 @@ from .vmf import (
 )
 from .mdl import ImportMdl, PLUMBER_PT_mdl_main
 from .vmt import ImportVmt, PLUMBER_PT_vmt_main
+from .vtf import ImportVtf
 
 
 CLASSES = [
@@ -211,6 +214,7 @@ CLASSES = [
     ImportVmf,
     ImportMdl,
     ImportVmt,
+    ImportVtf,
 ]
 
 
