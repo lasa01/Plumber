@@ -222,7 +222,7 @@ impl PyImporter {
         info!("importing vmt `{}`...", path);
 
         importer
-            .import_vmt_blocking(&path, || self.process_assets(py))
+            .import_vmt_blocking(path, || self.process_assets(py))
             .map_err(|e| PyIOError::new_err(e.to_string()))?;
 
         info!("vmt imported in {:.2} s", start.elapsed().as_secs_f32());
