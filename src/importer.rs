@@ -230,6 +230,27 @@ impl PyImporter {
         Ok(())
     }
 
+    fn import_vtf(&mut self, py: Python, path: &str, from_game: bool) -> PyResult<()> {
+        let importer = self.consume()?;
+
+        let path = if from_game {
+            GamePathBuf::from(path).into()
+        } else {
+            StdPathBuf::from(path).into()
+        };
+
+        let start = Instant::now();
+        info!("importing vtf `{}`...", path);
+
+        importer.import_vtf(path);
+        drop(importer);
+        self.process_assets(py);
+
+        info!("vtf imported in {:.2} s", start.elapsed().as_secs_f32());
+
+        Ok(())
+    }
+
     #[args(path, kwargs = "**")]
     fn stage_mdl(&mut self, path: &str, kwargs: Option<&PyDict>) -> PyResult<()> {
         let importer = self.borrow()?;

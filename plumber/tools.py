@@ -55,6 +55,7 @@ FILE_IMPORTERS = {
     "mdl": "import_scene.plumber_mdl",
     "vmt": "import_scene.plumber_vmt",
     "vmf": "import_scene.plumber_vmf",
+    "vtf": "import_scene.plumber_vtf",
 }
 
 
