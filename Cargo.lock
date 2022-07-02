@@ -157,9 +157,9 @@ dependencies = [
 
 [[package]]
 name = "either"
-version = "1.6.1"
+version = "1.7.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "e78d4f1cc4ae33bbfc157ed5d5a5ef3bc29227303d595861deb238fcec4e9457"
+checksum = "3f107b87b6afc2a64fd13cac55fe06d6c8859f12d4b14cbcdd2c67d0976781be"
 
 [[package]]
 name = "encoding"
@@ -671,7 +671,7 @@ dependencies = [
 [[package]]
 name = "plumber_core"
 version = "0.1.0"
-source = "git+https://github.com/lasa01/plumber_core#1c2a387bcf64539ebbe94bafabcfa7e28e1ca1a6"
+source = "git+https://github.com/lasa01/plumber_core#14df725a9de97ef806736efb60dcca290f72809d"
 dependencies = [
  "approx",
  "bitflags",
@@ -704,7 +704,7 @@ dependencies = [
 [[package]]
 name = "plumber_uncased"
 version = "0.1.0"
-source = "git+https://github.com/lasa01/plumber_core#1c2a387bcf64539ebbe94bafabcfa7e28e1ca1a6"
+source = "git+https://github.com/lasa01/plumber_core#14df725a9de97ef806736efb60dcca290f72809d"
 dependencies = [
  "serde",
 ]
@@ -712,7 +712,7 @@ dependencies = [
 [[package]]
 name = "plumber_vdf"
 version = "0.1.0"
-source = "git+https://github.com/lasa01/plumber_core#1c2a387bcf64539ebbe94bafabcfa7e28e1ca1a6"
+source = "git+https://github.com/lasa01/plumber_core#14df725a9de97ef806736efb60dcca290f72809d"
 dependencies = [
  "bytecount",
  "nom",
@@ -723,7 +723,7 @@ dependencies = [
 [[package]]
 name = "plumber_vpk"
 version = "0.1.0"
-source = "git+https://github.com/lasa01/plumber_core#1c2a387bcf64539ebbe94bafabcfa7e28e1ca1a6"
+source = "git+https://github.com/lasa01/plumber_core#14df725a9de97ef806736efb60dcca290f72809d"
 dependencies = [
  "byteorder",
  "crc",
@@ -880,9 +880,9 @@ dependencies = [
 
 [[package]]
 name = "smallvec"
-version = "1.8.0"
+version = "1.9.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "f2dd574626839106c320a323308629dcb1acfc96e32a8cba364ddc61ac23ee83"
+checksum = "2fd0db749597d91ff862fd1d55ea87f7855a744a8425a64695b6fca237d1dad1"
 
 [[package]]
 name = "spin"
