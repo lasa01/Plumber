@@ -2,13 +2,7 @@ from setuptools import setup, find_packages, sic
 from setuptools.command.develop import develop
 from setuptools_rust import Binding, RustExtension
 
-from plumber import bl_info
-
-version = ".".join(map(str, bl_info["version"]))
-
-warning = bl_info["warning"]
-if warning != "":
-    version += f"-{warning}"
+from plumber import version_str
 
 rust_extension = RustExtension(
     "plumber.plumber",
@@ -36,7 +30,7 @@ class DevelopCommand(develop):
 
 setup(
     name="plumber",
-    version=sic(version),
+    version=sic(version_str),
     rust_extensions=[rust_extension],
     packages=find_packages(),
     # rust extensions are not zip safe, just like C-extensions.

@@ -36,6 +36,8 @@ use crate::{
     importer::PyImporter,
 };
 
+const VERSION: &str = env!("CARGO_PKG_VERSION");
+
 #[pymodule]
 fn plumber(_py: Python, m: &PyModule) -> PyResult<()> {
     m.add_class::<PyFileSystem>()?;
@@ -80,6 +82,11 @@ fn plumber(_py: Python, m: &PyModule) -> PyResult<()> {
     #[pyfn(m)]
     fn log_info(info: &str) {
         info!("{}", info);
+    }
+
+    #[pyfn(m)]
+    fn version() -> &'static str {
+        VERSION
     }
 
     initialize_logger();

@@ -10,10 +10,18 @@ bl_info = {
     "category": "Import-Export",
 }
 
-# check if imported by setup.py or actually running in Blender
-from bpy.app import version
+version = bl_info["version"]
+version_pre = bl_info["warning"]
 
-if version is not None:
+version_str = ".".join(map(str, version))
+
+if version_pre != "":
+    version_str += f"-{version_pre}"
+
+# check if imported by setup.py or actually running in Blender
+from bpy.app import version as bpy_version
+
+if bpy_version is not None:
     import bpy
     from bpy.types import Context, Menu
 
@@ -45,6 +53,15 @@ if version is not None:
         self.layout.menu(IMPORT_MT_plumber.bl_idname)
 
     def register():
+        from . import plumber
+
+        rust_version = plumber.version()
+        if rust_version != version_str:
+            raise Exception(
+                f"Native code version {rust_version} does not match Python code version {version_str}. "
+                + "Please restart Blender and reinstall the addon."
+            )
+
         preferences.register()
         importer.register()
         tools.register()
