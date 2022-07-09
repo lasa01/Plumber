@@ -671,14 +671,13 @@ dependencies = [
 [[package]]
 name = "plumber_core"
 version = "0.1.0"
-source = "git+https://github.com/lasa01/plumber_core#23a2e265bade088cd00e438cdddbb54a7ac94b35"
+source = "git+https://github.com/lasa01/plumber_core#791e688afe2c307a445521bc1d8110cc5daa0802"
 dependencies = [
  "approx",
  "bitflags",
  "byteorder",
  "crossbeam-channel",
  "crossbeam-utils",
- "float-ord",
  "glam",
  "half",
  "home",
@@ -704,7 +703,7 @@ dependencies = [
 [[package]]
 name = "plumber_uncased"
 version = "0.1.0"
-source = "git+https://github.com/lasa01/plumber_core#23a2e265bade088cd00e438cdddbb54a7ac94b35"
+source = "git+https://github.com/lasa01/plumber_core#791e688afe2c307a445521bc1d8110cc5daa0802"
 dependencies = [
  "serde",
 ]
@@ -712,7 +711,7 @@ dependencies = [
 [[package]]
 name = "plumber_vdf"
 version = "0.1.0"
-source = "git+https://github.com/lasa01/plumber_core#23a2e265bade088cd00e438cdddbb54a7ac94b35"
+source = "git+https://github.com/lasa01/plumber_core#791e688afe2c307a445521bc1d8110cc5daa0802"
 dependencies = [
  "bytecount",
  "nom",
@@ -723,7 +722,7 @@ dependencies = [
 [[package]]
 name = "plumber_vpk"
 version = "0.1.0"
-source = "git+https://github.com/lasa01/plumber_core#23a2e265bade088cd00e438cdddbb54a7ac94b35"
+source = "git+https://github.com/lasa01/plumber_core#791e688afe2c307a445521bc1d8110cc5daa0802"
 dependencies = [
  "byteorder",
  "crc",

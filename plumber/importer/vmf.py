@@ -197,12 +197,7 @@ class ImportVmf(
         fs = self.get_game_fs(context)
 
         if self.map_data_path == "":
-            if self.from_game_fs:
-                map_data_path = None
-            else:
-                map_data_path = splitext(self.filepath)[0]
-                if not isdir(map_data_path):
-                    map_data_path = None
+            map_data_path = None
         else:
             if isabs(self.map_data_path) or self.from_game_fs:
                 map_data_path = self.map_data_path
@@ -215,9 +210,6 @@ class ImportVmf(
                     "The specified embedded files directory doesn't exist.",
                 )
                 return {"CANCELLED"}
-
-        if map_data_path is not None:
-            fs = fs.with_search_path(("DIR", map_data_path))
 
         map_name = splitext(basename(self.filepath))[0]
 
@@ -278,6 +270,9 @@ class ImportVmf(
                 allow_culling=self.allow_culling,
                 editor_materials=self.editor_materials,
                 texture_interpolation=self.texture_interpolation,
+                # automatic map data path detection happens here
+                vmf_path=self.filepath if map_data_path is None else None,
+                map_data_path=map_data_path,
             )
         except OSError as err:
             self.report({"ERROR"}, f"Could not open file system: {err}")
