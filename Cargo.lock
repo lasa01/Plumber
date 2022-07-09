@@ -55,9 +55,9 @@ checksum = "2c676a478f63e9fa2dd5368a42f28bba0d6c560b775f38583c8bbaa7fcd67c9c"
 
 [[package]]
 name = "bytemuck"
-version = "1.9.1"
+version = "1.10.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "cdead85bdec19c194affaeeb670c0e41fe23de31459efd1c174d049269cf02cc"
+checksum = "c53dfa917ec274df8ed3c572698f381a24eef2efba9492d797301b72b6db408a"
 
 [[package]]
 name = "byteorder"
@@ -577,9 +577,9 @@ dependencies = [
 
 [[package]]
 name = "once_cell"
-version = "1.12.0"
+version = "1.13.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "7709cef83f0c1f58f666e746a08b21e0085f7440fa6a29cc194d68aac97a4225"
+checksum = "18a6dbe30758c9f83eb00cbea4ac95966305f5a7772f3f42ebfc7fc7eddbd8e1"
 
 [[package]]
 name = "parking_lot"
@@ -671,7 +671,7 @@ dependencies = [
 [[package]]
 name = "plumber_core"
 version = "0.1.0"
-source = "git+https://github.com/lasa01/plumber_core#e12ca282b04ef7698117e837ce7071e1739600f6"
+source = "git+https://github.com/lasa01/plumber_core#23a2e265bade088cd00e438cdddbb54a7ac94b35"
 dependencies = [
  "approx",
  "bitflags",
@@ -704,7 +704,7 @@ dependencies = [
 [[package]]
 name = "plumber_uncased"
 version = "0.1.0"
-source = "git+https://github.com/lasa01/plumber_core#e12ca282b04ef7698117e837ce7071e1739600f6"
+source = "git+https://github.com/lasa01/plumber_core#23a2e265bade088cd00e438cdddbb54a7ac94b35"
 dependencies = [
  "serde",
 ]
@@ -712,7 +712,7 @@ dependencies = [
 [[package]]
 name = "plumber_vdf"
 version = "0.1.0"
-source = "git+https://github.com/lasa01/plumber_core#e12ca282b04ef7698117e837ce7071e1739600f6"
+source = "git+https://github.com/lasa01/plumber_core#23a2e265bade088cd00e438cdddbb54a7ac94b35"
 dependencies = [
  "bytecount",
  "nom",
@@ -723,7 +723,7 @@ dependencies = [
 [[package]]
 name = "plumber_vpk"
 version = "0.1.0"
-source = "git+https://github.com/lasa01/plumber_core#e12ca282b04ef7698117e837ce7071e1739600f6"
+source = "git+https://github.com/lasa01/plumber_core#23a2e265bade088cd00e438cdddbb54a7ac94b35"
 dependencies = [
  "byteorder",
  "crc",
