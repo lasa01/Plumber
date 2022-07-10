@@ -6,20 +6,20 @@
         {
             "label": "Extension module",
             "type": "shell",
-            "command": "${command:python.interpreterPath} setup.py ${input:buildCommand}",
+            "command": "${command:python.interpreterPath} setup.py build_rust --inplace ${input:buildTarget}",
             "group": "build"
         },
     ],
     "inputs": [
         {
-            "id": "buildCommand",
+            "id": "buildTarget",
             "type": "pickString",
-            "description": "Build command",
+            "description": "Build target",
             "options": [
-                "develop",
-                "develop --release"
+                "--debug",
+                "--release"
             ],
-            "default": "develop --release",
+            "default": "--release",
         }
     ]
 }
