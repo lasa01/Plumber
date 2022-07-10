@@ -14,7 +14,7 @@ use pyo3::{
 
 use plumber_core::{
     asset::Importer,
-    fs::{GamePathBuf, OpenSearchPath, PathBuf},
+    fs::{GamePathBuf, OpenFileSystem, OpenSearchPath, PathBuf},
     model::loader::Settings as MdlSettings,
     vmf::loader::{
         BrushSetting, GeometrySettings, InvisibleSolids, MergeSolids, Settings as VmfSettings,
@@ -88,58 +88,14 @@ impl PyImporter {
                         settings.import_unknown_entities = value.extract()?;
                     }
                     "vmf_path" => {
-                        // Map data path is determined here since when opening a vmf
+                        // Map data path is detected here since when opening a vmf
                         // from game files, it needs to be determined after
                         // opening the filesystem to know where the vmf file actually is.
                         // On the other hand, it needs to be done before passing the file system
                         // to the importer.
 
                         let file_path_string: &str = value.extract()?;
-                        let file_path: PathBuf = if StdPath::new(file_path_string).is_absolute() {
-                            StdPathBuf::from(file_path_string).into()
-                        } else {
-                            GamePathBuf::from(file_path_string).into()
-                        };
-
-                        // Ignore errors for now, the error will be shown anyway when the vmf file is actually read later.
-                        if let Ok(file_info) = opened.open_file_with_info(&file_path) {
-                            let map_data_path = if let Some(search_path) = file_info.search_path {
-                                // Map data path can only be added when the vmf is not in a vpk file
-                                if let OpenSearchPath::Directory(search_dir) = search_path {
-                                    // Remove the extension from the vmf path to get the map data path
-                                    if let Some((map_data_path_part, _extension)) =
-                                        file_path_string.rsplit_once('.')
-                                    {
-                                        let map_data_path = search_dir.join(map_data_path_part);
-                                        map_data_path.is_dir().then_some(map_data_path)
-                                    } else {
-                                        None
-                                    }
-                                } else {
-                                    None
-                                }
-                            } else {
-                                // Vmf is being imported from the file system, just create the path directly
-                                if let Some((map_data_path, _extension)) =
-                                    file_path_string.rsplit_once('.')
-                                {
-                                    let map_data_path = StdPathBuf::from(map_data_path);
-                                    map_data_path.is_dir().then_some(map_data_path)
-                                } else {
-                                    None
-                                }
-                            };
-
-                            if let Some(map_data_path) = map_data_path {
-                                info!(
-                                    "vmf embedded files path detected as `{}`",
-                                    map_data_path.display()
-                                );
-
-                                opened
-                                    .add_open_search_path(OpenSearchPath::Directory(map_data_path));
-                            }
-                        }
+                        detect_embedded_files_path(file_path_string, &mut opened);
                     }
                     "map_data_path" => {
                         let map_data_path: &str = value.extract()?;
@@ -403,5 +359,48 @@ impl PyImporter {
         }
 
         Ok((import_materials, settings))
+    }
+}
+
+fn detect_embedded_files_path(file_path_string: &str, opened: &mut OpenFileSystem) {
+    let file_path: PathBuf = if StdPath::new(file_path_string).is_absolute() {
+        StdPathBuf::from(file_path_string).into()
+    } else {
+        GamePathBuf::from(file_path_string).into()
+    };
+
+    // Ignore errors for now, the error will be shown anyway when the vmf file is actually read later.
+    if let Ok(file_info) = opened.open_file_with_info(&file_path) {
+        let map_data_path = if let Some(search_path) = file_info.search_path {
+            // Map data path can only be added when the vmf is not in a vpk file
+            if let OpenSearchPath::Directory(search_dir) = search_path {
+                // Remove the extension from the vmf path to get the map data path
+                if let Some((map_data_path_part, _extension)) = file_path_string.rsplit_once('.') {
+                    let map_data_path = search_dir.join(map_data_path_part);
+                    map_data_path.is_dir().then_some(map_data_path)
+                } else {
+                    None
+                }
+            } else {
+                None
+            }
+        } else {
+            // Vmf is being imported from the file system, just create the path directly
+            if let Some((map_data_path, _extension)) = file_path_string.rsplit_once('.') {
+                let map_data_path = StdPathBuf::from(map_data_path);
+                map_data_path.is_dir().then_some(map_data_path)
+            } else {
+                None
+            }
+        };
+
+        if let Some(map_data_path) = map_data_path {
+            info!(
+                "vmf embedded files path detected as `{}`",
+                map_data_path.display()
+            );
+
+            opened.add_open_search_path(OpenSearchPath::Directory(map_data_path));
+        }
     }
 }
