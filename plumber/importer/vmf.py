@@ -184,6 +184,12 @@ class ImportVmf(
         subtype="PIXEL",
     )
 
+    import_unknown_entities: BoolProperty(
+        name="Unknown entities",
+        description="Import all entities not imported elsewhere as empties",
+        default=False,
+    )
+
     scale: FloatProperty(
         name="Scale",
         default=0.01,
@@ -240,6 +246,12 @@ class ImportVmf(
         else:
             light_collection = None
 
+        if self.import_unknown_entities:
+            entity_collection = bpy.data.collections.new("entities")
+            map_collection.children.link(entity_collection)
+        else:
+            entity_collection = None
+
         asset_callbacks = AssetCallbacks(
             context,
             main_collection=map_collection,
@@ -247,6 +259,7 @@ class ImportVmf(
             overlay_collection=overlay_collection,
             prop_collection=prop_collection,
             light_collection=light_collection,
+            entity_collection=entity_collection,
             apply_armatures=self.dynamic_props == "REMOVE_ARM",
         )
 
@@ -263,6 +276,7 @@ class ImportVmf(
                 sky_equi_height=self.sky_equi_height
                 if self.sky_equi_height != 0
                 else None,
+                import_unknown_entities=self.import_unknown_entities,
                 scale=self.scale,
                 target_fps=self.get_target_fps(context),
                 remove_animations=self.dynamic_props in ("REMOVE_ANIM", "REMOVE_ARM"),
@@ -462,6 +476,7 @@ class PLUMBER_PT_vmf_props(Panel):
 def draw_main_props(layout: UILayout, operator: ImportVmf, context: Context):
     layout.use_property_split = True
     layout.prop(operator, "import_sky_camera")
+    layout.prop(operator, "import_unknown_entities")
     layout.prop(operator, "scale")
 
 

@@ -6,8 +6,8 @@ use rgb::ComponentMap;
 
 use plumber_core::vmf::{
     entities::{
-        BaseEntity, EntityParseError, EnvLight, Light, LightEntity, PointEntity, SkyCamera,
-        SpotLight,
+        AngledEntity, BaseEntity, EntityParseError, EnvLight, Light, LightEntity, PointEntity,
+        SkyCamera, SpotLight, Unknown,
     },
     loader::LoadedProp,
 };
@@ -367,5 +367,60 @@ impl PySkyCamera {
             position,
             scale: [scale, scale, scale],
         })
+    }
+}
+
+#[pyclass(module = "plumber", name = "UnknownEntity")]
+
+pub struct PyUnknownEntity {
+    class_name: String,
+    id: i32,
+    position: [f32; 3],
+    rotation: [f32; 3],
+    scale: [f32; 3],
+}
+
+#[pymethods]
+impl PyUnknownEntity {
+    fn class_name(&self) -> &str {
+        &self.class_name
+    }
+
+    fn id(&self) -> i32 {
+        self.id
+    }
+
+    fn position(&self) -> [f32; 3] {
+        self.position
+    }
+
+    fn rotation(&self) -> [f32; 3] {
+        self.rotation
+    }
+
+    fn scale(&self) -> [f32; 3] {
+        self.scale
+    }
+}
+
+impl PyUnknownEntity {
+    pub fn new(entity: Unknown, scale: f32) -> Self {
+        let id = entity.entity().id;
+        let class_name = entity.entity().class_name.clone();
+
+        let position = (entity.origin().unwrap_or_default() * scale).into();
+        let rotation = entity.angles().unwrap_or_default();
+
+        Self {
+            class_name,
+            id,
+            position,
+            rotation: [
+                rotation[2].to_radians(),
+                rotation[0].to_radians(),
+                rotation[1].to_radians(),
+            ],
+            scale: [scale, scale, scale],
+        }
     }
 }

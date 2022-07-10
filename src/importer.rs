@@ -84,6 +84,9 @@ impl PyImporter {
                         settings.material.texture_interpolation =
                             TextureInterpolation::from_str(value.extract()?)?;
                     }
+                    "import_unknown_entities" => {
+                        settings.import_unknown_entities = value.extract()?;
+                    }
                     "vmf_path" => {
                         // Map data path is determined here since when opening a vmf
                         // from game files, it needs to be determined after
@@ -373,6 +376,9 @@ impl PyImporter {
                     callback_ref.call_method1("sky_camera", (sky_camera,))
                 }
                 Message::SkyEqui(sky_equi) => callback_ref.call_method1("sky_equi", (sky_equi,)),
+                Message::UnknownEntity(entity) => {
+                    callback_ref.call_method1("unknown_entity", (entity,))
+                }
             };
 
             if let Err(err) = result {

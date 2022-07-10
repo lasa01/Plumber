@@ -13,6 +13,7 @@ from ..plumber import (
     SpotLight,
     SkyEqui,
     Texture,
+    UnknownEntity,
 )
 from .material import import_material, import_texture
 from .model import ModelTracker
@@ -22,6 +23,7 @@ from .prop import apply_armatures, import_prop
 from .light import import_light, import_spot_light, import_env_light
 from .sky_camera import import_sky_camera
 from .sky_equi import import_sky_equi
+from .unknown_entity import import_unknown_entity
 
 
 class AssetCallbacks:
@@ -33,6 +35,7 @@ class AssetCallbacks:
         overlay_collection: Optional[Collection] = None,
         prop_collection: Optional[Collection] = None,
         light_collection: Optional[Collection] = None,
+        entity_collection: Optional[Collection] = None,
         apply_armatures: bool = False,
     ) -> None:
         self.context = context
@@ -44,6 +47,7 @@ class AssetCallbacks:
         self.overlay_collection = overlay_collection or self.main_collection
         self.prop_collection = prop_collection or self.main_collection
         self.light_collection = light_collection or self.main_collection
+        self.entity_collection = entity_collection or self.main_collection
 
         self.apply_armatures = apply_armatures
 
@@ -85,6 +89,9 @@ class AssetCallbacks:
 
     def sky_equi(self, sky_equi: SkyEqui) -> None:
         import_sky_equi(sky_equi, self.context)
+
+    def unknown_entity(self, entity: UnknownEntity) -> None:
+        import_unknown_entity(entity, self.entity_collection)
 
     def finish(self) -> None:
         apply_armatures(self.armatures_to_apply)

@@ -13,7 +13,7 @@ mod importer;
 
 use std::io::Write;
 
-use asset::model::PyBoneRestData;
+use asset::{entities::PyUnknownEntity, model::PyBoneRestData};
 use filesystem::{PyFileBrowser, PyFileBrowserEntry, PyFileSystem};
 
 use log::{error, info, LevelFilter};
@@ -67,6 +67,7 @@ fn plumber(_py: Python, m: &PyModule) -> PyResult<()> {
     m.add_class::<PySpotLight>()?;
     m.add_class::<PyEnvLight>()?;
     m.add_class::<PySkyCamera>()?;
+    m.add_class::<PyUnknownEntity>()?;
     m.add_class::<PyImporter>()?;
 
     #[pyfn(m)]

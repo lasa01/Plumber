@@ -24,7 +24,9 @@ use plumber_core::{
 
 use self::{
     brush::PyBuiltBrushEntity,
-    entities::{LightSettings, PyEnvLight, PyLight, PyLoadedProp, PySkyCamera, PySpotLight},
+    entities::{
+        LightSettings, PyEnvLight, PyLight, PyLoadedProp, PySkyCamera, PySpotLight, PyUnknownEntity,
+    },
     material::{
         build_material, BuiltMaterialData, Material, Settings as MaterialSettings, Texture,
     },
@@ -45,9 +47,11 @@ pub enum Message {
     EnvLight(PyEnvLight),
     SkyCamera(PySkyCamera),
     SkyEqui(PySkyEqui),
+    UnknownEntity(PyUnknownEntity),
 }
 
 #[derive(Debug, Clone)]
+#[allow(clippy::struct_excessive_bools)]
 pub struct HandlerSettings {
     pub import_lights: bool,
     pub light: LightSettings,
@@ -57,6 +61,7 @@ pub struct HandlerSettings {
     pub target_fps: f32,
     pub remove_animations: bool,
     pub material: MaterialSettings,
+    pub import_unknown_entities: bool,
 }
 
 impl Default for HandlerSettings {
@@ -70,6 +75,7 @@ impl Default for HandlerSettings {
             target_fps: 30.0,
             remove_animations: false,
             material: MaterialSettings::default(),
+            import_unknown_entities: false,
         }
     }
 }
@@ -152,6 +158,12 @@ impl asset::Handler for BlenderAssetHandler {
                     Ok(sky_camera) => self.send_asset(Message::SkyCamera(sky_camera)),
                     Err(error) => log_entity_error(sky_camera.entity(), error),
                 }
+            }
+            TypedEntity::Unknown(entity) if self.settings.import_unknown_entities => {
+                self.send_asset(Message::UnknownEntity(PyUnknownEntity::new(
+                    entity,
+                    self.settings.scale,
+                )));
             }
             _ => {}
         }
