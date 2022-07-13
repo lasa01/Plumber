@@ -76,7 +76,7 @@ impl PyModel {
             animations = m
                 .animations
                 .into_iter()
-                .filter_map(|a| PyLoadedAnimation::new(a, &bones, target_fps))
+                .map(|a| PyLoadedAnimation::new(a, &bones, target_fps))
                 .collect();
 
             rest_positions = BTreeMap::new();
@@ -129,33 +129,27 @@ fn apply_animation_first_frame(
     animation: &LoadedAnimation,
     bones: &[PyLoadedBone],
 ) -> BTreeMap<usize, PyBoneRestData> {
-    if let Some(data) = &animation.data {
-        let mut output = BTreeMap::new();
+    let mut output = BTreeMap::new();
 
-        for (&bone, data) in data {
-            let position = match &data.position {
-                AnimationData::Constant(pos) => pos.to_array(),
-                AnimationData::Animated(vec) => {
-                    vec.first().map_or(bones[bone].position, Vec3::to_array)
-                }
-                AnimationData::None => bones[bone].position,
-            };
+    for (&bone, data) in &animation.data {
+        let position = match &data.position {
+            AnimationData::Constant(pos) => pos.to_array(),
+            AnimationData::Animated(vec) => {
+                vec.first().map_or(bones[bone].position, Vec3::to_array)
+            }
+            AnimationData::None => bones[bone].position,
+        };
 
-            let rotation = match &data.rotation {
-                AnimationData::Constant(rot) => rot_to_euler(rot),
-                AnimationData::Animated(vec) => {
-                    vec.first().map_or(bones[bone].rotation, rot_to_euler)
-                }
-                AnimationData::None => bones[bone].rotation,
-            };
+        let rotation = match &data.rotation {
+            AnimationData::Constant(rot) => rot_to_euler(rot),
+            AnimationData::Animated(vec) => vec.first().map_or(bones[bone].rotation, rot_to_euler),
+            AnimationData::None => bones[bone].rotation,
+        };
 
-            output.insert(bone, PyBoneRestData { rotation, position });
-        }
-
-        output
-    } else {
-        BTreeMap::new()
+        output.insert(bone, PyBoneRestData { rotation, position });
     }
+
+    output
 }
 
 fn rot_to_euler(rot: &Quat) -> [f32; 3] {
@@ -539,19 +533,18 @@ pub struct PyLoadedAnimation {
 }
 
 impl PyLoadedAnimation {
-    fn new(animation: LoadedAnimation, bones: &[PyLoadedBone], target_fps: f32) -> Option<Self> {
-        let data = animation.data?;
-
+    fn new(animation: LoadedAnimation, bones: &[PyLoadedBone], target_fps: f32) -> Self {
         let time_factor = target_fps / animation.fps;
 
-        Some(Self {
+        Self {
             name: animation.name,
-            data: data
+            data: animation
+                .data
                 .into_iter()
                 .map(|(i, data)| (i, PyBoneAnimationData::new(data, &bones[i], time_factor)))
                 .collect(),
             looping: animation.flags.contains(AnimationDescFlags::LOOPING),
-        })
+        }
     }
 }
 
