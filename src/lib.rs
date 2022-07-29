@@ -76,6 +76,11 @@ fn plumber(_py: Python, m: &PyModule) -> PyResult<()> {
     }
 
     #[pyfn(m)]
+    fn filesystem_from_gameinfo(path: &str) -> PyResult<PyFileSystem> {
+        filesystem::from_gameinfo(path)
+    }
+
+    #[pyfn(m)]
     fn log_error(error: &str) {
         error!("{}", error);
     }

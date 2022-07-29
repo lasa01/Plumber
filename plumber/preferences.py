@@ -1,4 +1,4 @@
-from .plumber import discover_filesystems, FileSystem
+from .plumber import discover_filesystems, FileSystem, filesystem_from_gameinfo
 
 from typing import List, Set, Tuple
 from os.path import isdir
@@ -312,6 +312,55 @@ def detect_games(context: Context):
             search_path.kind = kind
 
 
+class DetectGameinfoOperator(Operator):
+    """Detect an installed Source game from gameinfo.txt"""
+
+    bl_idname = "plumber.detect_gameinfo"
+    bl_label = """Detect an installed Source game from gameinfo.txt"""
+    bl_options = {"REGISTER"}
+
+    filepath: StringProperty(
+        name="Path",
+        maxlen=1024,
+        options={"HIDDEN"},
+    )
+
+    filename_ext = ".txt"
+
+    filter_glob: StringProperty(
+        default="*.txt",
+        options={"HIDDEN"},
+        maxlen=255,
+    )
+
+    def invoke(self, context: Context, event) -> Set[str]:
+        context.window_manager.fileselect_add(self)
+        return {"RUNNING_MODAL"}
+
+    def execute(self, context: Context) -> Set[str]:
+        try:
+            detect_gameinfo(self.filepath, context)
+        except (ValueError, OSError) as err:
+            self.report({"ERROR"}, f"could not detect gameinfo.txt: {err}")
+
+        return {"FINISHED"}
+
+
+def detect_gameinfo(path: str, context: Context):
+    preferences: AddonPreferences = context.preferences.addons[__package__].preferences
+
+    filesystem = filesystem_from_gameinfo(path)
+
+    name = filesystem.name()
+    search_paths = filesystem.search_paths()
+    game: Game = preferences.games.add()
+    game.name = name
+    for (kind, path) in search_paths:
+        search_path: GameSearchPath = game.search_paths.add()
+        search_path.path = path
+        search_path.kind = kind
+
+
 class AddonPreferences(AddonPreferences):
     bl_idname = __package__
 
@@ -361,11 +410,18 @@ class AddonPreferences(AddonPreferences):
         layout: UILayout = self.layout
         layout.prop(self, "enable_file_browser_panel")
         layout.prop(self, "threads")
+
         layout.separator()
-        layout.operator(
+        row = layout.row()
+        row.operator(
             DetectGamesOperator.bl_idname,
             text="Redetect installed games",
         )
+        row.operator(
+            DetectGameinfoOperator.bl_idname,
+            text="Detect from gameinfo.txt",
+        )
+
         layout.label(text="Game Definitions:")
         row = layout.row()
         row.template_list(GameList.bl_idname, "", self, "games", self, "game_index")
@@ -426,6 +482,7 @@ classes = (
     RemoveGameOperator,
     MoveGameOperator,
     DetectGamesOperator,
+    DetectGameinfoOperator,
     AddonPreferences,
     OpenPreferencesOperator,
 )
