@@ -1,17 +1,15 @@
-# io_import_vmf
+# Plumber
 
-A Valve Map Format (.vmf) and Valve Material Type (.vmt) importer addon for Blender.
+A Blender addon for importing Source engine maps, models, materials and textures.
 
 This addon makes it possible to import full CS:GO, TF2, CS:S or other Source game maps into Blender.
 The imported maps have accurate materials and overlays and correctly placed props and lights.
 Skyboxes are converted into a Blender-compatible format
 and 3D skyboxes can be easily transformed into the correct position and scale with minimal user intervention.
-No manual game file extraction is required,
-you just need to point the addon at your game directory and start importing.
+No manual game file extraction is required and installed Source games on Steam are detected automatically.
+You just need to select the correct game and start importing.
 
-Also includes helpful wrappers for importing [HLAE .agr files](https://www.advancedfx.org/) and .qc/.mdl models with materials using the included material importer.
-
-The addon ships bundled with [Crowbar-Command-Line](https://github.com/UltraTechX/Crowbar-Command-Line) for automatic model decompilation.
+Supported file types are `.vmf`, `.mdl`, `.vmt` and `.vtf`. For a more complete overview of supported features, see [Supported features for imported assets](https://github.com/lasa01/io_import_vmf/wiki/Supported-features-for-imported-assets).
 
 ![Import dialog](img/import_dialog.png)
 
@@ -19,77 +17,73 @@ The addon ships bundled with [Crowbar-Command-Line](https://github.com/UltraTech
 - [Requirements](#requirements)
 - [Quick start](#quick-start)
 - [Installation](#installation)
-    - [Configuration](#configuration)
-    - [Installing latest from source (advanced users)](#installing-latest-from-source-advanced-users)
+    - [Installing latest from source (very advanced users)](#installing-latest-from-source-very-advanced-users)
 - [Usage](#usage)
+    - [Detecting new Steam games](#detecting-new-steam-games)
     - [Common import options](#common-import-options)
     - [Maps](#maps)
+    - [MDL](#mdl)
     - [Materials](#materials)
-    - [QC / MDL](#qc--mdl-requires-blender-source-tools-or-sourceio)
-    - [AGR](#agr-requires-afx-blender-scripts)
+    - [Textures](#textures)
+    - [Game file browser](#game-file-browser)
 - [Troubleshooting](#troubleshooting)
 - [Credits](#credits)
 - [License](#license)
 
 ## Requirements
-- OS: Windows recommended. Linux supported (requires .NET Core 3.1 for model importing).
+- OS: Windows recommended. Linux and macOS supported. M1 Macs not supported.
 - Blender: 2.82 or newer.
-- [Blender Source Tools](https://steamreview.org/BlenderSourceTools/) must be installed and enabled to import props or .qc models!
 
 ## Quick start
 - Make sure you are using Blender 2.82 or newer.
-- Install [Blender Source Tools](https://steamreview.org/BlenderSourceTools/) and enable it.
 - Install the latest release of this addon and enable it.
-- Open the addon's preferences.
-- (Optional) Specify a cache directory (used for caching processed game files).
-- Add a game definition using the "+" button.
-- Press "Detect from a game directory".
-- Browse to the installation directory of a Source game of your choice.
-- Select the game directory inside the game installation directory. (For example, the `csgo` directory for CS:GO.)
-- Open the Blender console to get progress updates and start importing from the `File -> Import` menu.
+- Open the Blender console to get progress updates and start importing from the `File -> Import -> Plumber` menu.
 
 ## Installation
 You can also check the [video tutorial](https://www.youtube.com/watch?v=tMQt8RHkDzA).
 - Make sure you are using Blender 2.82 or newer.
-- Download [Blender Source Tools](https://steamreview.org/BlenderSourceTools/).
 - Download the latest addon release from the [releases](https://github.com/lasa01/io_import_vmf/releases) tab.
-Make sure you download a file called `io_import_vmf.zip`, not the source code.
+Make sure you download a file starting with `plumber-v1.x.x`, not the source code.
+Also make sure that you downloaded the correct version for your operating system.
 - Do **not** extract the downloaded files.
-- Open Blender and install Blender Source Tools:
-![Install addons](img/install_addon.gif)
-- Follow the same steps to install `io_import_vmf.zip`.
+- Open Blender and install the addon:
+![Install addon](img/install_addon.gif)
 
-### Configuration
-- Follow the instructions below to configure the addon for CS:GO:
-![Configure addon](img/configure_addon.gif)
-- You can add multiple game definitions if you're using the addon for different games.
-- Notes for other games:
-    - The game directory is called `csgo` only for CS:GO.
-    For other games it could be called `cstrike`, `hl2` and so on.
-    - Some games may have multiple game directories (usually `hl2` in addition to the game-specific directory).
-    In that case you need to click the detect button multiple times and select them all.
-- (Advanced users) If the automatic detection fails to detect some required files, you can add them manually using the "+" buttons.
+### Installing latest from source (very advanced users)
+Make sure the following dependencies for building the addon are installed.
+The links are for Windows, for other platforms you need to figure it out yourself.
+- [Python 3](https://www.python.org/downloads/) with "Add python to environment variables" selected in the installer
+- [Git](https://git-scm.com/download/win) with "Git from the command line and also from 3rd-party software" selected in the installer
+- [Rust language](https://www.rust-lang.org/tools/install) and the latest stable compiler
+- [Microsoft C++ Build Tools](https://visualstudio.microsoft.com/visual-cpp-build-tools/)
+- [CMake](https://cmake.org/download/)
 
-### Installing latest from source (advanced users)
-- Make sure Python 3 is installed and that you selected "Add python to environment variables" in the installer.
-- Make sure Git is installed and that you selected "Git from the command line and also from 3rd-party software" in the installer.
+After installing the dependencies, follow the following steps:
 - Download the repository as a .zip from the green "Code" button in the top right corner and extract it somewhere (or alternatively, clone it).
-- Run `install.sh` or `install.ps1` depending on your OS.
-- Make sure there are no errors in the terminal/PowerShell window.
-- Follow the installation instructions above for the newly created .zip file.
+- Run `pip install -r requirements-dev.txt` on a terminal.
+- Run `python setup.py bdist_blender_addon`.
+- The built addon will be in the `dist` directory.
 
 ## Usage
 
-Blender may appear frozen when importing complex maps. To see the import progress and possible errors in realtime,
-open the Blender console from `Window -> Toggle System Console`.
-Unsupported material parameter warnings are normal, although they could mean that the importer can not recreate fully accurate materials.
+Installed Steam games are automatically detected on the first addon startup.
+You can start importing immediately without any configuration required.
+Just remember to select the correct game when importing files.
+
+### Detecting new Steam games
+If you have installed new Source games on Steam after installing the addon,
+you will need to redetect the installed games.
+This can be done from `Edit -> Preferences -> Add-ons -> Plumber`
+by pressing the `Redetect installed games` button.
+
+If you need to manually detect a game that is not installed in Steam,
+you can use the `Detect from gameinfo.txt` button in the preferences.
 
 ### Common import options
-- `Verbose`: Prints more information into the console, useful if you're running into issues.
-- `Game definition`: Select the game you're importing assets from.
+- `Game`: Select the game you're importing assets from.
 
 ### Maps
-`File -> Import -> Valve Map Format (.vmf)`
+`File -> Import -> Plumber -> Valve Map Format (.vmf)`
 
 Source maps that ship with the game are in a compiled `.bsp` file format.
 This addon can only import them in the original `.vmf` format.
@@ -97,78 +91,106 @@ You can use [BSPSource](https://github.com/ata4/bspsrc) to decompile the map fil
 BSPSource requires Java to be installed.
 For CS:GO, the .bsp map files can be found inside
 `Counter-Strike Global Offensive/csgo/maps/`.
+They can also be easily extracted using the addon's game file browser.
+
+When importing decompiled maps, overlay related errors
+such as `overlay contains invalid uv data`
+or `no geometry was imported for the sides the overlay was applied to`
+can be safely ignored as BSPSource sometimes generates broken overlays.
+
+Blender may appear frozen for a couple of seconds when importing complex maps.
+To see possible errors in realtime, open the Blender console from `Window -> Toggle System Console` before importing.
 
 Options:
-- `Embedded files path`: You should leave this empty.
-- `Solids`: Imports the "core" of the map: walls, floors etc.
-    - `Brush epsilon`: You should not touch this.
-    - `Invisible brushes`: By default, invisible brushes are not imported.
+- `Embedded files path`: You can generally leave this empty,
+this will be automatically detected when importing decompiled maps.
+- `Brushes`: Imports the "core" of the map: walls, floors etc.
+    - `Overlays`: Imports overlays that are on top of solids, such as bomb site sprays.
+    - `Epsilon`: You should not touch this.
+    - `Cut threshold`: You should not touch this.
+    - `Merge solids`: By choosing `Separate`, the importer will create more objects in Blender.
+    This makes the import a lot slower and also affects post-import performance, but can make the map easier to edit afterwards.
+    - `Invisible solids`: By default, invisible solids are not imported.
     If you want, you can import them by changing this.
-    - `Import overlays`: Imports overlays that are on top of solids, such as bomb site sprays.
-- `Props`: Imports all complex models in the map, such as cars and crates.
-    - `Optimize props`: Optimizes props by removing empty armatures. You should leave this on.
-    - `Reuse old models`: Reuses previously imported models in the current .blend file.
-    - See [QC / MDL](#qc--mdl-requires-blender-source-tools-or-sourceio) for more options.
-- `Materials`: Imports materials for solids, overlays and props.
-    - See [Materials](#materials) for more options.
 - `Lights`: Imports point lights and spotlights and the environment light (the sun).
     - `Brightness factors`: Controls how the brightnesses are converted into Blender. The default values are not fully accurate but good enough for most use cases.
 - `Sky`: Imports the skybox as the world background.
-    - `Sky resolution`: Controls the quality of the imported sky.
+    - `Sky output height`: Controls the quality of the imported sky.
     The skybox is converted into a different format, so quality might suffer if this is set too low.
     The default setting is 0, which automatically calculates an optimal resolution.
-- `Import 3D sky origin`: Imports the origin point of the 3D sky used in 3D skybox transforming.
-- `Scale`: Scales everything by this value. Usually you don't need to touch this.
+- `Props`: Imports all complex models in the map, such as cars and crates.
+    - `Dynamic props`: The alternate options here remove more complex prop setups.
+    This is useful when exporting the map into different software,
+    since animated props may cause issues. `Remove armatures` should be usually used when exporting.
+- `Materials`: Imports materials for solids, overlays and props.
+    - See [Materials](#materials) for more options.
+- `Sky camera`: Imports the origin point of the 3D sky used in 3D skybox transforming.
+- `Unknown entities`: Imports other, unsupported entities as simple empty objects.
+- `Scale`: Adjusts the scale everything is imported at.
+The default is 0.01, but 0.0254 can be used for a more realistic scale.
 
 Transforming the 3D sky
 - After the import has finished, you need to manually select every object that belongs to the 3D sky.
 - The 3D sky is usually clearly outside the main map area and in much smaller scale.
 - Ensure you have the 3D sky origin (sky_camera) selected as the active object, and press `Object -> Transform VMF 3D sky` to transform the objects into the correct position and scale.
 
+### MDL
+`File -> Import -> Plumber -> Source Model (.mdl)`
+
+Options:
+- `Materials`: Imports materials for the model.
+    - See [Materials](#materials) for more options.
+- `Import animations`: Imports included animations for the model.
+Note: some animations are currently unsupported.
+- `Scale`: Adjusts the scale the model is imported at.
+The default is 0.01, but 0.0254 can be used for more realistic scale.
+
 ### Materials
-`File -> Import -> Valve Material Type (.vmt)`
+`File -> Import -> Plumber -> Valve Material Type (.vmt)`
 
 Options:
 - `Simple materials`: You should enable this if you plan on exporting outside Blender.
+This will disable advanced features such as blended materials.
 - `Texture interpolation`: Selects the interpolation type for textures, the default value is a good choice.
 - `Allow backface culling`: You can enable this if you know you need it.
 - `Import editor materials`: Imports the materials visible inside Hammer instead of invisible materials for tool materials etc.
-- `Reuse old textures`: Reuses previously imported textures in the current .blend file.
 
-### QC / MDL (requires [Blender Source Tools](https://steamreview.org/BlenderSourceTools/) or [SourceIO](https://github.com/REDxEYE/SourceIO))
-`File -> Import -> Source Engine Model (enhanced) (.qc/.mdl)`
+### Textures
+`File -> Import -> Plumber -> Valve Texture Format (.vtf)`
 
-Requires .NET Core 3.1 on Linux.
+### Game file browser
 
-Options:
-- `Skip collision meshes`: Skips collision meshes. You should leave this on.
-- `Skip LOD meshes`: Skips importing different LOD levels for meshes. You should leave this on.
-- `MDL strategy`: Selects which addon to use for .mdl importing. BST is recommended.
-- `Materials`: Imports materials for the model.
-    - See [Materials](#materials) for more options.
+Game file browser allows you to import models, materials or textures straight from the game files,
+or to extract any game files.
 
-### AGR (requires [afx-blender-scripts](https://github.com/advancedfx/afx-blender-scripts))
-`File -> Import -> HLAE afxGameRecord (enhanced) (.agr)`
+Can be accessed from the 3D view side bar under Plumber (recommended),
+or alternatively from `File -> Import -> Plumber -> Browse game files`.
 
-Requires .NET Core 3.1 on Linux.
-
-Options:
-- See [QC / MDL](#qc--mdl-requires-blender-source-tools-or-sourceio) for options.
+The browser only browser supported file types by default.
+This can be changed to display all files by opening the arrow on the lower left corner of the file list.
 
 ## Troubleshooting
 The [FAQ](https://github.com/lasa01/io_import_vmf/wiki/FAQ) has instructions for dealing with some common problems and errors.
+
 If you can't find your problem there, you can ask on the [AGR TechSupport Discord's](https://discord.gg/wd8Rcdj) #blender channel or open a new issue.
+When asking for help, always remember to open the Blender console from `Window -> Toggle System Console` before importing and to send the console logs afterwards with the help request by copy-pasting.
 
 ## Credits
-- Me for the addon, [VMF and VMT parser](https://github.com/lasa01/vmfpy) and [VTFLib wrapper](https://github.com/lasa01/pyvtflib).
-- ValvePython for [VPK](https://github.com/ValvePython/vpk) and [Valve KeyValues](https://github.com/ValvePython/vdf) parser.
-- Nemesis for [VTFLib](http://nemesis.thewavelength.net/index.php?p=40).
-- Artfunkel for [Blender Source Tools](http://steamreview.org/BlenderSourceTools/).
-- ZeqMacaw and UltraTechX for [Crowbar](https://steamcommunity.com/groups/CrowbarTool) and [Crowbar-Command-Line](https://github.com/UltraTechX/Crowbar-Command-Line).
-- REDxEYE for [SourceIO](https://github.com/REDxEYE/SourceIO).
+- Me for the addon, [backing library](https://github.com/lasa01/plumber_core) and [VTFLib wrapper](https://github.com/lasa01/vtflib-rs).
+- Nemesis for original [VTFLib](https://github.com/NeilJed/VTFLib) and panzi for a Linux-compatible port.
+
+MDL reading is based on:
+- ZeqMacaw's [Crowbar](https://steamcommunity.com/groups/CrowbarTool)
+- REDxEYE's [SourceIO](https://github.com/REDxEYE/SourceIO)
+- Artfunkel's [Blender Source Tools](http://steamreview.org/BlenderSourceTools/)
+
+Skybox conversion is based on:
+- Alex Flint and Pete Florence's [bilinear interpolation code](https://stackoverflow.com/a/12729229).
+- adamb70's [Python-Spherical-Projection](https://github.com/adamb70/Python-Spherical-Projection).
+
+Also thanks to:
 - Devostated for testing and bug reporting.
-- Alex Flint and Pete Florence for [bilinear interpolation code](https://stackoverflow.com/a/12729229).
-- adamb70 for [Python-Spherical-Projection](https://github.com/adamb70/Python-Spherical-Projection).
+- Everyone else who reported bugs or suggested improvements.
 
 ## License
 This project is licensed under the MIT license. See LICENSE for more information.
