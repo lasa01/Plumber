@@ -58,6 +58,7 @@ class ImportMdl(
                 allow_culling=self.allow_culling,
                 editor_materials=self.editor_materials,
                 texture_interpolation=self.texture_interpolation,
+                root_search=None if self.from_game_fs else (self.filepath, "models"),
             )
         except OSError as err:
             self.report({"ERROR"}, f"could not open file system: {err}")

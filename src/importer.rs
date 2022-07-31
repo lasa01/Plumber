@@ -5,7 +5,7 @@ use std::{
 };
 
 use crossbeam_channel::Receiver;
-use log::{error, info};
+use log::{debug, error, info};
 use pyo3::{
     exceptions::{PyIOError, PyRuntimeError, PyTypeError},
     prelude::*,
@@ -107,6 +107,27 @@ impl PyImporter {
                         );
 
                         opened.add_open_search_path(OpenSearchPath::Directory(map_data_path));
+                    }
+                    "root_search" => {
+                        // If an asset was imported from the os file system, tries to detect
+                        // if the directory structure matches a typical Source game asset directory structure
+                        // to use the root of the directory structure as an additional search path.
+
+                        let (asset_path, target_path): (&str, &str) = value.extract()?;
+
+                        if let Some(search_path) = detect_local_search_path(asset_path, target_path)
+                        {
+                            info!(
+                                "detected local asset searh path `{}`",
+                                search_path.display()
+                            );
+
+                            opened.add_open_search_path(OpenSearchPath::Directory(
+                                search_path.to_path_buf(),
+                            ));
+                        } else {
+                            debug!("local asset search path not found");
+                        }
                     }
                     _ => return Err(PyTypeError::new_err("unexpected kwarg")),
                 }
@@ -401,6 +422,18 @@ fn detect_embedded_files_path(file_path_string: &str, opened: &mut OpenFileSyste
             );
 
             opened.add_open_search_path(OpenSearchPath::Directory(map_data_path));
+        }
+    }
+}
+
+fn detect_local_search_path<'a>(asset_path: &'a str, target_path: &str) -> Option<&'a StdPath> {
+    let mut asset_path = StdPath::new(asset_path);
+
+    loop {
+        asset_path = asset_path.parent()?;
+
+        if asset_path.ends_with(target_path) {
+            return asset_path.parent();
         }
     }
 }

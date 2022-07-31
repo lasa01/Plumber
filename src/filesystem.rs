@@ -8,7 +8,7 @@ use std::{
 
 use log::{error, info, warn};
 use pyo3::{
-    exceptions::{PyIOError, PyTypeError, PyUnicodeDecodeError},
+    exceptions::{PyIOError, PyTypeError, PyUnicodeDecodeError, PyValueError},
     prelude::*,
 };
 
@@ -235,6 +235,19 @@ pub fn discover() -> Vec<PyFileSystem> {
             }
         })
         .collect()
+}
+
+pub fn from_gameinfo(path: &str) -> PyResult<PyFileSystem> {
+    let game_info_path = StdPath::new(path);
+    let root_path = game_info_path
+        .parent()
+        .and_then(StdPath::parent)
+        .ok_or_else(|| PyValueError::new_err("gameinfo.txt directory doesn't have a parent"))?;
+
+    let file_system = FileSystem::from_paths(root_path, game_info_path)
+        .map_err(|e| PyIOError::new_err(e.to_string()))?;
+
+    Ok(file_system.into())
 }
 
 #[pyclass(module = "plumber", name = "FileBrowser")]
