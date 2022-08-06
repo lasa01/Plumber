@@ -1,3 +1,6 @@
+import platform
+import os
+
 bl_info = {
     "name": "Plumber",
     "author": "Lassi Säike",
@@ -22,57 +25,46 @@ if version_pre != "":
 from bpy.app import version as bpy_version
 
 if bpy_version is not None:
-    import bpy
-    from bpy.types import Context, Menu
-
-    from . import preferences, importer, tools
-    from .importer import ImportMdl, ImportVmf, ImportVmt, ImportVtf
-    from .tools import IMPORT_MT_plumber_browse
-
-    class IMPORT_MT_plumber(Menu):
-        bl_idname = "IMPORT_MT_plumber"
-        bl_label = "Plumber"
-
-        def draw(self, context: Context):
-            self.layout.operator(
-                ImportVmf.bl_idname, text="Valve Map Format (.vmf)"
-            ).from_game_fs = False
-            self.layout.operator(
-                ImportMdl.bl_idname, text="Source Model (.mdl)"
-            ).from_game_fs = False
-            self.layout.operator(
-                ImportVmt.bl_idname, text="Valve Material Type (.vmt)"
-            ).from_game_fs = False
-            self.layout.operator(
-                ImportVtf.bl_idname, text="Valve Texture Format (.vtf)"
-            ).from_game_fs = False
-
-            self.layout.menu(IMPORT_MT_plumber_browse.bl_idname)
-
-    def menu_func_import(self: Menu, context: Context):
-        self.layout.menu(IMPORT_MT_plumber.bl_idname)
+    is_windows = platform.system() == "Windows"
 
     def register():
-        from . import plumber
-
-        rust_version = plumber.version()
-        if rust_version != version_str:
-            raise Exception(
-                f"Native code version {rust_version} does not match Python code version {version_str}. "
-                + "Please restart Blender and reinstall the addon."
+        if is_windows:
+            # Check if the extension module was renamed on the last unregister,
+            # and either rename it back or delete it if the addon was updated with a newer extension module
+            ext_path = os.path.join(os.path.dirname(__file__), "plumber.pyd")
+            unloaded_ext_path = os.path.join(
+                os.path.dirname(os.path.dirname(__file__)), "plumber.pyd.unloaded"
             )
 
-        preferences.register()
-        importer.register()
-        tools.register()
+            if os.path.isfile(unloaded_ext_path):
+                if os.path.isfile(ext_path):
+                    try:
+                        os.remove(unloaded_ext_path)
+                    except OSError:
+                        print(
+                            "[Plumber] [WARN] old files remaining, restart Blender to finish post-update clean up"
+                        )
+                else:
+                    os.rename(unloaded_ext_path, ext_path)
 
-        bpy.utils.register_class(IMPORT_MT_plumber)
-        bpy.types.TOPBAR_MT_file_import.append(menu_func_import)
+        from . import addon
+
+        addon.register()
 
     def unregister():
-        bpy.types.TOPBAR_MT_file_import.remove(menu_func_import)
-        bpy.utils.unregister_class(IMPORT_MT_plumber)
+        from . import addon
 
-        tools.unregister()
-        importer.unregister()
-        preferences.unregister()
+        addon.unregister()
+
+        if is_windows:
+            # Rename the extension module to allow updating the addon without restarting Blender,
+            # since the extension module will stay open and can't be overwritten even if the addon is unloaded
+            ext_path = os.path.join(os.path.dirname(__file__), "plumber.pyd")
+            unloaded_ext_path = os.path.join(
+                os.path.dirname(os.path.dirname(__file__)), "plumber.pyd.unloaded"
+            )
+
+            try:
+                os.rename(ext_path, unloaded_ext_path)
+            except OSError:
+                pass
