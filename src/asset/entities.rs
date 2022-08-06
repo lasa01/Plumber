@@ -70,7 +70,7 @@ impl PyLoadedProp {
                 rotation[0].to_radians(),
                 rotation[1].to_radians(),
             ],
-            scale: [prop.scale, prop.scale, prop.scale],
+            scale: prop.scale,
             color: prop
                 .color
                 .map_alpha(|a| f32::from(a) / 255.)
