@@ -55,7 +55,7 @@ The links are for Windows, for other platforms you need to figure it out yoursel
 - [Python 3](https://www.python.org/downloads/) with "Add python to environment variables" selected in the installer
 - [Git](https://git-scm.com/download/win) with "Git from the command line and also from 3rd-party software" selected in the installer
 - [Rust language](https://www.rust-lang.org/tools/install) and the latest stable compiler
-- [Microsoft C++ Build Tools](https://visualstudio.microsoft.com/visual-cpp-build-tools/)
+- [Microsoft C++ Build Tools](https://visualstudio.microsoft.com/visual-cpp-build-tools/) with "C++ MFC for latest build tools (x86 & x64)" selected in the installer under individual components.
 - [CMake](https://cmake.org/download/)
 
 After installing the dependencies, follow the following steps:
