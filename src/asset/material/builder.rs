@@ -407,6 +407,17 @@ impl<'a, 'b> NormalMaterialBuilder<'a, 'b> {
             "$detailscale",
             "$detailblendfactor",
         );
+
+        if let Some(color) = self.vmt.extract_param::<RGB<f32>>("$layertint1") {
+            let color = color.alpha(1.0).into();
+
+            self.builder
+                .input("$basetexture")
+                .push(&groups::COLOR_TEXTURE)
+                .link(&groups::COLOR_TEXTURE, "mixin", Value::Color(color))
+                .link(&groups::COLOR_TEXTURE, "fac", Value::Float(1.0));
+        }
+
         self.handle_basetexture2(blend_input);
 
         let color_result = self.handle_basetexture_color();
@@ -440,6 +451,16 @@ impl<'a, 'b> NormalMaterialBuilder<'a, 'b> {
             "$detailscale2",
             "$detailblendfactor2",
         );
+
+        if let Some(color) = self.vmt.extract_param::<RGB<f32>>("$layertint2") {
+            let color = color.alpha(1.0).into();
+
+            self.builder
+                .input("$basetexture2")
+                .push(&groups::COLOR_TEXTURE)
+                .link(&groups::COLOR_TEXTURE, "mixin", Value::Color(color))
+                .link(&groups::COLOR_TEXTURE, "fac", Value::Float(1.0));
+        }
 
         self.builder
             .input("$basetexture")
