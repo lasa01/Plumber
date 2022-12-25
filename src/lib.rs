@@ -1,7 +1,6 @@
 #![deny(clippy::all, clippy::pedantic, clippy::multiple_crate_versions)]
 // these are triggered by pyo3
-#![allow(clippy::used_underscore_binding)]
-#![allow(clippy::needless_option_as_deref)]
+#![allow(clippy::used_underscore_binding, clippy::borrow_deref_ref)]
 // this doesn't matter
 #![allow(clippy::cast_precision_loss)]
 // this is annoying

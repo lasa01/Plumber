@@ -341,7 +341,10 @@ fn topological_sort_inputs<'a>(
 ) -> Option<Vec<&'a Input>> {
     let mut remaining_edges = inputs
         .values()
-        .flat_map(|node| node.dependents(inputs).map(|dependent| (&*node, dependent)))
+        .flat_map(|node| {
+            node.dependents(inputs)
+                .map(move |dependent| (node, dependent))
+        })
         .collect_vec();
 
     let mut start_nodes = inputs

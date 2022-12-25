@@ -157,7 +157,7 @@ fn extract_file(file: GameFile, file_path: &str, target_path: &StdPath) -> PyRes
 
 fn extract_directory_recursive(read_dir: ReadDir, target_dir: &StdPath) -> PyResult<()> {
     if !target_dir.is_dir() {
-        fs::create_dir(&target_dir)?;
+        fs::create_dir(target_dir)?;
     }
 
     for res in read_dir {
