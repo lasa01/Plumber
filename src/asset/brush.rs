@@ -1,7 +1,7 @@
 use std::mem;
 
 use glam::Vec3;
-use plumber_core::vmf::loader::{BuiltBrushEntity, BuiltSolid, MergedSolids, SolidFace};
+use plumber_core::vmf::builder::{BuiltBrushEntity, BuiltSolid, MergedSolids, SolidFace};
 use pyo3::{prelude::*, types::PyList};
 
 use super::utils::linear_to_srgb;

@@ -13,12 +13,13 @@ use pyo3::{
 };
 
 use plumber_core::{
-    asset::Importer,
-    fs::{GamePathBuf, OpenFileSystem, OpenSearchPath, PathBuf},
-    model::loader::Settings as MdlSettings,
-    vmf::loader::{
-        BrushSetting, GeometrySettings, InvisibleSolids, MergeSolids, Settings as VmfSettings,
+    asset::{
+        mdl::Settings as MdlSettings,
+        vmf::{BrushSetting, Settings as VmfSettings},
+        Importer,
     },
+    fs::{GamePathBuf, OpenFileSystem, OpenSearchPath, PathBuf},
+    vmf::builder::{GeometrySettings, InvisibleSolids, MergeSolids},
 };
 
 use crate::{

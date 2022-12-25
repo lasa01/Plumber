@@ -13,7 +13,10 @@ use pyo3::{
 };
 
 use plumber_core::{
-    fs::{DirEntryType, FileSystem, GameFile, GamePathBuf, OpenFileSystem, ReadDir, SearchPath},
+    fs::{
+        DirEntryType, FileSystem, GameFile, GamePathBuf, OpenFileSystem, ReadDir, SearchPath,
+        SourceAppsExt,
+    },
     steam::Libraries,
 };
 

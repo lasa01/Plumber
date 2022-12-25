@@ -8,12 +8,9 @@ use log::warn;
 use pyo3::{prelude::*, types::PyList};
 
 use plumber_core::{
+    asset::mdl::{LoadedAnimation, LoadedBone, LoadedMesh, LoadedModel},
     fs::GamePathBuf,
-    model::{
-        self,
-        loader::{LoadedAnimation, LoadedBone, LoadedMesh, LoadedModel},
-        AnimationData, AnimationDescFlags, BoneAnimationData,
-    },
+    mdl::{self, AnimationData, AnimationDescFlags, BoneAnimationData},
 };
 
 #[pyclass(module = "plumber", name = "Model")]
@@ -160,8 +157,8 @@ fn rot_to_euler(rot: &Quat) -> [f32; 3] {
 #[pyclass(module = "plumber", name = "LoadedMesh")]
 pub struct PyLoadedMesh {
     name: String,
-    vertices: Vec<model::Vertex>,
-    faces: Vec<model::Face>,
+    vertices: Vec<mdl::Vertex>,
+    faces: Vec<mdl::Face>,
     flat_vertices: Vec<f32>,
     flat_polygon_vertice_indices: Vec<usize>,
     flat_loop_uvs: Vec<f32>,

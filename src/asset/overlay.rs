@@ -2,8 +2,8 @@ use std::mem;
 
 use glam::Vec3;
 use plumber_core::vmf::{
+    builder::{BuiltOverlay, BuiltOverlayFace},
     entities::BaseEntity,
-    loader::{BuiltOverlay, BuiltOverlayFace},
 };
 use pyo3::{prelude::*, types::PyList};
 

@@ -12,14 +12,17 @@ use crossbeam_channel::Sender;
 use log::error;
 
 use plumber_core::{
-    asset::{self},
-    model::loader::LoadedModel,
-    vmf::{
-        entities::{BaseEntity, EntityParseError, TypedEntity},
-        loader::{BuiltBrushEntity, BuiltOverlay, LoadedProp},
-        Entity,
+    asset::{
+        self,
+        mdl::LoadedModel,
+        vmf::LoadedProp,
+        vmt::{LoadedMaterial, LoadedTexture, LoadedVmt, MaterialLoadError, SkyBox},
     },
-    vmt::loader::{LoadedMaterial, LoadedTexture, LoadedVmt, MaterialLoadError, SkyBox},
+    vmf::{
+        builder::{BuiltBrushEntity, BuiltOverlay},
+        entities::{BaseEntity, EntityParseError, TypedEntity},
+        vmf::Entity,
+    },
 };
 
 use self::{

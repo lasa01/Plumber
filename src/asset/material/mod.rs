@@ -3,7 +3,7 @@ use std::io::Cursor;
 use image::ImageOutputFormat;
 use pyo3::{exceptions::PyRuntimeError, prelude::*};
 
-use plumber_core::vmt::loader::{LoadedMaterial, LoadedTexture};
+use plumber_core::asset::vmt::{LoadedMaterial, LoadedTexture};
 
 pub use builder::{build_material, Settings, TextureInterpolation};
 pub use builder_base::BuiltMaterialData;

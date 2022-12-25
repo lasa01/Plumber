@@ -4,12 +4,12 @@ use glam::{EulerRot, Quat};
 use pyo3::prelude::*;
 use rgb::ComponentMap;
 
-use plumber_core::vmf::{
-    entities::{
+use plumber_core::{
+    asset::vmf::LoadedProp,
+    vmf::entities::{
         AngledEntity, BaseEntity, EntityParseError, EnvLight, Light, LightEntity, PointEntity,
         SkyCamera, SpotLight, Unknown,
     },
-    loader::LoadedProp,
 };
 
 use super::utils::srgb_to_linear;

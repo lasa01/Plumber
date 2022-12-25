@@ -3,8 +3,9 @@ use std::str::FromStr;
 use glam::{Vec2, Vec3};
 use log::warn;
 use plumber_core::{
+    asset::vmt::LoadedVmt,
     uncased::AsUncased,
-    vmt::{loader::LoadedVmt, TexturePath, Transform},
+    vmt::{TexturePath, Transform},
 };
 use pyo3::{exceptions::PyValueError, PyErr};
 use rgb::RGB;
