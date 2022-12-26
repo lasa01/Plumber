@@ -99,6 +99,13 @@ class DirEntryList(UIList):
         description="Whether to only show files that can be imported",
     )
 
+    filter_name: StringProperty(
+        name="Filter name",
+        default="",
+        options=set(),
+        description="Only show entries which match a specified pattern",
+    )
+
     def draw_item(
         self,
         context: Context,
@@ -144,7 +151,9 @@ class DirEntryList(UIList):
             layout.label(text=item.name, icon_value=icon_value)
 
     def draw_filter(self, context: Context, layout: UILayout):
-        layout.prop(self, "use_filter_supported")
+        row = layout.row()
+        row.prop(self, "filter_name", text="", icon="VIEWZOOM")
+        row.prop(self, "use_filter_supported")
 
     def filter_items(self, context: Context, data: "GameFileBrowser", property: str):
         entries: Collection[DirEntry] = getattr(data, property)
@@ -152,10 +161,23 @@ class DirEntryList(UIList):
         flt_flags = []
         flt_neworder = []
 
+        filter_funcs = []
+
         if self.use_filter_supported:
+            filter_funcs.append(
+                lambda entry: (
+                    entry.kind != "FILE" or get_extension(entry.name) in FILE_IMPORTERS
+                )
+            )
+
+        if self.filter_name:
+            filter = self.filter_name.lower()
+            filter_funcs.append(lambda entry: filter in entry.name.lower())
+
+        if len(filter_funcs) != 0:
             flt_flags = [
                 self.bitflag_filter_item
-                if entry.kind != "FILE" or get_extension(entry.name) in FILE_IMPORTERS
+                if all(filter_func(entry) for filter_func in filter_funcs)
                 else 0
                 for entry in entries
             ]
