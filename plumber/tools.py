@@ -59,6 +59,17 @@ FILE_IMPORTERS = {
 }
 
 
+def create_operator_fn(path: str):
+    [category_name, name] = path.split(".")
+    category = getattr(bpy.ops, category_name)
+    return lambda: getattr(category, name)
+
+
+FILE_IMPORTER_OPERATORS = {
+    f".{ext}": create_operator_fn(path) for ext, path in FILE_IMPORTERS.items()
+}
+
+
 def get_extension(filename: str) -> str:
     parts = filename.rsplit(".", 1)
     if len(parts) < 2:
@@ -215,6 +226,18 @@ class GameFileBrowser:
                 bl_entry.path = f"{self.path}/{bl_entry.name}"
 
             self.entry_index = -1
+
+            if len(entries) == 0:
+                for ext, get_operator in FILE_IMPORTER_OPERATORS.items():
+                    if self.path.endswith(ext):
+                        get_operator()(
+                            "INVOKE_DEFAULT",
+                            from_game_fs=True,
+                            filepath=self.path,
+                            game=str(self.game_id),
+                        )
+                        self.path = dirname(self.path)
+                        return
 
         cls.update_path = update_path
         cls.__annotations__["path"] = StringProperty(name="Path", update=update_path)
