@@ -78,12 +78,12 @@ class DirEntry(PropertyGroup):
         name="Type",
     )
 
-    def navigate(self, operator: "GameFileBrowserOperator") -> bool:
+    def navigate(self, browser: "GameFileBrowser") -> bool:
         if self.kind == "DIR":
-            if operator.path:
-                operator.path += f"/{self.name}"
+            if browser.path:
+                browser.path += f"/{self.name}"
             else:
-                operator.path = self.name
+                browser.path = self.name
         else:
             return False
         return True
@@ -198,6 +198,12 @@ class GameFileBrowser:
         def update_path(self: GameFileBrowser, context: Context):
             if isabs(self.path):
                 self.path = ""
+                return
+
+            normalized = self.path.replace("\\", "/").rstrip("/")
+            if self.path != normalized:
+                self.path = normalized
+                return
 
             entries = cls.browser.read_dir(self.path)
             self.entries.clear()
