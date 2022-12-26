@@ -1,4 +1,5 @@
 from typing import Set
+from os.path import basename, dirname
 
 import bpy
 from bpy.props import EnumProperty, BoolProperty, StringProperty
@@ -51,6 +52,42 @@ class ImporterOperator(Operator, ImporterOperatorProps):
         pass
 
 
+def update_recent_entries(context: Context, game: str, path: str):
+    if game == "NONE":
+        return
+
+    recent_entries = context.scene.plumber_recent_entries.get(game)
+
+    if recent_entries is None:
+        recent_entries = context.scene.plumber_recent_entries.add()
+        recent_entries.name = game
+
+    for recent_entry in recent_entries.recent_entries:
+        if recent_entry.path == path:
+            return
+
+    add_recent_entry(path, recent_entries.recent_entries)
+
+    scene_browser = context.scene.plumber_browser
+    if scene_browser.game == game:
+        add_recent_entry(path, scene_browser.recent_entries_temp)
+
+    if update_recent_entries.browser_operator_entries is not None:
+        add_recent_entry(path, update_recent_entries.browser_operator_entries)
+
+
+update_recent_entries.browser_operator_entries = None
+
+
+def add_recent_entry(path: str, recent_entries):
+    while len(recent_entries) >= 10:
+        recent_entries.remove(0)
+
+    recent_entry = recent_entries.add()
+    recent_entry.name = basename(path)
+    recent_entry.path = path
+
+
 class GameFileImporterOperatorProps:
     from_game_fs: BoolProperty(options={"HIDDEN"})
 
@@ -60,6 +97,7 @@ class GameFileImporterOperator(
 ):
     def invoke(self, context: Context, event) -> Set[str]:
         if self.from_game_fs:
+            update_recent_entries(context, self.game, dirname(self.filepath))
             return context.window_manager.invoke_props_dialog(self)
         else:
             context.window_manager.fileselect_add(self)

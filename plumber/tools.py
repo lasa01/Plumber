@@ -1,4 +1,4 @@
-from os.path import isabs
+from os.path import isabs, dirname
 from typing import Collection, Optional, Set
 
 from bpy.types import Operator, Context, UIList, UILayout, PropertyGroup, Menu, Panel
@@ -17,6 +17,7 @@ from plumber.importer import (
     GameFileImporterOperator,
     GameFileImporterOperatorProps,
     ImporterOperatorProps,
+    update_recent_entries,
 )
 
 from .plumber import FileBrowser
@@ -196,6 +197,42 @@ class DirEntryList(UIList):
         return flt_flags, flt_neworder
 
 
+class RecentEntry(PropertyGroup):
+    name: StringProperty(subtype="FILE_NAME")
+    path: StringProperty()
+
+
+class RecentEntryList(UIList):
+    bl_idname = "PLUMBER_UL_recent_entry_list"
+
+    def draw_item(
+        self,
+        context: Context,
+        layout: UILayout,
+        data: "GameFileBrowser",
+        item: DirEntry,
+        icon: int,
+        active_data: int,
+        active_propname: str,
+        index: int,
+    ) -> None:
+        if self.layout_type in {"DEFAULT", "COMPACT"}:
+            layout.label(text=item.name, icon="FILE_FOLDER")
+
+        elif self.layout_type in {"GRID"}:
+            layout.alignment = "CENTER"
+            layout.label(text=item.name, icon="FILE_FOLDER")
+
+    def draw_filter(self, context: Context, layout: UILayout):
+        pass
+
+
+class GameRecentEntriesItem(PropertyGroup):
+    name: StringProperty()
+
+    recent_entries: CollectionProperty(type=RecentEntry)
+
+
 class GameFileBrowser:
     browser: Optional[FileBrowser] = None
     path: str
@@ -275,6 +312,20 @@ class GameFileBrowser:
         update=update_browse_parent,
     )
 
+    recent_entries_temp: CollectionProperty(type=RecentEntry)
+
+    def update_recent_entry_index(self, context: Context):
+        if self.recent_entry_index != -1:
+            entry: RecentEntry = self.recent_entries_temp[self.recent_entry_index]
+            self.path = entry.path
+            self.recent_entry_index = -1
+
+    recent_entry_index: IntProperty(
+        default=-1,
+        name="Recent entry",
+        update=update_recent_entry_index,
+    )
+
     def open_game(self, context: Context):
         preferences: AddonPreferences = context.preferences.addons[
             __package__
@@ -284,6 +335,17 @@ class GameFileBrowser:
         type(self).browser = game.get_file_system().browse()
 
         self.update_path(context)
+
+        self.recent_entries_temp.clear()
+        recent_entries: GameRecentEntriesItem = (
+            context.scene.plumber_recent_entries.get(str(self.game_id))
+        )
+        if recent_entries is not None:
+            recent_entry: RecentEntry
+            for recent_entry in recent_entries.recent_entries:
+                recent_entry_temp: RecentEntry = self.recent_entries_temp.add()
+                recent_entry_temp.name = recent_entry.name
+                recent_entry_temp.path = recent_entry.path
 
     def draw_browser(self, layout: UILayout):
         layout.label(text="Files:")
@@ -302,7 +364,8 @@ class GameFileBrowser:
             "entries",
             self,
             "entry_index",
-            maxrows=20,
+            rows=15,
+            maxrows=15,
         )
 
         operator: ExtractGameDirectory = layout.operator(
@@ -316,6 +379,21 @@ class GameFileBrowser:
             layout.label(text="(select a file to import)")
         else:
             layout.label(text="")
+
+        layout.separator()
+        layout.label(text="Recent directories:")
+        layout.template_list(
+            RecentEntryList.bl_idname,
+            "",
+            self,
+            "recent_entries_temp",
+            self,
+            "recent_entry_index",
+            rows=10,
+            maxrows=10,
+            sort_reverse=True,
+            sort_lock=True,
+        )
 
 
 class GameFileBrowserPropertyGroup(PropertyGroup, GameFileBrowser):
@@ -396,12 +474,15 @@ class GameFileBrowserOperator(Operator, GameFileBrowser):
 
         self.open_game(context)
 
+        update_recent_entries.browser_operator_entries = self.recent_entries_temp
+
         return context.window_manager.invoke_props_dialog(self)
 
     def draw(self, context: Context):
         self.draw_browser(self.layout)
 
     def execute(self, context: Context) -> Set[str]:
+        update_recent_entries.browser_operator_entries = None
         return {"CANCELLED"}
 
 
@@ -444,6 +525,8 @@ class ExtractGameDirectory(
         if not self.from_game_fs:
             return {"CANCELLED"}
 
+        update_recent_entries(context, self.game, self.source_path)
+
         context.window_manager.fileselect_add(self)
         return {"RUNNING_MODAL"}
 
@@ -481,6 +564,8 @@ class ExtractGameFile(
         if not self.from_game_fs:
             return {"CANCELLED"}
 
+        update_recent_entries(context, self.game, dirname(self.source_path))
+
         context.window_manager.fileselect_add(self)
         return {"RUNNING_MODAL"}
 
@@ -500,6 +585,9 @@ classes = [
     ObjectTransform3DSky,
     DirEntry,
     DirEntryList,
+    RecentEntry,
+    RecentEntryList,
+    GameRecentEntriesItem,
     GameFileBrowserPropertyGroup,
     OpenGameFileBrowser,
     GameFileBrowserOperator,
@@ -518,6 +606,9 @@ def register():
     bpy.types.Scene.plumber_browser = PointerProperty(
         type=GameFileBrowserPropertyGroup, options={"SKIP_SAVE"}
     )
+    bpy.types.Scene.plumber_recent_entries = CollectionProperty(
+        type=GameRecentEntriesItem, options=set()
+    )
 
     preferences: AddonPreferences = bpy.context.preferences.addons[
         __package__
@@ -535,6 +626,7 @@ def unregister():
     if preferences.enable_file_browser_panel:
         bpy.utils.unregister_class(GameFileBrowserPanel)
 
+    del bpy.types.Scene.plumber_recent_entries
     del bpy.types.Scene.plumber_browser
 
     bpy.types.VIEW3D_MT_object.remove(object_menu_func)
