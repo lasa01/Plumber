@@ -290,7 +290,7 @@ impl PyFileBrowser {
 }
 
 #[pyclass(module = "plumber", name = "FileBrowserEntry")]
-#[derive(PartialEq)]
+#[derive(PartialEq, Eq)]
 pub struct PyFileBrowserEntry {
     name: String,
     path: GamePathBuf,
