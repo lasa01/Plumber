@@ -299,9 +299,9 @@ dependencies = [
 
 [[package]]
 name = "half"
-version = "2.1.0"
+version = "2.2.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "ad6a9459c9c30b177b925162351f97e7d967c7ea8bab3b8352805327daf45554"
+checksum = "6c467d36af040b7b2681f5fddd27427f6da8d3d072f575a265e181d2f8e8d157"
 dependencies = [
  "crunchy",
  "zerocopy",
@@ -495,9 +495,9 @@ dependencies = [
 
 [[package]]
 name = "nom"
-version = "7.1.1"
+version = "7.1.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "a8903e5a29a317527874d0402f867152a3d21c908bb0b933e416c65e301d4c36"
+checksum = "e5507769c4919c998e69e49c839d9dc6e693ede4cc4290d6ad8b41d4f09c548c"
 dependencies = [
  "memchr",
  "minimal-lexical",
@@ -554,9 +554,9 @@ dependencies = [
 
 [[package]]
 name = "once_cell"
-version = "1.16.0"
+version = "1.17.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "86f0b0d4bf799edbc74508c1e8bf170ff5f41238e5f8225603ca7caaae2b7860"
+checksum = "6f61fba1741ea2b3d6a1e3178721804bb716a68a6aeba1149b5d52e3d464ea66"
 
 [[package]]
 name = "parking_lot"
@@ -648,7 +648,7 @@ dependencies = [
 [[package]]
 name = "plumber_asset"
 version = "0.1.0"
-source = "git+https://github.com/lasa01/plumber_core#97b1941b317db9fac2736b3ce3cf0bcc025790e6"
+source = "git+https://github.com/lasa01/plumber_core#8e5586b77013906f62fa39f8c7190840d7b7a6e8"
 dependencies = [
  "crossbeam-channel",
  "crossbeam-utils",
@@ -673,7 +673,7 @@ dependencies = [
 [[package]]
 name = "plumber_core"
 version = "0.1.0"
-source = "git+https://github.com/lasa01/plumber_core#97b1941b317db9fac2736b3ce3cf0bcc025790e6"
+source = "git+https://github.com/lasa01/plumber_core#8e5586b77013906f62fa39f8c7190840d7b7a6e8"
 dependencies = [
  "plumber_asset",
  "plumber_fs",
@@ -689,7 +689,7 @@ dependencies = [
 [[package]]
 name = "plumber_fs"
 version = "0.1.0"
-source = "git+https://github.com/lasa01/plumber_core#97b1941b317db9fac2736b3ce3cf0bcc025790e6"
+source = "git+https://github.com/lasa01/plumber_core#8e5586b77013906f62fa39f8c7190840d7b7a6e8"
 dependencies = [
  "log",
  "plumber_steam",
@@ -704,7 +704,7 @@ dependencies = [
 [[package]]
 name = "plumber_mdl"
 version = "0.1.0"
-source = "git+https://github.com/lasa01/plumber_core#97b1941b317db9fac2736b3ce3cf0bcc025790e6"
+source = "git+https://github.com/lasa01/plumber_core#8e5586b77013906f62fa39f8c7190840d7b7a6e8"
 dependencies = [
  "approx",
  "bitflags",
@@ -722,7 +722,7 @@ dependencies = [
 [[package]]
 name = "plumber_steam"
 version = "0.1.0"
-source = "git+https://github.com/lasa01/plumber_core#97b1941b317db9fac2736b3ce3cf0bcc025790e6"
+source = "git+https://github.com/lasa01/plumber_core#8e5586b77013906f62fa39f8c7190840d7b7a6e8"
 dependencies = [
  "home",
  "itertools",
@@ -738,7 +738,7 @@ dependencies = [
 [[package]]
 name = "plumber_uncased"
 version = "0.1.0"
-source = "git+https://github.com/lasa01/plumber_core#97b1941b317db9fac2736b3ce3cf0bcc025790e6"
+source = "git+https://github.com/lasa01/plumber_core#8e5586b77013906f62fa39f8c7190840d7b7a6e8"
 dependencies = [
  "serde",
 ]
@@ -746,7 +746,7 @@ dependencies = [
 [[package]]
 name = "plumber_vdf"
 version = "0.1.0"
-source = "git+https://github.com/lasa01/plumber_core#97b1941b317db9fac2736b3ce3cf0bcc025790e6"
+source = "git+https://github.com/lasa01/plumber_core#8e5586b77013906f62fa39f8c7190840d7b7a6e8"
 dependencies = [
  "bytecount",
  "nom",
@@ -757,7 +757,7 @@ dependencies = [
 [[package]]
 name = "plumber_vmf"
 version = "0.1.0"
-source = "git+https://github.com/lasa01/plumber_core#97b1941b317db9fac2736b3ce3cf0bcc025790e6"
+source = "git+https://github.com/lasa01/plumber_core#8e5586b77013906f62fa39f8c7190840d7b7a6e8"
 dependencies = [
  "approx",
  "glam",
@@ -778,7 +778,7 @@ dependencies = [
 [[package]]
 name = "plumber_vmt"
 version = "0.1.0"
-source = "git+https://github.com/lasa01/plumber_core#97b1941b317db9fac2736b3ce3cf0bcc025790e6"
+source = "git+https://github.com/lasa01/plumber_core#8e5586b77013906f62fa39f8c7190840d7b7a6e8"
 dependencies = [
  "glam",
  "log",
@@ -795,7 +795,7 @@ dependencies = [
 [[package]]
 name = "plumber_vpk"
 version = "0.1.0"
-source = "git+https://github.com/lasa01/plumber_core#97b1941b317db9fac2736b3ce3cf0bcc025790e6"
+source = "git+https://github.com/lasa01/plumber_core#8e5586b77013906f62fa39f8c7190840d7b7a6e8"
 dependencies = [
  "byteorder",
  "crc",
