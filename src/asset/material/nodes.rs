@@ -419,11 +419,13 @@ impl NodeGroup {
                 .iter()
                 .filter(|(_, r)| r.depends_on(node.id))
                 .map(|(name, r)| {
-                    let socket = outside_links
+                    let Some(socket) = outside_links
                         .get(name)
                         .cloned()
                         .or_else(|| outputs.get(name).map(|&l| BuiltNodeSocketLink::Link(l)))
-                        .expect("input should not be unlinked");
+                    else {
+                        panic!("input {name} should not be unlinked");
+                    };
                     (r.socket, socket)
                 });
 

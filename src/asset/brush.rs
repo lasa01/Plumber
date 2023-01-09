@@ -1,6 +1,7 @@
 use std::mem;
 
 use glam::Vec3;
+use itertools::Either;
 use plumber_core::vmf::builder::{BuiltBrushEntity, BuiltSolid, MergedSolids, SolidFace};
 use pyo3::{prelude::*, types::PyList};
 
@@ -87,35 +88,9 @@ impl PyMergedSolids {
     fn new(merged: MergedSolids) -> Self {
         let flat_vertices = merged.vertices.iter().flat_map(Vec3::to_array).collect();
 
-        let flat_polygon_vertice_indices = merged
-            .faces
-            .iter()
-            .flat_map(|f| &f.vertice_indices)
-            .copied()
-            .collect();
-
-        let flat_loop_uvs = merged
-            .faces
-            .iter()
-            .flat_map(|f| {
-                f.vertice_uvs
-                    .iter()
-                    // blender has inverted v axis compared to Source
-                    .flat_map(|uv| [uv.x, 1.0 - uv.y])
-            })
-            .collect();
-
-        let flat_loop_colors = merged
-            .faces
-            .iter()
-            .flat_map(|f| {
-                f.vertice_alphas.iter().flat_map(|&a| {
-                    let c = linear_to_srgb(a / 255.);
-
-                    [c, c, c, 1.0]
-                })
-            })
-            .collect();
+        let flat_polygon_vertice_indices = get_flat_polygon_vertice_indices(&merged.faces);
+        let flat_loop_uvs = get_flat_loop_uvs(&merged.faces);
+        let flat_loop_colors = get_flat_loop_colors(&merged.faces);
 
         Self {
             no_draw: merged.materials.iter().all(|m| m.info.no_draw()),
@@ -221,35 +196,9 @@ impl PyBuiltSolid {
     fn new(solid: BuiltSolid) -> Self {
         let flat_vertices = solid.vertices.iter().flat_map(Vec3::to_array).collect();
 
-        let flat_polygon_vertice_indices = solid
-            .faces
-            .iter()
-            .flat_map(|f| &f.vertice_indices)
-            .copied()
-            .collect();
-
-        let flat_loop_uvs = solid
-            .faces
-            .iter()
-            .flat_map(|f| {
-                f.vertice_uvs
-                    .iter()
-                    // blender has inverted v axis compared to Source
-                    .flat_map(|uv| [uv.x, 1.0 - uv.y])
-            })
-            .collect();
-
-        let flat_loop_colors = solid
-            .faces
-            .iter()
-            .flat_map(|f| {
-                f.vertice_alphas.iter().flat_map(|&a| {
-                    let c = linear_to_srgb(a / 255.);
-
-                    [c, c, c, 1.0]
-                })
-            })
-            .collect();
+        let flat_polygon_vertice_indices = get_flat_polygon_vertice_indices(&solid.faces);
+        let flat_loop_uvs = get_flat_loop_uvs(&solid.faces);
+        let flat_loop_colors = get_flat_loop_colors(&solid.faces);
 
         Self {
             id: solid.id,
@@ -306,4 +255,43 @@ impl PyBuiltBrushEntity {
             solids: brush.solids.into_iter().map(PyBuiltSolid::new).collect(),
         }
     }
+}
+
+fn get_flat_polygon_vertice_indices(faces: &[SolidFace]) -> Vec<usize> {
+    faces
+        .iter()
+        .flat_map(|f| &f.vertice_indices)
+        .copied()
+        .collect()
+}
+
+fn get_flat_loop_uvs(faces: &[SolidFace]) -> Vec<f32> {
+    faces
+        .iter()
+        .flat_map(|f| {
+            f.vertice_uvs
+                .iter()
+                // blender has inverted v axis compared to Source
+                .flat_map(|uv| [uv.x, 1.0 - uv.y])
+        })
+        .collect()
+}
+
+fn get_flat_loop_colors(faces: &[SolidFace]) -> Vec<f32> {
+    faces
+        .iter()
+        .flat_map(|f| {
+            if let Some(multiblends) = &f.vertice_multiblends {
+                Either::Left(multiblends.iter().flat_map(|&[r, g, b, a]| {
+                    [linear_to_srgb(r), linear_to_srgb(g), linear_to_srgb(b), a]
+                }))
+            } else {
+                Either::Right(f.vertice_alphas.iter().flat_map(|&a| {
+                    let c = linear_to_srgb(a / 255.);
+
+                    [c, c, c, 1.0]
+                }))
+            }
+        })
+        .collect()
 }

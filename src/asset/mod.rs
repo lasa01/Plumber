@@ -115,7 +115,7 @@ impl asset::Handler for BlenderAssetHandler {
             if let Some(s) = e.downcast_ref::<&'static str>() {
                 MaterialLoadError::Custom(s)
             } else {
-                MaterialLoadError::Custom("material load panicked")
+                MaterialLoadError::Custom("internal error loading material")
             }
         })
     }

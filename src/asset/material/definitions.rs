@@ -81,7 +81,7 @@ pub mod nodes {
     pub static NORMAL_MAP: NodeType = NodeType {
         blender_id: "ShaderNodeNormalMap",
         size: [150.0, 152.0],
-        input_sockets: &[Name("Color")],
+        input_sockets: &[Name("Color"), Name("Strength")],
         output_sockets: &[Name("Normal")],
         ..NodeType::default()
     };
@@ -364,13 +364,20 @@ pub mod groups {
         outputs: &[("image", NodeSocketRef::new("add", Position(0)))],
         ..NodeGroup::default()
     };
+
     pub static NORMAL_MAP: NodeGroup = NodeGroup {
         nodes: &[Node {
             kind: &nodes::NORMAL_MAP,
             id: "normal_map",
             ..Node::default()
         }],
-        inputs: &[("image", NodeSocketRef::new("normal_map", Name("Color")))],
+        inputs: &[
+            ("image", NodeSocketRef::new("normal_map", Name("Color"))),
+            (
+                "strength",
+                NodeSocketRef::new("normal_map", Name("Strength")),
+            ),
+        ],
         outputs: &[("normal", NodeSocketRef::new("normal_map", Name("Normal")))],
         ..NodeGroup::default()
     };
@@ -464,6 +471,30 @@ pub mod groups {
         }],
         outputs: &[
             ("color", NodeSocketRef::new("col", Name("Color"))),
+            ("alpha", NodeSocketRef::new("col", Name("Alpha"))),
+        ],
+        ..NodeGroup::default()
+    };
+
+    pub static SEPARATED_VERTEX_COLOR: NodeGroup = NodeGroup {
+        nodes: &[
+            Node {
+                kind: &nodes::VERTEX_COLOR,
+                id: "col",
+                properties: &[("layer_name", Value::Enum("Col"))],
+                ..Node::default()
+            },
+            Node {
+                kind: &nodes::SEPARATE_RGB,
+                id: "separate",
+                links: &[(Name("Image"), NodeSocketRef::new("col", Name("Color")))],
+                ..Node::default()
+            },
+        ],
+        outputs: &[
+            ("r", NodeSocketRef::new("separate", Name("R"))),
+            ("g", NodeSocketRef::new("separate", Name("G"))),
+            ("b", NodeSocketRef::new("separate", Name("B"))),
             ("alpha", NodeSocketRef::new("col", Name("Alpha"))),
         ],
         ..NodeGroup::default()
@@ -583,6 +614,421 @@ pub mod groups {
         outputs: &[("value", NodeSocketRef::new("sub", Position(0)))],
         ..NodeGroup::default()
     };
+
+    pub static FWB_FACTORS: NodeGroup = NodeGroup {
+        nodes: &[
+            Node {
+                kind: &nodes::MAP_RANGE,
+                id: "lum1ss",
+                properties: &[
+                    ("interpolation_type", Value::Enum("SMOOTHSTEP")),
+                    ("clamp", Value::Bool(false)),
+                ],
+                values: &[
+                    (Name("To Min"), Value::Float(0.0)),
+                    (Name("To Max"), Value::Float(1.0)),
+                ],
+                ..Node::default()
+            },
+            Node {
+                kind: &nodes::MAP_RANGE,
+                id: "lum2ss",
+                properties: &[
+                    ("interpolation_type", Value::Enum("SMOOTHSTEP")),
+                    ("clamp", Value::Bool(false)),
+                ],
+                values: &[
+                    (Name("To Min"), Value::Float(0.0)),
+                    (Name("To Max"), Value::Float(1.0)),
+                ],
+                ..Node::default()
+            },
+            Node {
+                kind: &nodes::MAP_RANGE,
+                id: "lum3ss",
+                properties: &[
+                    ("interpolation_type", Value::Enum("SMOOTHSTEP")),
+                    ("clamp", Value::Bool(false)),
+                ],
+                values: &[
+                    (Name("To Min"), Value::Float(0.0)),
+                    (Name("To Max"), Value::Float(1.0)),
+                ],
+                ..Node::default()
+            },
+            Node {
+                kind: &nodes::MAP_RANGE,
+                id: "lum4ss",
+                properties: &[
+                    ("interpolation_type", Value::Enum("SMOOTHSTEP")),
+                    ("clamp", Value::Bool(false)),
+                ],
+                values: &[
+                    (Name("To Min"), Value::Float(0.0)),
+                    (Name("To Max"), Value::Float(1.0)),
+                ],
+                ..Node::default()
+            },
+            Node {
+                kind: &nodes::MATH,
+                id: "lum1inv",
+                properties: &[("operation", Value::Enum("SUBTRACT"))],
+                values: &[(Position(0), Value::Float(1.0))],
+                links: &[(Position(1), NodeSocketRef::new("lum1ss", Position(0)))],
+            },
+            Node {
+                kind: &nodes::MAP_RANGE,
+                id: "lum2blend",
+                values: &[
+                    (Name("From Min"), Value::Float(0.0)),
+                    (Name("From Max"), Value::Float(1.0)),
+                ],
+                links: &[
+                    (Name("To Min"), NodeSocketRef::new("lum1inv", Position(0))),
+                    (Name("To Max"), NodeSocketRef::new("lum2ss", Position(0))),
+                ],
+                ..Node::default()
+            },
+            Node {
+                kind: &nodes::MATH,
+                id: "fac1m",
+                properties: &[("operation", Value::Enum("MULTIPLY_ADD"))],
+                links: &[(Position(1), NodeSocketRef::new("lum2blend", Position(0)))],
+                ..Node::default()
+            },
+            Node {
+                kind: &nodes::MAP_RANGE,
+                id: "fac1ss",
+                properties: &[
+                    ("interpolation_type", Value::Enum("SMOOTHSTEP")),
+                    ("clamp", Value::Bool(false)),
+                ],
+                values: &[
+                    (Name("To Min"), Value::Float(0.0)),
+                    (Name("To Max"), Value::Float(1.0)),
+                ],
+                links: &[(Name("Value"), NodeSocketRef::new("fac1m", Position(0)))],
+            },
+            Node {
+                kind: &nodes::MAP_RANGE,
+                id: "lums2",
+                values: &[
+                    (Name("From Min"), Value::Float(0.0)),
+                    (Name("From Max"), Value::Float(1.0)),
+                ],
+                links: &[
+                    (Name("To Min"), NodeSocketRef::new("lum1ss", Position(0))),
+                    (Name("To Max"), NodeSocketRef::new("lum2ss", Position(0))),
+                ],
+                ..Node::default()
+            },
+            Node {
+                kind: &nodes::MATH,
+                id: "lums2inv",
+                properties: &[("operation", Value::Enum("SUBTRACT"))],
+                values: &[(Position(0), Value::Float(1.0))],
+                links: &[(Position(1), NodeSocketRef::new("lums2", Position(0)))],
+            },
+            Node {
+                kind: &nodes::MAP_RANGE,
+                id: "lum3blend",
+                values: &[
+                    (Name("From Min"), Value::Float(0.0)),
+                    (Name("From Max"), Value::Float(1.0)),
+                ],
+                links: &[
+                    (Name("To Min"), NodeSocketRef::new("lums2inv", Position(0))),
+                    (Name("To Max"), NodeSocketRef::new("lum3ss", Position(0))),
+                ],
+                ..Node::default()
+            },
+            Node {
+                kind: &nodes::MATH,
+                id: "fac2m",
+                properties: &[("operation", Value::Enum("MULTIPLY_ADD"))],
+                links: &[(Position(1), NodeSocketRef::new("lum3blend", Position(0)))],
+                ..Node::default()
+            },
+            Node {
+                kind: &nodes::MAP_RANGE,
+                id: "fac2ss",
+                properties: &[
+                    ("interpolation_type", Value::Enum("SMOOTHSTEP")),
+                    ("clamp", Value::Bool(false)),
+                ],
+                values: &[
+                    (Name("To Min"), Value::Float(0.0)),
+                    (Name("To Max"), Value::Float(1.0)),
+                ],
+                links: &[(Name("Value"), NodeSocketRef::new("fac2m", Position(0)))],
+            },
+            Node {
+                kind: &nodes::MAP_RANGE,
+                id: "lums3",
+                values: &[
+                    (Name("From Min"), Value::Float(0.0)),
+                    (Name("From Max"), Value::Float(1.0)),
+                ],
+                links: &[
+                    (Name("To Min"), NodeSocketRef::new("lums2", Position(0))),
+                    (Name("To Max"), NodeSocketRef::new("lum3ss", Position(0))),
+                ],
+                ..Node::default()
+            },
+            Node {
+                kind: &nodes::MATH,
+                id: "lums3inv",
+                properties: &[("operation", Value::Enum("SUBTRACT"))],
+                values: &[(Position(0), Value::Float(1.0))],
+                links: &[(Position(1), NodeSocketRef::new("lums3", Position(0)))],
+            },
+            Node {
+                kind: &nodes::MAP_RANGE,
+                id: "lum4blend",
+                values: &[
+                    (Name("From Min"), Value::Float(0.0)),
+                    (Name("From Max"), Value::Float(1.0)),
+                ],
+                links: &[
+                    (Name("To Min"), NodeSocketRef::new("lums3inv", Position(0))),
+                    (Name("To Max"), NodeSocketRef::new("lum4ss", Position(0))),
+                ],
+                ..Node::default()
+            },
+            Node {
+                kind: &nodes::MATH,
+                id: "fac3m",
+                properties: &[("operation", Value::Enum("MULTIPLY_ADD"))],
+                links: &[(Position(1), NodeSocketRef::new("lum4blend", Position(0)))],
+                ..Node::default()
+            },
+            Node {
+                kind: &nodes::MAP_RANGE,
+                id: "fac3ss",
+                properties: &[
+                    ("interpolation_type", Value::Enum("SMOOTHSTEP")),
+                    ("clamp", Value::Bool(false)),
+                ],
+                values: &[
+                    (Name("To Min"), Value::Float(0.0)),
+                    (Name("To Max"), Value::Float(1.0)),
+                ],
+                links: &[(Name("Value"), NodeSocketRef::new("fac3m", Position(0)))],
+            },
+        ],
+        inputs: &[
+            ("fac2", NodeSocketRef::new("fac1m", Position(0))),
+            ("fac2", NodeSocketRef::new("fac1m", Position(2))),
+            ("fac3", NodeSocketRef::new("fac2m", Position(0))),
+            ("fac3", NodeSocketRef::new("fac2m", Position(2))),
+            ("fac4", NodeSocketRef::new("fac3m", Position(0))),
+            ("fac4", NodeSocketRef::new("fac3m", Position(2))),
+            ("lum1", NodeSocketRef::new("lum1ss", Name("Value"))),
+            ("lum2", NodeSocketRef::new("lum2ss", Name("Value"))),
+            ("lum3", NodeSocketRef::new("lum3ss", Name("Value"))),
+            ("lum4", NodeSocketRef::new("lum4ss", Name("Value"))),
+            ("lumstart1", NodeSocketRef::new("lum1ss", Name("From Min"))),
+            ("lumstart2", NodeSocketRef::new("lum2ss", Name("From Min"))),
+            ("lumstart3", NodeSocketRef::new("lum3ss", Name("From Min"))),
+            ("lumstart4", NodeSocketRef::new("lum4ss", Name("From Min"))),
+            ("lumend1", NodeSocketRef::new("lum1ss", Name("From Max"))),
+            ("lumend2", NodeSocketRef::new("lum2ss", Name("From Max"))),
+            ("lumend3", NodeSocketRef::new("lum3ss", Name("From Max"))),
+            ("lumend4", NodeSocketRef::new("lum4ss", Name("From Max"))),
+            ("lumfac2", NodeSocketRef::new("lum2blend", Name("Value"))),
+            ("lumfac3", NodeSocketRef::new("lum3blend", Name("Value"))),
+            ("lumfac4", NodeSocketRef::new("lum4blend", Name("Value"))),
+            (
+                "blendstart2",
+                NodeSocketRef::new("fac1ss", Name("From Min")),
+            ),
+            (
+                "blendstart3",
+                NodeSocketRef::new("fac2ss", Name("From Min")),
+            ),
+            (
+                "blendstart4",
+                NodeSocketRef::new("fac3ss", Name("From Min")),
+            ),
+            ("blendend2", NodeSocketRef::new("fac1ss", Name("From Max"))),
+            ("blendend3", NodeSocketRef::new("fac2ss", Name("From Max"))),
+            ("blendend4", NodeSocketRef::new("fac3ss", Name("From Max"))),
+        ],
+        outputs: &[
+            ("fac1", NodeSocketRef::new("fac1ss", Position(0))),
+            ("fac2", NodeSocketRef::new("fac2ss", Position(0))),
+            ("fac3", NodeSocketRef::new("fac3ss", Position(0))),
+        ],
+        ..NodeGroup::default()
+    };
+
+    pub static MULTIBLEND_TEXTURE: NodeGroup = NodeGroup {
+        nodes: &[
+            Node {
+                kind: &nodes::MIX_RGB,
+                id: "mix_color1",
+                properties: &[("blend_type", Value::Enum("MIX"))],
+                ..Node::default()
+            },
+            Node {
+                kind: &nodes::MAP_RANGE,
+                id: "mix_alpha1",
+                properties: &[("clamp", Value::Bool(false))],
+                values: &[
+                    (Name("From Min"), Value::Float(0.0)),
+                    (Name("From Max"), Value::Float(1.0)),
+                ],
+                ..Node::default()
+            },
+            Node {
+                kind: &nodes::MIX_RGB,
+                id: "mix_color2",
+                properties: &[("blend_type", Value::Enum("MIX"))],
+                links: &[(
+                    Name("Color1"),
+                    NodeSocketRef::new("mix_color1", Name("Color")),
+                )],
+                ..Node::default()
+            },
+            Node {
+                kind: &nodes::MAP_RANGE,
+                id: "mix_alpha2",
+                properties: &[("clamp", Value::Bool(false))],
+                values: &[
+                    (Name("From Min"), Value::Float(0.0)),
+                    (Name("From Max"), Value::Float(1.0)),
+                ],
+                links: &[(
+                    Name("To Min"),
+                    NodeSocketRef::new("mix_alpha1", Position(0)),
+                )],
+            },
+            Node {
+                kind: &nodes::MIX_RGB,
+                id: "mix_color3",
+                properties: &[("blend_type", Value::Enum("MIX"))],
+                links: &[(
+                    Name("Color1"),
+                    NodeSocketRef::new("mix_color2", Name("Color")),
+                )],
+                ..Node::default()
+            },
+            Node {
+                kind: &nodes::MAP_RANGE,
+                id: "mix_alpha3",
+                properties: &[("clamp", Value::Bool(false))],
+                values: &[
+                    (Name("From Min"), Value::Float(0.0)),
+                    (Name("From Max"), Value::Float(1.0)),
+                ],
+                links: &[(
+                    Name("To Min"),
+                    NodeSocketRef::new("mix_alpha2", Position(0)),
+                )],
+            },
+        ],
+        inputs: &[
+            ("color", NodeSocketRef::new("mix_color1", Name("Color1"))),
+            ("color2", NodeSocketRef::new("mix_color1", Name("Color2"))),
+            ("color3", NodeSocketRef::new("mix_color2", Name("Color2"))),
+            ("color4", NodeSocketRef::new("mix_color3", Name("Color2"))),
+            ("alpha", NodeSocketRef::new("mix_alpha1", Name("To Min"))),
+            ("alpha2", NodeSocketRef::new("mix_alpha1", Name("To Max"))),
+            ("alpha3", NodeSocketRef::new("mix_alpha2", Name("To Max"))),
+            ("alpha4", NodeSocketRef::new("mix_alpha3", Name("To Max"))),
+            ("fac1", NodeSocketRef::new("mix_color1", Name("Fac"))),
+            ("fac1", NodeSocketRef::new("mix_alpha1", Name("Value"))),
+            ("fac2", NodeSocketRef::new("mix_color2", Name("Fac"))),
+            ("fac2", NodeSocketRef::new("mix_alpha2", Name("Value"))),
+            ("fac3", NodeSocketRef::new("mix_color3", Name("Fac"))),
+            ("fac3", NodeSocketRef::new("mix_alpha3", Name("Value"))),
+        ],
+        outputs: &[
+            ("color", NodeSocketRef::new("mix_color3", Name("Color"))),
+            ("alpha", NodeSocketRef::new("mix_alpha3", Position(0))),
+        ],
+        ..NodeGroup::default()
+    };
+
+    pub static MULTIBLEND_VALUE: NodeGroup = NodeGroup {
+        nodes: &[
+            Node {
+                kind: &nodes::MAP_RANGE,
+                id: "mix1",
+                properties: &[("clamp", Value::Bool(false))],
+                values: &[
+                    (Name("From Min"), Value::Float(0.0)),
+                    (Name("From Max"), Value::Float(1.0)),
+                ],
+                ..Node::default()
+            },
+            Node {
+                kind: &nodes::MAP_RANGE,
+                id: "mix2",
+                properties: &[("clamp", Value::Bool(false))],
+                values: &[
+                    (Name("From Min"), Value::Float(0.0)),
+                    (Name("From Max"), Value::Float(1.0)),
+                ],
+                links: &[(Name("To Min"), NodeSocketRef::new("mix1", Position(0)))],
+            },
+            Node {
+                kind: &nodes::MAP_RANGE,
+                id: "mix3",
+                properties: &[("clamp", Value::Bool(false))],
+                values: &[
+                    (Name("From Min"), Value::Float(0.0)),
+                    (Name("From Max"), Value::Float(1.0)),
+                ],
+                links: &[(Name("To Min"), NodeSocketRef::new("mix2", Position(0)))],
+            },
+        ],
+        inputs: &[
+            ("val1", NodeSocketRef::new("mix1", Name("To Min"))),
+            ("val2", NodeSocketRef::new("mix1", Name("To Max"))),
+            ("val3", NodeSocketRef::new("mix2", Name("To Max"))),
+            ("val4", NodeSocketRef::new("mix3", Name("To Max"))),
+            ("fac1", NodeSocketRef::new("mix1", Name("Value"))),
+            ("fac2", NodeSocketRef::new("mix2", Name("Value"))),
+            ("fac3", NodeSocketRef::new("mix3", Name("Value"))),
+        ],
+        outputs: &[("val", NodeSocketRef::new("mix3", Position(0)))],
+        ..NodeGroup::default()
+    };
+
+    pub static BLEND_3_VALUES: NodeGroup = NodeGroup {
+        nodes: &[
+            Node {
+                kind: &nodes::MAP_RANGE,
+                id: "mix1",
+                properties: &[("clamp", Value::Bool(false))],
+                values: &[
+                    (Name("From Min"), Value::Float(0.0)),
+                    (Name("From Max"), Value::Float(1.0)),
+                ],
+                ..Node::default()
+            },
+            Node {
+                kind: &nodes::MAP_RANGE,
+                id: "mix2",
+                properties: &[("clamp", Value::Bool(false))],
+                values: &[
+                    (Name("From Min"), Value::Float(0.0)),
+                    (Name("From Max"), Value::Float(1.0)),
+                ],
+                links: &[(Name("To Min"), NodeSocketRef::new("mix1", Position(0)))],
+            },
+        ],
+        inputs: &[
+            ("val1", NodeSocketRef::new("mix1", Name("To Min"))),
+            ("val2", NodeSocketRef::new("mix1", Name("To Max"))),
+            ("val3", NodeSocketRef::new("mix2", Name("To Max"))),
+            ("fac1", NodeSocketRef::new("mix1", Name("Value"))),
+            ("fac2", NodeSocketRef::new("mix2", Name("Value"))),
+        ],
+        outputs: &[("val", NodeSocketRef::new("mix2", Position(0)))],
+        ..NodeGroup::default()
+    };
 }
 
 #[cfg(test)]
@@ -623,11 +1069,16 @@ mod tests {
         &groups::COLOR_TEXTURE,
         &groups::BLEND_TEXTURE,
         &groups::VERTEX_COLOR,
+        &groups::SEPARATED_VERTEX_COLOR,
         &groups::OBJECT_COLOR,
         &groups::MODULATED_FACTOR,
         &groups::MULTIPLY_VALUE,
         &groups::BLEND_VALUES,
         &groups::INVERT_VALUE,
+        &groups::FWB_FACTORS,
+        &groups::MULTIBLEND_TEXTURE,
+        &groups::MULTIBLEND_VALUE,
+        &groups::BLEND_3_VALUES,
     ];
 
     #[test]
