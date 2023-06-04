@@ -1132,30 +1132,23 @@ mod tests {
             for (target, src) in node.links {
                 assert!(
                     node.kind.input_sockets.iter().any(|s| s == target),
-                    "invalid node link target `{:?}`",
-                    target
+                    "invalid node link target `{target:?}`"
                 );
 
-                assert!(
-                    outputs.contains(src),
-                    "invalid node link source `{:?}`",
-                    src
-                );
+                assert!(outputs.contains(src), "invalid node link source `{src:?}`");
             }
 
             for (target, _) in node.values {
                 assert!(
                     node.kind.input_sockets.iter().any(|s| s == target),
-                    "invalid node value target `{:?}`",
-                    target
+                    "invalid node value target `{target:?}`"
                 );
             }
 
             for (target, _) in node.properties {
                 assert!(
                     node.kind.properties.contains(target),
-                    "invalid node property target `{:?}`",
-                    target
+                    "invalid node property target `{target:?}`"
                 );
             }
 
@@ -1189,8 +1182,7 @@ mod tests {
                 .expect("invalid node group property target");
             assert!(
                 node.kind.input_sockets.iter().any(|&s| s == target.socket),
-                "invalid node group input target `{:?}`",
-                target
+                "invalid node group input target `{target:?}`"
             );
         }
 
@@ -1206,8 +1198,7 @@ mod tests {
                 .expect("invalid node group property target");
             assert!(
                 node.kind.output_sockets.iter().any(|&s| s == target.socket),
-                "invalid node group output target `{:?}`",
-                target
+                "invalid node group output target `{target:?}`"
             );
         }
     }

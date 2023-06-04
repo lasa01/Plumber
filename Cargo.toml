@@ -10,13 +10,23 @@ crate-type = ["cdylib"]
 
 [dependencies]
 plumber_core = { git = "https://github.com/lasa01/plumber_core" }
-pyo3 = { version = "0.15.1", features = ["extension-module", "abi3", "abi3-py36"] }
+pyo3 = { version = "0.15.1", features = [
+    "extension-module",
+    "abi3",
+    "abi3-py36",
+] }
 crossbeam-channel = "0.5.1"
 ndarray = "0.15.1"
 itertools = "0.10.1"
-image = { version = "0.24.1", default-features = false, features = ["tga", "openexr"] }
+image = { version = "0.24.6", default-features = false, features = [
+    "tga",
+    "openexr",
+] }
 glam = "0.20.2"
-log = { version = "0.4.14", features = ["max_level_debug", "release_max_level_info"] }
+log = { version = "0.4.14", features = [
+    "max_level_debug",
+    "release_max_level_info",
+] }
 env_logger = { version = "0.9.0", default-features = false }
 rgb = "0.8.31"
 float-ord = "0.3.2"

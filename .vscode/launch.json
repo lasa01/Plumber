@@ -8,7 +8,7 @@
             "type": "lldb",
             "request": "attach",
             "name": "Debug native code",
-            "program": "C:\\Program Files\\Blender Foundation\\Blender 3.0\\blender.exe",
+            "program": "blender.exe",
             "sourceLanguages": [
                 "rust"
             ]

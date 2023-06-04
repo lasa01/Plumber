@@ -373,7 +373,7 @@ class AddonPreferences(AddonPreferences):
         min=0,
         max=64,
         soft_min=1,
-        soft_max=min(os.cpu_count() or 4, 4),
+        soft_max=os.cpu_count(),
     )
 
     def update_enable_file_browser_panel(self, context: Context):
@@ -497,7 +497,7 @@ def register():
     ].preferences
 
     if preferences.threads == 0:
-        preferences.threads = min(max(2, os.cpu_count() or 0), 4)
+        preferences.threads = max(2, os.cpu_count() or 0)
 
     if not preferences.games:
         detect_games(bpy.context)

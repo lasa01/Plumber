@@ -2,13 +2,18 @@ use std::str::FromStr;
 
 use glam::{Vec2, Vec3};
 use log::warn;
-use plumber_core::{
-    asset::vmt::LoadedVmt,
-    uncased::AsUncased,
-    vmt::{TexturePath, Transform},
-};
 use pyo3::{exceptions::PyValueError, PyErr};
 use rgb::RGB;
+
+use plumber_core::{
+    asset_core::Context,
+    asset_vmt::VmtHelper,
+    asset_vtf::VtfConfig,
+    uncased::AsUncased,
+    vmt::{MaterialInfo, TexturePath, Transform},
+};
+
+use crate::asset::BlenderAssetHandler;
 
 use super::{
     builder_base::{ColorSpace, InputLink, MaterialBuilder},
@@ -56,8 +61,10 @@ impl TextureInterpolation {
     }
 }
 
-#[derive(Debug, Clone, Default)]
+#[allow(clippy::struct_excessive_bools)]
+#[derive(Debug, Clone, Copy, Default)]
 pub struct Settings {
+    pub import_materials: bool,
     pub simple_materials: bool,
     pub allow_culling: bool,
     pub editor_materials: bool,
@@ -67,13 +74,14 @@ pub struct Settings {
 impl MaterialBuilder {
     fn handle_texture(
         &mut self,
-        vmt: &mut LoadedVmt,
+        context: &mut Context<BlenderAssetHandler>,
+        vmt: &VmtHelper,
         parameter: &'static str,
         transform_parameter: Option<&'static str>,
         color_space: ColorSpace,
         interpolation: TextureInterpolation,
     ) -> bool {
-        self.handle_texture_inner(vmt, parameter, color_space, interpolation, |vmt| {
+        self.handle_texture_inner(context, vmt, parameter, color_space, interpolation, |vmt| {
             if let Some(transform_parameter) = transform_parameter {
                 vmt.extract_param_or_default(transform_parameter)
             } else {
@@ -82,16 +90,18 @@ impl MaterialBuilder {
         })
     }
 
+    #[allow(clippy::too_many_arguments)]
     fn handle_texture_scaled(
         &mut self,
-        vmt: &mut LoadedVmt,
+        context: &mut Context<BlenderAssetHandler>,
+        vmt: &VmtHelper,
         parameter: &'static str,
         transform_parameter: &'static str,
         scale_parameter: &'static str,
         color_space: ColorSpace,
         interpolation: TextureInterpolation,
     ) -> bool {
-        self.handle_texture_inner(vmt, parameter, color_space, interpolation, |vmt| {
+        self.handle_texture_inner(context, vmt, parameter, color_space, interpolation, |vmt| {
             let mut transform: Transform = vmt.extract_param_or_default(transform_parameter);
 
             let scale = vmt
@@ -110,13 +120,14 @@ impl MaterialBuilder {
 
     fn handle_texture_4wayblend(
         &mut self,
-        vmt: &mut LoadedVmt,
+        context: &mut Context<BlenderAssetHandler>,
+        vmt: &VmtHelper,
         parameter: &'static str,
         uv_scale_parameter: &'static str,
         color_space: ColorSpace,
         interpolation: TextureInterpolation,
     ) -> bool {
-        self.handle_texture_inner(vmt, parameter, color_space, interpolation, |vmt| {
+        self.handle_texture_inner(context, vmt, parameter, color_space, interpolation, |vmt| {
             let mut transform = Transform::default();
 
             let base_uv_scale = vmt.extract_param("$texture1_uvscale").unwrap_or(Vec2::ONE);
@@ -130,16 +141,19 @@ impl MaterialBuilder {
 
     fn handle_texture_split(
         &mut self,
-        vmt: &mut LoadedVmt,
+        context: &mut Context<BlenderAssetHandler>,
+        vmt: &VmtHelper,
         parameter: &'static str,
         interpolation: TextureInterpolation,
     ) -> bool {
         let shader = vmt.shader();
 
-        if let Some(texture) = shader.extract_param::<TexturePath>(parameter, vmt.material_path()) {
+        if let Some(texture) =
+            shader.extract_param::<TexturePath>(parameter, vmt.material_path().into())
+        {
             let texture_path = texture.absolute_path();
 
-            match vmt.load_texture(texture_path.clone()) {
+            match context.depend_on(VtfConfig, texture_path.clone().into()) {
                 Ok(_) => {
                     self.texture_color_spaces
                         .insert(texture_path.clone().into_string(), ColorSpace::NonColor);
@@ -178,18 +192,22 @@ impl MaterialBuilder {
 
     fn handle_texture_inner(
         &mut self,
-        vmt: &mut LoadedVmt,
+        context: &mut Context<BlenderAssetHandler>,
+        vmt: &VmtHelper,
         parameter: &'static str,
         color_space: ColorSpace,
         interpolation: TextureInterpolation,
-        get_transform: impl Fn(&mut LoadedVmt) -> Transform,
+        get_transform: impl Fn(&VmtHelper) -> Transform,
     ) -> bool {
         let shader = vmt.shader();
 
-        if let Some(texture) = shader.extract_param::<TexturePath>(parameter, vmt.material_path()) {
-            let texture_path = texture.absolute_path();
+        if let Some(texture) =
+            shader.extract_param::<TexturePath>(parameter, vmt.material_path().into())
+        {
+            let mut texture_path = texture.absolute_path();
+            texture_path.set_extension("");
 
-            match vmt.load_texture(texture_path.clone()) {
+            match context.depend_on(VtfConfig, texture_path.clone().into()) {
                 Ok(_) => {
                     self.texture_color_spaces
                         .insert(texture_path.clone().into_string(), color_space);
@@ -264,7 +282,11 @@ fn build_nodraw_material() -> BuiltMaterialData {
     builder.build()
 }
 
-fn build_water_material(vmt: &mut LoadedVmt, settings: &Settings) -> BuiltMaterialData {
+fn build_water_material(
+    context: &mut Context<BlenderAssetHandler>,
+    vmt: &VmtHelper,
+    settings: Settings,
+) -> BuiltMaterialData {
     let mut builder = MaterialBuilder::new(&shaders::GLASS);
 
     builder
@@ -283,6 +305,7 @@ fn build_water_material(vmt: &mut LoadedVmt, settings: &Settings) -> BuiltMateri
     }
 
     if builder.handle_texture(
+        context,
         vmt,
         "$normalmap",
         Some("$bumptransform"),
@@ -322,16 +345,22 @@ fn phong_exponent_to_roughness(exponent: f32) -> f32 {
     0.66 * (150.0 - exponent) / 150.0
 }
 
-struct NormalMaterialBuilder<'a, 'b> {
+struct NormalMaterialBuilder<'a, 'b, 'c, 'd> {
     builder: MaterialBuilder,
-    vmt: &'a mut LoadedVmt<'b>,
-    settings: &'a Settings,
+    context: &'a mut Context<'b, 'd, BlenderAssetHandler>,
+    vmt: &'a VmtHelper<'c>,
+    settings: Settings,
 }
 
 // Common methods
-impl<'a, 'b> NormalMaterialBuilder<'a, 'b> {
-    fn new(vmt: &'a mut LoadedVmt<'b>, settings: &'a Settings) -> Self {
+impl<'a, 'b, 'c, 'd> NormalMaterialBuilder<'a, 'b, 'c, 'd> {
+    fn new(
+        context: &'a mut Context<'b, 'd, BlenderAssetHandler>,
+        vmt: &'a VmtHelper<'c>,
+        settings: Settings,
+    ) -> Self {
         Self {
+            context,
             builder: MaterialBuilder::new(&shaders::PRINCIPLED),
             vmt,
             settings,
@@ -345,6 +374,7 @@ impl<'a, 'b> NormalMaterialBuilder<'a, 'b> {
         color_space: ColorSpace,
     ) -> bool {
         self.builder.handle_texture(
+            self.context,
             self.vmt,
             parameter,
             transform_parameter,
@@ -361,6 +391,7 @@ impl<'a, 'b> NormalMaterialBuilder<'a, 'b> {
         color_space: ColorSpace,
     ) -> bool {
         self.builder.handle_texture_scaled(
+            self.context,
             self.vmt,
             parameter,
             transform_parameter,
@@ -371,8 +402,12 @@ impl<'a, 'b> NormalMaterialBuilder<'a, 'b> {
     }
 
     fn handle_texture_split(&mut self, parameter: &'static str) -> bool {
-        self.builder
-            .handle_texture_split(self.vmt, parameter, self.settings.texture_interpolation)
+        self.builder.handle_texture_split(
+            self.context,
+            self.vmt,
+            parameter,
+            self.settings.texture_interpolation,
+        )
     }
 
     fn handle_cull(&mut self) {
@@ -500,7 +535,7 @@ impl<'a, 'b> NormalMaterialBuilder<'a, 'b> {
 }
 
 // Normal material building
-impl<'a, 'b> NormalMaterialBuilder<'a, 'b> {
+impl<'a, 'b, 'c, 'd> NormalMaterialBuilder<'a, 'b, 'c, 'd> {
     fn handle_blendmodulatetexture(&mut self) -> Ref {
         let vertex_blend_input = Ref::new("vertex_color", "color");
 
@@ -954,7 +989,7 @@ impl<'a, 'b> NormalMaterialBuilder<'a, 'b> {
 }
 
 // Simple material building
-impl<'a, 'b> NormalMaterialBuilder<'a, 'b> {
+impl<'a, 'b, 'c, 'd> NormalMaterialBuilder<'a, 'b, 'c, 'd> {
     fn handle_basetexture_simple(&mut self) -> bool {
         if !self.handle_texture(
             "$basetexture",
@@ -1123,7 +1158,7 @@ impl<'a, 'b> NormalMaterialBuilder<'a, 'b> {
 }
 
 // 4WayBlend material building
-impl<'a, 'b> NormalMaterialBuilder<'a, 'b> {
+impl<'a, 'b, 'c, 'd> NormalMaterialBuilder<'a, 'b, 'c, 'd> {
     fn handle_texture_4wayblend(
         &mut self,
         parameter: &'static str,
@@ -1131,6 +1166,7 @@ impl<'a, 'b> NormalMaterialBuilder<'a, 'b> {
         color_space: ColorSpace,
     ) -> bool {
         self.builder.handle_texture_4wayblend(
+            self.context,
             self.vmt,
             parameter,
             uv_scale_parameter,
@@ -1445,16 +1481,23 @@ impl<'a, 'b> NormalMaterialBuilder<'a, 'b> {
     }
 }
 
-pub fn build_material(vmt: &mut LoadedVmt, settings: &Settings) -> BuiltMaterialData {
-    let info = vmt.info();
+pub fn build_material(
+    context: &mut Context<BlenderAssetHandler>,
+    vmt: &VmtHelper,
+    info: &MaterialInfo,
+    settings: Settings,
+) -> Option<BuiltMaterialData> {
+    if !settings.import_materials {
+        return None;
+    }
 
-    if info.no_draw() && !settings.editor_materials {
+    Some(if info.no_draw() && !settings.editor_materials {
         build_nodraw_material()
     } else if vmt.extract_param_or_default("%compilewater") {
-        build_water_material(vmt, settings)
+        build_water_material(context, vmt, settings)
     } else {
-        NormalMaterialBuilder::new(vmt, settings).build()
-    }
+        NormalMaterialBuilder::new(context, vmt, settings).build()
+    })
 }
 
 #[cfg(test)]

@@ -5,7 +5,7 @@ use pyo3::prelude::*;
 use rgb::ComponentMap;
 
 use plumber_core::{
-    asset::vmf::LoadedProp,
+    asset_vmf::prop::LoadedProp,
     vmf::entities::{
         AngledEntity, BaseEntity, EntityParseError, EnvLight, Light, LightEntity, PointEntity,
         SkyCamera, SpotLight, Unknown,

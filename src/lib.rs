@@ -1,4 +1,4 @@
-#![deny(clippy::all, clippy::pedantic, clippy::multiple_crate_versions)]
+#![warn(clippy::all, clippy::pedantic, clippy::multiple_crate_versions)]
 // these are triggered by pyo3
 #![allow(clippy::used_underscore_binding, clippy::borrow_deref_ref)]
 // this doesn't matter
@@ -15,7 +15,8 @@ use std::io::Write;
 use asset::{entities::PyUnknownEntity, model::PyBoneRestData};
 use filesystem::{PyFileBrowser, PyFileBrowserEntry, PyFileSystem};
 
-use log::{error, info, LevelFilter};
+use log::{error, info, Level, LevelFilter};
+use plumber_core::asset_core::current_thread;
 use pyo3::prelude::*;
 
 use crate::{
@@ -101,7 +102,19 @@ fn plumber(_py: Python, m: &PyModule) -> PyResult<()> {
 
 fn initialize_logger() {
     let _ = env_logger::Builder::new()
-        .format(|buf, record| writeln!(buf, "[Plumber] [{}] {}", record.level(), record.args()))
+        .format(|buf, record| {
+            if record.level() == Level::Debug {
+                writeln!(
+                    buf,
+                    "[Plumber] [{}] (thread {}) {}",
+                    record.level(),
+                    current_thread(),
+                    record.args()
+                )
+            } else {
+                writeln!(buf, "[Plumber] [{}] {}", record.level(), record.args())
+            }
+        })
         .filter_level(LevelFilter::Debug)
         .try_init();
 }

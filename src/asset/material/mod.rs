@@ -1,13 +1,25 @@
-use std::io::Cursor;
+use std::{
+    fmt::{self, Debug, Formatter},
+    io::Cursor,
+    panic::{catch_unwind, AssertUnwindSafe},
+};
 
 use image::ImageOutputFormat;
 use pyo3::{exceptions::PyRuntimeError, prelude::*};
 
-use plumber_core::asset::vmt::{LoadedMaterial, LoadedTexture};
+use plumber_core::{
+    asset_core::{CachedAssetConfig, Context},
+    asset_vmt::{VmtConfig, VmtError, VmtErrorInner, VmtHelper},
+    asset_vtf::LoadedVtf,
+    fs::PathBuf,
+    vmt::MaterialInfo,
+};
 
 pub use builder::{build_material, Settings, TextureInterpolation};
 pub use builder_base::BuiltMaterialData;
 pub use nodes::{BuiltNode, BuiltNodeSocketRef, TextureRef};
+
+use super::BlenderAssetHandler;
 
 mod builder;
 mod builder_base;
@@ -42,7 +54,7 @@ impl Texture {
 }
 
 impl Texture {
-    pub fn new(texture: LoadedTexture) -> Self {
+    pub fn new(texture: &LoadedVtf) -> Self {
         let width = texture.data.width();
         let height = texture.data.height();
 
@@ -53,7 +65,7 @@ impl Texture {
             .unwrap();
 
         Self {
-            name: texture.name.into_string(),
+            name: texture.name.to_string(),
             width,
             height,
             data,
@@ -81,10 +93,66 @@ impl Material {
 }
 
 impl Material {
-    pub fn new(material: LoadedMaterial<BuiltMaterialData>) -> Self {
+    pub fn new(name: &PathBuf, data: BuiltMaterialData) -> Self {
         Self {
-            name: material.name.into_string(),
-            data: Some(material.data),
+            name: name.to_string(),
+            data: Some(data),
         }
+    }
+}
+
+#[derive(Clone, Copy)]
+pub struct MaterialConfig {
+    pub settings: Settings,
+}
+
+impl Debug for MaterialConfig {
+    fn fmt(&self, f: &mut Formatter<'_>) -> fmt::Result {
+        f.write_str("MaterialConfig")
+    }
+}
+
+impl VmtConfig<BlenderAssetHandler> for MaterialConfig {}
+
+impl CachedAssetConfig<BlenderAssetHandler> for MaterialConfig {
+    type Input<'a> = PathBuf;
+    type Id = PathBuf;
+    type Output<'a> = (PathBuf, Option<BuiltMaterialData>);
+    type CachedOutput = MaterialInfo;
+    type Error = VmtError;
+
+    fn cache_id(self, input: &Self::Input<'_>) -> Self::Id {
+        let mut input = input.clone();
+        input.normalize_extension();
+        input
+    }
+
+    fn process<'a>(
+        self,
+        mut input: Self::Input<'a>,
+        context: &mut Context<BlenderAssetHandler>,
+    ) -> Result<(Self::Output<'a>, Self::CachedOutput), Self::Error> {
+        input.normalize_extension();
+
+        let vmt_helper = VmtHelper::new(&input, context.fs())?;
+        let info = vmt_helper.get_info(context.fs())?;
+
+        let built = catch_unwind(AssertUnwindSafe(|| {
+            build_material(context, &vmt_helper, &info, self.settings)
+        }))
+        .map_err(|e| {
+            let error = if let Some(s) = e.downcast_ref::<&'static str>() {
+                VmtErrorInner::Custom(s)
+            } else {
+                VmtErrorInner::Custom("internal error loading material")
+            };
+
+            VmtError {
+                path: input.clone(),
+                error,
+            }
+        })?;
+
+        Ok(((input, built), info))
     }
 }

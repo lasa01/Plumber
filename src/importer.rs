@@ -13,23 +13,29 @@ use pyo3::{
 };
 
 use plumber_core::{
-    asset::{
-        mdl::Settings as MdlSettings,
-        vmf::{BrushSetting, Settings as VmfSettings},
-        Importer,
-    },
+    asset_core::Executor,
+    asset_mdl::MdlConfig,
+    asset_vmf::{BrushSetting, VmfConfig},
+    asset_vtf::VtfConfig,
     fs::{GamePathBuf, OpenFileSystem, OpenSearchPath, PathBuf},
-    vmf::builder::{GeometrySettings, InvisibleSolids, MergeSolids},
+    vmf::{
+        builder::{GeometrySettings, InvisibleSolids, MergeSolids},
+        vmf::Vmf,
+    },
 };
 
 use crate::{
-    asset::{material::TextureInterpolation, BlenderAssetHandler, HandlerSettings, Message},
+    asset::{
+        material::{MaterialConfig, TextureInterpolation},
+        BlenderAssetHandler, HandlerSettings, Message,
+    },
     filesystem::PyFileSystem,
 };
 
 #[pyclass(module = "plumber", name = "Importer")]
 pub struct PyImporter {
-    importer: Option<Importer<BlenderAssetHandler>>,
+    material_config: MaterialConfig,
+    executor: Option<Executor<BlenderAssetHandler>>,
     receiver: Receiver<Message>,
     callback_obj: PyObject,
 }
@@ -69,6 +75,7 @@ impl PyImporter {
                 }
 
                 match key.extract()? {
+                    "import_materials" => settings.material.import_materials = value.extract()?,
                     "import_lights" => settings.import_lights = value.extract()?,
                     "light_factor" => settings.light.light_factor = value.extract()?,
                     "sun_factor" => settings.light.sun_factor = value.extract()?,
@@ -135,12 +142,21 @@ impl PyImporter {
             }
         }
 
+        let material_config = MaterialConfig {
+            settings: settings.material,
+        };
+
         let (sender, receiver) = crossbeam_channel::bounded(16);
         let handler = BlenderAssetHandler { sender, settings };
-        let importer = Some(Importer::new(opened, handler, threads_suggestion));
+        let executor = Some(Executor::new_with_threads(
+            handler,
+            opened,
+            threads_suggestion,
+        ));
 
         Ok(Self {
-            importer,
+            material_config,
+            executor,
             receiver,
             callback_obj,
         })
@@ -154,11 +170,12 @@ impl PyImporter {
         from_game: bool,
         kwargs: Option<&PyDict>,
     ) -> PyResult<()> {
-        let importer = self.consume()?;
+        let executor = self.consume()?;
 
         let mut import_brushes = true;
         let mut geometry_settings = GeometrySettings::default();
-        let mut settings = VmfSettings::default();
+
+        let mut settings = VmfConfig::new(self.material_config);
 
         if let Some(kwargs) = kwargs {
             for (key, value) in kwargs.iter() {
@@ -167,7 +184,7 @@ impl PyImporter {
                         import_brushes = value.extract()?;
                     }
                     "import_overlays" => {
-                        geometry_settings.overlays(value.extract()?);
+                        settings.import_overlays = value.extract()?;
                     }
                     "epsilon" => {
                         geometry_settings.epsilon(value.extract()?);
@@ -185,29 +202,26 @@ impl PyImporter {
                         "SKIP" => geometry_settings.invisible_solids(InvisibleSolids::Skip),
                         _ => return Err(PyTypeError::new_err("unexpected kwarg value")),
                     },
-                    "import_materials" => {
-                        settings.import_materials(value.extract()?);
-                    }
                     "import_props" => {
-                        settings.import_props(value.extract()?);
+                        settings.import_props = value.extract()?;
                     }
                     "import_entities" => {
-                        settings.import_entities(value.extract()?);
+                        settings.import_other_entities = value.extract()?;
                     }
                     "import_sky" => {
-                        settings.import_skybox(value.extract()?);
+                        settings.import_skybox = value.extract()?;
                     }
                     "scale" => {
-                        settings.scale(value.extract()?);
+                        settings.scale = value.extract()?;
                     }
                     _ => return Err(PyTypeError::new_err("unexpected kwarg")),
                 }
 
-                settings.brushes(if import_brushes {
+                settings.brushes = if import_brushes {
                     BrushSetting::Import(geometry_settings)
                 } else {
                     BrushSetting::Skip
-                });
+                };
             }
         }
 
@@ -220,11 +234,10 @@ impl PyImporter {
             StdPathBuf::from(path).into()
         };
 
-        let bytes = importer.file_system().read(&path)?;
+        let bytes = executor.fs().read(&path)?;
+        let vmf = Vmf::from_bytes(&bytes).map_err(|e| PyIOError::new_err(e.to_string()))?;
 
-        importer
-            .import_vmf_blocking(&bytes, &settings, || self.process_assets(py))
-            .map_err(|e| PyIOError::new_err(e.to_string()))?;
+        executor.process(settings, vmf, || self.process_assets(py));
 
         info!("vmf imported in {:.2} s", start.elapsed().as_secs_f32());
 
@@ -239,7 +252,7 @@ impl PyImporter {
         from_game: bool,
         kwargs: Option<&PyDict>,
     ) -> PyResult<()> {
-        let importer = self.consume()?;
+        let executor = self.consume()?;
 
         let path = if from_game {
             GamePathBuf::from(path).into()
@@ -247,13 +260,13 @@ impl PyImporter {
             StdPathBuf::from(path).into()
         };
 
-        let (import_materials, settings) = Self::mdl_settings(kwargs)?;
+        let settings = self.mdl_settings(kwargs)?;
 
         let start = Instant::now();
         info!("importing mdl `{}`...", path);
 
-        importer
-            .import_mdl_blocking(path, settings, import_materials, || self.process_assets(py))
+        executor
+            .depend_on(settings, path, || self.process_assets(py))
             .map_err(|e| PyIOError::new_err(e.to_string()))?;
 
         info!("mdl imported in {:.2} s", start.elapsed().as_secs_f32());
@@ -262,7 +275,7 @@ impl PyImporter {
     }
 
     fn import_vmt(&mut self, py: Python, path: &str, from_game: bool) -> PyResult<()> {
-        let importer = self.consume()?;
+        let executor = self.consume()?;
 
         let path = if from_game {
             GamePathBuf::from(path).into()
@@ -273,8 +286,8 @@ impl PyImporter {
         let start = Instant::now();
         info!("importing vmt `{}`...", path);
 
-        importer
-            .import_vmt_blocking(path, || self.process_assets(py))
+        executor
+            .depend_on(self.material_config, path, || self.process_assets(py))
             .map_err(|e| PyIOError::new_err(e.to_string()))?;
 
         info!("vmt imported in {:.2} s", start.elapsed().as_secs_f32());
@@ -283,7 +296,7 @@ impl PyImporter {
     }
 
     fn import_vtf(&mut self, py: Python, path: &str, from_game: bool) -> PyResult<()> {
-        let importer = self.consume()?;
+        let executor = self.consume()?;
 
         let path = if from_game {
             GamePathBuf::from(path).into()
@@ -294,22 +307,9 @@ impl PyImporter {
         let start = Instant::now();
         info!("importing vtf `{}`...", path);
 
-        importer.import_vtf(path);
-        drop(importer);
-        self.process_assets(py);
+        executor.process(VtfConfig, path, || self.process_assets(py));
 
         info!("vtf imported in {:.2} s", start.elapsed().as_secs_f32());
-
-        Ok(())
-    }
-
-    #[args(path, kwargs = "**")]
-    fn stage_mdl(&mut self, path: &str, kwargs: Option<&PyDict>) -> PyResult<()> {
-        let importer = self.borrow()?;
-
-        let (import_materials, settings) = Self::mdl_settings(kwargs)?;
-
-        importer.import_mdl(GamePathBuf::from(path).into(), settings, import_materials);
 
         Ok(())
     }
@@ -317,22 +317,16 @@ impl PyImporter {
     fn import_assets(&mut self, py: Python) {
         // drop the importer, causing the asset channel to disconnect
         // if we don't do this, process_assets will hang forever waiting for new assets to be sent
-        self.importer = None;
+        self.executor = None;
 
         self.process_assets(py);
     }
 }
 
 impl PyImporter {
-    fn consume(&mut self) -> PyResult<Importer<BlenderAssetHandler>> {
-        self.importer
+    fn consume(&mut self) -> PyResult<Executor<BlenderAssetHandler>> {
+        self.executor
             .take()
-            .ok_or_else(|| PyRuntimeError::new_err("Importer already consumed"))
-    }
-
-    fn borrow(&mut self) -> PyResult<&mut Importer<BlenderAssetHandler>> {
-        self.importer
-            .as_mut()
             .ok_or_else(|| PyRuntimeError::new_err("Importer already consumed"))
     }
 
@@ -366,21 +360,19 @@ impl PyImporter {
         }
     }
 
-    fn mdl_settings(kwargs: Option<&PyDict>) -> PyResult<(bool, MdlSettings)> {
-        let mut import_materials = true;
-        let mut settings = MdlSettings::default();
+    fn mdl_settings(&self, kwargs: Option<&PyDict>) -> PyResult<MdlConfig<MaterialConfig>> {
+        let mut settings = MdlConfig::new(self.material_config);
 
         if let Some(kwargs) = kwargs {
             for (key, value) in kwargs.iter() {
                 match key.extract()? {
-                    "import_animations" => settings.import_animations(value.extract()?),
-                    "import_materials" => import_materials = value.extract()?,
+                    "import_animations" => settings.import_animations = value.extract()?,
                     _ => return Err(PyTypeError::new_err("unexpected kwarg")),
                 }
             }
         }
 
-        Ok((import_materials, settings))
+        Ok(settings)
     }
 }
 
