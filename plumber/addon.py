@@ -1,7 +1,7 @@
 import bpy
 from bpy.types import Context, Menu
 
-from . import preferences, importer, tools, version_str
+from . import preferences, importer, tools, benchmark, version_str
 from .importer import ImportMdl, ImportVmf, ImportVmt, ImportVtf
 from .tools import IMPORT_MT_plumber_browse
 
@@ -44,6 +44,7 @@ def register():
     preferences.register()
     importer.register()
     tools.register()
+    benchmark.register()
 
     bpy.utils.register_class(IMPORT_MT_plumber)
     bpy.types.TOPBAR_MT_file_import.append(menu_func_import)
@@ -53,6 +54,7 @@ def unregister():
     bpy.types.TOPBAR_MT_file_import.remove(menu_func_import)
     bpy.utils.unregister_class(IMPORT_MT_plumber)
 
+    benchmark.unregister()
     tools.unregister()
     importer.unregister()
     preferences.unregister()

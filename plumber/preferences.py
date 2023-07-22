@@ -306,7 +306,7 @@ def detect_games(context: Context):
         search_paths = filesystem.search_paths()
         game: Game = preferences.games.add()
         game.name = name
-        for (kind, path) in search_paths:
+        for kind, path in search_paths:
             search_path: GameSearchPath = game.search_paths.add()
             search_path.path = path
             search_path.kind = kind
@@ -355,7 +355,7 @@ def detect_gameinfo(path: str, context: Context):
     search_paths = filesystem.search_paths()
     game: Game = preferences.games.add()
     game.name = name
-    for (kind, path) in search_paths:
+    for kind, path in search_paths:
         search_path: GameSearchPath = game.search_paths.add()
         search_path.path = path
         search_path.kind = kind
@@ -391,6 +391,21 @@ class AddonPreferences(AddonPreferences):
         update=update_enable_file_browser_panel,
     )
 
+    def update_enable_benchmarking(self, context: Context):
+        from plumber.benchmark import BenchmarkVmf
+
+        if not self.enable_benchmarking:
+            bpy.utils.unregister_class(BenchmarkVmf)
+        else:
+            bpy.utils.register_class(BenchmarkVmf)
+
+    enable_benchmarking: BoolProperty(
+        name="Enable benchmarking operators",
+        description="Enable benchmarking operators printing import times to console",
+        default=False,
+        update=update_enable_benchmarking,
+    )
+
     @staticmethod
     def game_enum_items(
         self: EnumProperty, context: Context
@@ -409,6 +424,7 @@ class AddonPreferences(AddonPreferences):
     def draw(self, context: Context) -> None:
         layout: UILayout = self.layout
         layout.prop(self, "enable_file_browser_panel")
+        layout.prop(self, "enable_benchmarking")
         layout.prop(self, "threads")
 
         layout.separator()
