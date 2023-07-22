@@ -10,29 +10,30 @@ mod asset;
 mod filesystem;
 mod importer;
 
-use std::io::Write;
+use std::fmt;
 
-use asset::{entities::PyUnknownEntity, model::PyBoneRestData};
-use filesystem::{PyFileBrowser, PyFileBrowserEntry, PyFileSystem};
-
-use log::{error, info, Level, LevelFilter};
-use plumber_core::asset_core::current_thread;
 use pyo3::prelude::*;
+use tracing::{error, info, Event, Subscriber};
+use tracing_subscriber::{
+    fmt::{format, FmtContext, FormatEvent, FormatFields},
+    registry::LookupSpan,
+};
 
 use crate::{
     asset::{
         brush::{PyBuiltBrushEntity, PyBuiltSolid, PyMergedSolids},
-        entities::{PyEnvLight, PyLight, PyLoadedProp, PySkyCamera, PySpotLight},
+        entities::{PyEnvLight, PyLight, PyLoadedProp, PySkyCamera, PySpotLight, PyUnknownEntity},
         material::{
             BuiltMaterialData, BuiltNode, BuiltNodeSocketRef, Material, Texture, TextureRef,
         },
         model::{
-            PyBoneAnimationData, PyLoadedAnimation, PyLoadedBone, PyLoadedMesh, PyModel,
-            QuaternionData, VectorData,
+            PyBoneAnimationData, PyBoneRestData, PyLoadedAnimation, PyLoadedBone, PyLoadedMesh,
+            PyModel, QuaternionData, VectorData,
         },
         overlay::PyBuiltOverlay,
         sky::PySkyEqui,
     },
+    filesystem::{PyFileBrowser, PyFileBrowserEntry, PyFileSystem},
     importer::PyImporter,
 };
 
@@ -100,21 +101,32 @@ fn plumber(_py: Python, m: &PyModule) -> PyResult<()> {
     Ok(())
 }
 
+struct PlumberLogFormatter;
+
+impl<S, N> FormatEvent<S, N> for PlumberLogFormatter
+where
+    S: Subscriber + for<'a> LookupSpan<'a>,
+    N: for<'a> FormatFields<'a> + 'static,
+{
+    fn format_event(
+        &self,
+        ctx: &FmtContext<'_, S, N>,
+        mut writer: format::Writer<'_>,
+        event: &Event<'_>,
+    ) -> fmt::Result {
+        // Format values from the event's's metadata:
+        let metadata = event.metadata();
+        write!(&mut writer, "[Plumber] [{}] ", metadata.level())?;
+
+        // Write fields on the event
+        ctx.field_format().format_fields(writer.by_ref(), event)?;
+
+        writeln!(writer)
+    }
+}
+
 fn initialize_logger() {
-    let _ = env_logger::Builder::new()
-        .format(|buf, record| {
-            if record.level() == Level::Debug {
-                writeln!(
-                    buf,
-                    "[Plumber] [{}] (thread {}) {}",
-                    record.level(),
-                    current_thread(),
-                    record.args()
-                )
-            } else {
-                writeln!(buf, "[Plumber] [{}] {}", record.level(), record.args())
-            }
-        })
-        .filter_level(LevelFilter::Debug)
+    let _ = tracing_subscriber::fmt()
+        .event_format(PlumberLogFormatter)
         .try_init();
 }

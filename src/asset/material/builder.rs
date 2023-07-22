@@ -1,9 +1,9 @@
 use std::str::FromStr;
 
 use glam::{Vec2, Vec3};
-use log::warn;
 use pyo3::{exceptions::PyValueError, PyErr};
 use rgb::RGB;
+use tracing::warn;
 
 use plumber_core::{
     asset_core::Context,

@@ -4,8 +4,8 @@ use std::{
 };
 
 use glam::{Affine3A, EulerRot, Quat, Vec3};
-use log::warn;
 use pyo3::{prelude::*, types::PyList};
+use tracing::warn;
 
 use plumber_core::{
     asset_mdl::{LoadedAnimation, LoadedBone, LoadedMdl, LoadedMesh},

@@ -5,12 +5,12 @@ use std::{
 };
 
 use crossbeam_channel::Receiver;
-use log::{debug, error, info};
 use pyo3::{
     exceptions::{PyIOError, PyRuntimeError, PyTypeError},
     prelude::*,
     types::PyDict,
 };
+use tracing::{debug, error, info};
 
 use plumber_core::{
     asset_core::Executor,

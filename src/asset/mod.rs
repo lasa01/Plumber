@@ -6,7 +6,7 @@ pub mod overlay;
 pub mod sky;
 mod utils;
 use crossbeam_channel::Sender;
-use log::error;
+use tracing::error;
 
 use plumber_core::{
     asset_core::{Asset, Cached, Handler, NoError},

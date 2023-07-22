@@ -2,8 +2,8 @@ use std::{collections::BTreeMap, iter, mem, ptr};
 
 use float_ord::FloatOrd;
 use itertools::{Either, Itertools};
-use log::debug;
 use pyo3::prelude::*;
+use tracing::debug;
 
 use super::{
     definitions::NODE_MARGIN,
