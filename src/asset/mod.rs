@@ -5,8 +5,10 @@ pub mod model;
 pub mod overlay;
 pub mod sky;
 mod utils;
+use std::fmt::{self, Display, Formatter};
+
 use crossbeam_channel::Sender;
-use tracing::error;
+use tracing::{debug_span, error};
 
 use plumber_core::{
     asset_core::{Asset, Cached, Handler, NoError},
@@ -58,6 +60,56 @@ pub enum Message {
     UnknownEntity(PyUnknownEntity),
 }
 
+enum MessageId {
+    String(String),
+    Int(i32),
+}
+
+impl Display for MessageId {
+    fn fmt(&self, f: &mut Formatter<'_>) -> fmt::Result {
+        match self {
+            MessageId::String(s) => s.fmt(f),
+            MessageId::Int(i) => i.fmt(f),
+        }
+    }
+}
+
+impl Message {
+    pub fn kind(&self) -> &'static str {
+        match self {
+            Message::Material(_) => "material",
+            Message::Texture(_) => "texture",
+            Message::Model(_) => "model",
+            Message::Brush(_) => "brush",
+            Message::Overlay(_) => "overlay",
+            Message::Prop(_) => "prop",
+            Message::Light(_) => "light",
+            Message::SpotLight(_) => "spot light",
+            Message::EnvLight(_) => "env light",
+            Message::SkyCamera(_) => "sky camera",
+            Message::SkyEqui(_) => "sky equi",
+            Message::UnknownEntity(_) => "unknown entity",
+        }
+    }
+
+    pub fn id(&self) -> impl Display {
+        match self {
+            Message::Material(material) => MessageId::String(material.name.clone()),
+            Message::Texture(texture) => MessageId::String(texture.name.clone()),
+            Message::Model(model) => MessageId::String(model.name.clone()),
+            Message::Brush(brush) => MessageId::Int(brush.id),
+            Message::Overlay(overlay) => MessageId::Int(overlay.id),
+            Message::Prop(prop) => MessageId::Int(prop.id),
+            Message::Light(light) => MessageId::Int(light.id),
+            Message::SpotLight(light) => MessageId::Int(light.id),
+            Message::EnvLight(light) => MessageId::Int(light.id),
+            Message::SkyCamera(camera) => MessageId::Int(camera.id),
+            Message::SkyEqui(equi) => MessageId::String(equi.name.clone()),
+            Message::UnknownEntity(entity) => MessageId::Int(entity.id),
+        }
+    }
+}
+
 #[derive(Debug, Clone)]
 #[allow(clippy::struct_excessive_bools)]
 pub struct HandlerSettings {
@@ -96,6 +148,8 @@ pub struct BlenderAssetHandler {
 
 impl BlenderAssetHandler {
     fn send_asset(&self, asset: Message) {
+        let _span = debug_span!("send_asset").entered();
+
         self.sender
             .send(asset)
             .expect("asset channel should stay connected");

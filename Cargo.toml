@@ -23,13 +23,11 @@ image = { version = "0.24.6", default-features = false, features = [
     "openexr",
 ] }
 glam = "0.20.2"
-tracing = { version = "0.1.37", features = [
-    "max_level_debug",
-    "release_max_level_info",
-] }
+tracing = { version = "0.1.37", features = ["max_level_debug"] }
 rgb = "0.8.31"
 float-ord = "0.3.2"
 tracing-subscriber = "0.3.17"
+tracing-tracy = { version = "0.10.2", optional = true }
 
 [patch.crates-io]
 serde = { git = "https://github.com/lasa01/serde", branch = "case-insensitive-attr" }
@@ -44,4 +42,6 @@ debug = true
 strip = "none"
 
 [features]
-trace = []
+default = ["normal_logging"]
+normal_logging = ["tracing/release_max_level_info"]
+trace = ["tracing-tracy", "tracing/release_max_level_debug"]

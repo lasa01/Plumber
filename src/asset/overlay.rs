@@ -9,7 +9,7 @@ use pyo3::{prelude::*, types::PyList};
 
 #[pyclass(module = "plumber", name = "BuiltOverlay")]
 pub struct PyBuiltOverlay {
-    id: i32,
+    pub id: i32,
     position: [f32; 3],
     scale: [f32; 3],
     faces: Vec<BuiltOverlayFace>,

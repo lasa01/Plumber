@@ -10,7 +10,7 @@ use pyo3::{
     prelude::*,
     types::PyDict,
 };
-use tracing::{debug, error, info};
+use tracing::{debug, debug_span, error, info};
 
 use plumber_core::{
     asset_core::Executor,
@@ -146,7 +146,7 @@ impl PyImporter {
             settings: settings.material,
         };
 
-        let (sender, receiver) = crossbeam_channel::bounded(16);
+        let (sender, receiver) = crossbeam_channel::bounded(256);
         let handler = BlenderAssetHandler { sender, settings };
         let executor = Some(Executor::new_with_threads(
             handler,
@@ -334,6 +334,11 @@ impl PyImporter {
         let callback_ref = self.callback_obj.as_ref(py);
 
         for asset in self.receiver.iter() {
+            let kind = asset.kind();
+            let id = asset.id();
+
+            let _asset_span = debug_span!("asset", kind, %id).entered();
+
             let result = match asset {
                 Message::Material(material) => callback_ref.call_method1("material", (material,)),
                 Message::Texture(texture) => callback_ref.call_method1("texture", (texture,)),

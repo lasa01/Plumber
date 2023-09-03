@@ -221,7 +221,7 @@ impl PyBuiltSolid {
 
 #[pyclass(module = "plumber", name = "BuiltBrushEntity")]
 pub struct PyBuiltBrushEntity {
-    id: i32,
+    pub id: i32,
     class_name: String,
     merged_solids: Option<PyMergedSolids>,
     solids: Vec<PyBuiltSolid>,

@@ -15,7 +15,7 @@ use plumber_core::{
 
 #[pyclass(module = "plumber", name = "Model")]
 pub struct PyModel {
-    name: String,
+    pub name: String,
     meshes: Vec<PyLoadedMesh>,
     materials: Vec<Option<String>>,
     bones: Vec<PyLoadedBone>,

@@ -9,6 +9,12 @@
             "command": "${command:python.interpreterPath} setup.py build_rust --inplace ${input:buildTarget}",
             "group": "build"
         },
+        {
+            "label": "Extension module with tracing",
+            "type": "shell",
+            "command": "${command:python.interpreterPath} setup_trace.py build_rust --inplace",
+            "group": "build"
+        },
     ],
     "inputs": [
         {

@@ -18,7 +18,7 @@ use super::utils::srgb_to_linear;
 pub struct PyLoadedProp {
     model: String,
     class_name: String,
-    id: i32,
+    pub id: i32,
     position: [f32; 3],
     rotation: [f32; 3],
     scale: [f32; 3],
@@ -102,7 +102,7 @@ pub struct PyLight {
     color: [f32; 3],
     energy: f32,
     position: [f32; 3],
-    id: i32,
+    pub id: i32,
 }
 
 #[pymethods]
@@ -169,7 +169,7 @@ pub struct PySpotLight {
     spot_blend: f32,
     position: [f32; 3],
     rotation: [f32; 3],
-    id: i32,
+    pub id: i32,
 }
 
 #[pymethods]
@@ -249,7 +249,7 @@ pub struct PyEnvLight {
     angle: f32,
     position: [f32; 3],
     rotation: [f32; 3],
-    id: i32,
+    pub id: i32,
 }
 
 #[pymethods]
@@ -336,7 +336,7 @@ impl PyEnvLight {
 
 #[pyclass(module = "plumber", name = "SkyCamera")]
 pub struct PySkyCamera {
-    id: i32,
+    pub id: i32,
     position: [f32; 3],
     scale: [f32; 3],
 }
@@ -374,7 +374,7 @@ impl PySkyCamera {
 
 pub struct PyUnknownEntity {
     class_name: String,
-    id: i32,
+    pub id: i32,
     position: [f32; 3],
     rotation: [f32; 3],
     scale: [f32; 3],

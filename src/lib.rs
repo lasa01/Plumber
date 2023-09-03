@@ -16,6 +16,7 @@ use pyo3::prelude::*;
 use tracing::{error, info, Event, Subscriber};
 use tracing_subscriber::{
     fmt::{format, FmtContext, FormatEvent, FormatFields},
+    prelude::*,
     registry::LookupSpan,
 };
 
@@ -126,7 +127,20 @@ where
 }
 
 fn initialize_logger() {
-    let _ = tracing_subscriber::fmt()
-        .event_format(PlumberLogFormatter)
-        .try_init();
+    let layer = tracing_subscriber::fmt::layer().event_format(PlumberLogFormatter);
+
+    #[cfg(feature = "trace")]
+    {
+        let registry = tracing_subscriber::registry()
+            .with(tracing_tracy::TracyLayer::new())
+            .with(layer);
+
+        let _ = tracing::subscriber::set_global_default(registry);
+    }
+
+    #[cfg(feature = "normal_logging")]
+    {
+        let registry = tracing_subscriber::registry().with(layer);
+        let _ = tracing::subscriber::set_global_default(registry);
+    }
 }

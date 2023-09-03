@@ -28,7 +28,7 @@ mod nodes;
 
 #[pyclass(module = "plumber")]
 pub struct Texture {
-    name: String,
+    pub name: String,
     width: u32,
     height: u32,
     data: Vec<u8>,
@@ -75,7 +75,7 @@ impl Texture {
 
 #[pyclass(module = "plumber")]
 pub struct Material {
-    name: String,
+    pub name: String,
     data: Option<BuiltMaterialData>,
 }
 
