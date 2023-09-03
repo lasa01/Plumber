@@ -648,7 +648,7 @@ dependencies = [
 [[package]]
 name = "plumber_asset"
 version = "0.1.0"
-source = "git+https://github.com/lasa01/plumber_core#8e5586b77013906f62fa39f8c7190840d7b7a6e8"
+source = "git+https://github.com/lasa01/plumber_core#6198aa6e2b7e83fa57f9f02b5e2dfd78a5cfc7bc"
 dependencies = [
  "crossbeam-channel",
  "crossbeam-utils",
@@ -673,7 +673,7 @@ dependencies = [
 [[package]]
 name = "plumber_core"
 version = "0.1.0"
-source = "git+https://github.com/lasa01/plumber_core#8e5586b77013906f62fa39f8c7190840d7b7a6e8"
+source = "git+https://github.com/lasa01/plumber_core#6198aa6e2b7e83fa57f9f02b5e2dfd78a5cfc7bc"
 dependencies = [
  "plumber_asset",
  "plumber_fs",
@@ -689,7 +689,7 @@ dependencies = [
 [[package]]
 name = "plumber_fs"
 version = "0.1.0"
-source = "git+https://github.com/lasa01/plumber_core#8e5586b77013906f62fa39f8c7190840d7b7a6e8"
+source = "git+https://github.com/lasa01/plumber_core#6198aa6e2b7e83fa57f9f02b5e2dfd78a5cfc7bc"
 dependencies = [
  "log",
  "plumber_steam",
@@ -704,7 +704,7 @@ dependencies = [
 [[package]]
 name = "plumber_mdl"
 version = "0.1.0"
-source = "git+https://github.com/lasa01/plumber_core#8e5586b77013906f62fa39f8c7190840d7b7a6e8"
+source = "git+https://github.com/lasa01/plumber_core#6198aa6e2b7e83fa57f9f02b5e2dfd78a5cfc7bc"
 dependencies = [
  "approx",
  "bitflags",
@@ -722,7 +722,7 @@ dependencies = [
 [[package]]
 name = "plumber_steam"
 version = "0.1.0"
-source = "git+https://github.com/lasa01/plumber_core#8e5586b77013906f62fa39f8c7190840d7b7a6e8"
+source = "git+https://github.com/lasa01/plumber_core#6198aa6e2b7e83fa57f9f02b5e2dfd78a5cfc7bc"
 dependencies = [
  "home",
  "itertools",
@@ -738,7 +738,7 @@ dependencies = [
 [[package]]
 name = "plumber_uncased"
 version = "0.1.0"
-source = "git+https://github.com/lasa01/plumber_core#8e5586b77013906f62fa39f8c7190840d7b7a6e8"
+source = "git+https://github.com/lasa01/plumber_core#6198aa6e2b7e83fa57f9f02b5e2dfd78a5cfc7bc"
 dependencies = [
  "serde",
 ]
@@ -746,7 +746,7 @@ dependencies = [
 [[package]]
 name = "plumber_vdf"
 version = "0.1.0"
-source = "git+https://github.com/lasa01/plumber_core#8e5586b77013906f62fa39f8c7190840d7b7a6e8"
+source = "git+https://github.com/lasa01/plumber_core#6198aa6e2b7e83fa57f9f02b5e2dfd78a5cfc7bc"
 dependencies = [
  "bytecount",
  "nom",
@@ -757,7 +757,7 @@ dependencies = [
 [[package]]
 name = "plumber_vmf"
 version = "0.1.0"
-source = "git+https://github.com/lasa01/plumber_core#8e5586b77013906f62fa39f8c7190840d7b7a6e8"
+source = "git+https://github.com/lasa01/plumber_core#6198aa6e2b7e83fa57f9f02b5e2dfd78a5cfc7bc"
 dependencies = [
  "approx",
  "glam",
@@ -778,7 +778,7 @@ dependencies = [
 [[package]]
 name = "plumber_vmt"
 version = "0.1.0"
-source = "git+https://github.com/lasa01/plumber_core#8e5586b77013906f62fa39f8c7190840d7b7a6e8"
+source = "git+https://github.com/lasa01/plumber_core#6198aa6e2b7e83fa57f9f02b5e2dfd78a5cfc7bc"
 dependencies = [
  "glam",
  "log",
@@ -795,7 +795,7 @@ dependencies = [
 [[package]]
 name = "plumber_vpk"
 version = "0.1.0"
-source = "git+https://github.com/lasa01/plumber_core#8e5586b77013906f62fa39f8c7190840d7b7a6e8"
+source = "git+https://github.com/lasa01/plumber_core#6198aa6e2b7e83fa57f9f02b5e2dfd78a5cfc7bc"
 dependencies = [
  "byteorder",
  "crc",
