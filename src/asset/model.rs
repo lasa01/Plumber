@@ -4,18 +4,18 @@ use std::{
 };
 
 use glam::{Affine3A, EulerRot, Quat, Vec3};
-use log::warn;
 use pyo3::{prelude::*, types::PyList};
+use tracing::warn;
 
 use plumber_core::{
-    asset::mdl::{LoadedAnimation, LoadedBone, LoadedMesh, LoadedModel},
+    asset_mdl::{LoadedAnimation, LoadedBone, LoadedMdl, LoadedMesh},
     fs::GamePathBuf,
     mdl::{self, AnimationData, AnimationDescFlags, BoneAnimationData},
 };
 
 #[pyclass(module = "plumber", name = "Model")]
 pub struct PyModel {
-    name: String,
+    pub name: String,
     meshes: Vec<PyLoadedMesh>,
     materials: Vec<Option<String>>,
     bones: Vec<PyLoadedBone>,
@@ -51,7 +51,7 @@ impl PyModel {
 }
 
 impl PyModel {
-    pub fn new(m: LoadedModel, target_fps: f32, remove_animations: bool) -> Self {
+    pub fn new(m: LoadedMdl, target_fps: f32, remove_animations: bool) -> Self {
         let bones = if m.info.static_prop {
             Vec::new()
         } else {

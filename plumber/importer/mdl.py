@@ -53,6 +53,7 @@ class ImportMdl(
                 fs,
                 asset_callbacks,
                 self.get_threads_suggestion(context),
+                import_materials=self.import_materials,
                 target_fps=self.get_target_fps(context),
                 simple_materials=self.simple_materials,
                 allow_culling=self.allow_culling,
@@ -68,7 +69,6 @@ class ImportMdl(
             importer.import_mdl(
                 self.filepath,
                 self.from_game_fs,
-                import_materials=self.import_materials,
                 import_animations=self.import_animations,
             )
         except OSError as err:

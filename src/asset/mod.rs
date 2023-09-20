@@ -5,19 +5,26 @@ pub mod model;
 pub mod overlay;
 pub mod sky;
 mod utils;
-
-use std::panic::{catch_unwind, AssertUnwindSafe};
+use std::fmt::{self, Display, Formatter};
 
 use crossbeam_channel::Sender;
-use log::error;
+use tracing::{debug_span, error};
 
 use plumber_core::{
-    asset::{
-        self,
-        mdl::LoadedModel,
-        vmf::LoadedProp,
-        vmt::{LoadedMaterial, LoadedTexture, LoadedVmt, MaterialLoadError, SkyBox},
+    asset_core::{Asset, Cached, Handler, NoError},
+    asset_mdl::{LoadedMdl, MdlConfig, MdlError},
+    asset_vmf::{
+        brush::BrushConfig,
+        other_entity::OtherEntityConfig,
+        overlay::{OverlayConfig, OverlayError},
+        prop::{LoadedProp, PropConfig, PropError},
     },
+    asset_vmt::{
+        skybox::{SkyBox, SkyBoxConfig, SkyBoxError},
+        VmtError,
+    },
+    asset_vtf::{LoadedVtf, VtfConfig, VtfError},
+    fs::PathBuf,
     vmf::{
         builder::{BuiltBrushEntity, BuiltOverlay},
         entities::{BaseEntity, EntityParseError, TypedEntity},
@@ -31,7 +38,7 @@ use self::{
         LightSettings, PyEnvLight, PyLight, PyLoadedProp, PySkyCamera, PySpotLight, PyUnknownEntity,
     },
     material::{
-        build_material, BuiltMaterialData, Material, Settings as MaterialSettings, Texture,
+        BuiltMaterialData, Material, MaterialConfig, Settings as MaterialSettings, Texture,
     },
     model::PyModel,
     overlay::PyBuiltOverlay,
@@ -51,6 +58,56 @@ pub enum Message {
     SkyCamera(PySkyCamera),
     SkyEqui(PySkyEqui),
     UnknownEntity(PyUnknownEntity),
+}
+
+enum MessageId {
+    String(String),
+    Int(i32),
+}
+
+impl Display for MessageId {
+    fn fmt(&self, f: &mut Formatter<'_>) -> fmt::Result {
+        match self {
+            MessageId::String(s) => s.fmt(f),
+            MessageId::Int(i) => i.fmt(f),
+        }
+    }
+}
+
+impl Message {
+    pub fn kind(&self) -> &'static str {
+        match self {
+            Message::Material(_) => "material",
+            Message::Texture(_) => "texture",
+            Message::Model(_) => "model",
+            Message::Brush(_) => "brush",
+            Message::Overlay(_) => "overlay",
+            Message::Prop(_) => "prop",
+            Message::Light(_) => "light",
+            Message::SpotLight(_) => "spot light",
+            Message::EnvLight(_) => "env light",
+            Message::SkyCamera(_) => "sky camera",
+            Message::SkyEqui(_) => "sky equi",
+            Message::UnknownEntity(_) => "unknown entity",
+        }
+    }
+
+    pub fn id(&self) -> impl Display {
+        match self {
+            Message::Material(material) => MessageId::String(material.name.clone()),
+            Message::Texture(texture) => MessageId::String(texture.name.clone()),
+            Message::Model(model) => MessageId::String(model.name.clone()),
+            Message::Brush(brush) => MessageId::Int(brush.id),
+            Message::Overlay(overlay) => MessageId::Int(overlay.id),
+            Message::Prop(prop) => MessageId::Int(prop.id),
+            Message::Light(light) => MessageId::Int(light.id),
+            Message::SpotLight(light) => MessageId::Int(light.id),
+            Message::EnvLight(light) => MessageId::Int(light.id),
+            Message::SkyCamera(camera) => MessageId::Int(camera.id),
+            Message::SkyEqui(equi) => MessageId::String(equi.name.clone()),
+            Message::UnknownEntity(entity) => MessageId::Int(entity.id),
+        }
+    }
 }
 
 #[derive(Debug, Clone)]
@@ -91,75 +148,76 @@ pub struct BlenderAssetHandler {
 
 impl BlenderAssetHandler {
     fn send_asset(&self, asset: Message) {
+        let _span = debug_span!("send_asset").entered();
+
         self.sender
             .send(asset)
             .expect("asset channel should stay connected");
     }
 }
 
-impl asset::Handler for BlenderAssetHandler {
-    type MaterialData = BuiltMaterialData;
-
-    fn handle_error(&mut self, error: asset::Error) {
-        error!("{}", error);
-    }
-
-    fn build_material(
-        &mut self,
-        mut vmt: LoadedVmt,
-    ) -> Result<Self::MaterialData, MaterialLoadError> {
-        catch_unwind(AssertUnwindSafe(|| {
-            build_material(&mut vmt, &self.settings.material)
-        }))
-        .map_err(|e| {
-            if let Some(s) = e.downcast_ref::<&'static str>() {
-                MaterialLoadError::Custom(s)
-            } else {
-                MaterialLoadError::Custom("internal error loading material")
+impl Handler<Cached<MaterialConfig>> for BlenderAssetHandler {
+    fn handle(&self, output: Result<(PathBuf, Option<BuiltMaterialData>), VmtError>) {
+        match output {
+            Ok((name, material)) => {
+                if let Some(material) = material {
+                    self.send_asset(Message::Material(Material::new(&name, material)));
+                }
             }
-        })
+            Err(error) => error!("{error}"),
+        }
     }
+}
 
-    fn handle_material(&mut self, material: LoadedMaterial<Self::MaterialData>) {
-        self.send_asset(Message::Material(Material::new(material)));
+impl Handler<Cached<VtfConfig>> for BlenderAssetHandler {
+    fn handle(&self, output: Result<LoadedVtf, VtfError>) {
+        match output {
+            Ok(texture) => self.send_asset(Message::Texture(Texture::new(&texture))),
+            Err(error) => error!("{error}"),
+        }
     }
+}
 
-    fn handle_texture(&mut self, texture: LoadedTexture) {
-        self.send_asset(Message::Texture(Texture::new(texture)));
+impl Handler<Cached<MdlConfig<MaterialConfig>>> for BlenderAssetHandler {
+    fn handle(&self, output: Result<LoadedMdl, MdlError>) {
+        match output {
+            Ok(model) => self.send_asset(Message::Model(PyModel::new(
+                model,
+                self.settings.target_fps,
+                self.settings.remove_animations,
+            ))),
+            Err(error) => error!("{error}"),
+        }
     }
+}
 
-    fn handle_model(&mut self, model: LoadedModel) {
-        self.send_asset(Message::Model(PyModel::new(
-            model,
-            self.settings.target_fps,
-            self.settings.remove_animations,
-        )));
-    }
+impl Handler<Asset<OtherEntityConfig>> for BlenderAssetHandler {
+    fn handle(&self, output: Result<TypedEntity<'_>, NoError>) {
+        let entity = output.unwrap();
 
-    fn handle_entity(&mut self, entity: TypedEntity) {
         match entity {
             TypedEntity::Light(light) if self.settings.import_lights => {
                 match PyLight::new(light, &self.settings.light, self.settings.scale) {
                     Ok(light) => self.send_asset(Message::Light(light)),
-                    Err(error) => log_entity_error(light.entity(), error),
+                    Err(error) => log_entity_error(light.entity(), &error),
                 }
             }
             TypedEntity::SpotLight(spot_light) if self.settings.import_lights => {
                 match PySpotLight::new(spot_light, &self.settings.light, self.settings.scale) {
                     Ok(light) => self.send_asset(Message::SpotLight(light)),
-                    Err(error) => log_entity_error(spot_light.entity(), error),
+                    Err(error) => log_entity_error(spot_light.entity(), &error),
                 }
             }
             TypedEntity::EnvLight(env_light) if self.settings.import_lights => {
                 match PyEnvLight::new(env_light, &self.settings.light, self.settings.scale) {
                     Ok(light) => self.send_asset(Message::EnvLight(light)),
-                    Err(error) => log_entity_error(env_light.entity(), error),
+                    Err(error) => log_entity_error(env_light.entity(), &error),
                 }
             }
             TypedEntity::SkyCamera(sky_camera) if self.settings.import_sky_camera => {
                 match PySkyCamera::new(sky_camera, self.settings.scale) {
                     Ok(sky_camera) => self.send_asset(Message::SkyCamera(sky_camera)),
-                    Err(error) => log_entity_error(sky_camera.entity(), error),
+                    Err(error) => log_entity_error(sky_camera.entity(), &error),
                 }
             }
             TypedEntity::Unknown(entity) if self.settings.import_unknown_entities => {
@@ -171,37 +229,49 @@ impl asset::Handler for BlenderAssetHandler {
             _ => {}
         }
     }
+}
 
-    fn handle_brush(&mut self, brush: BuiltBrushEntity) {
+impl<'a> Handler<Asset<BrushConfig<'a, MaterialConfig>>> for BlenderAssetHandler {
+    fn handle(&self, output: Result<BuiltBrushEntity<'_>, NoError>) {
+        let brush = output.unwrap();
+
         self.send_asset(Message::Brush(PyBuiltBrushEntity::new(brush)));
-    }
-
-    fn handle_overlay(&mut self, overlay: BuiltOverlay) {
-        self.send_asset(Message::Overlay(PyBuiltOverlay::new(overlay)));
-    }
-
-    fn handle_prop(&mut self, prop: LoadedProp) {
-        self.send_asset(Message::Prop(PyLoadedProp::new(prop)));
-    }
-
-    fn handle_skybox(&mut self, skybox: SkyBox) {
-        self.send_asset(Message::SkyEqui(PySkyEqui::new(
-            skybox,
-            self.settings.sky_equi_height,
-        )));
     }
 }
 
-fn log_entity_error(entity: &Entity, error: EntityParseError) {
+impl<'a> Handler<Asset<OverlayConfig<'a, MaterialConfig>>> for BlenderAssetHandler {
+    fn handle(&self, output: Result<BuiltOverlay<'_>, OverlayError>) {
+        match output {
+            Ok(overlay) => self.send_asset(Message::Overlay(PyBuiltOverlay::new(overlay))),
+            Err(error) => error!("{error}"),
+        }
+    }
+}
+
+impl Handler<Asset<PropConfig<MaterialConfig>>> for BlenderAssetHandler {
+    fn handle(&self, output: Result<LoadedProp<'_>, PropError>) {
+        match output {
+            Ok(prop) => self.send_asset(Message::Prop(PyLoadedProp::new(prop))),
+            Err(error) => error!("{error}"),
+        }
+    }
+}
+
+impl Handler<Asset<SkyBoxConfig>> for BlenderAssetHandler {
+    fn handle(&self, output: Result<SkyBox, SkyBoxError>) {
+        match output {
+            Ok(skybox) => self.send_asset(Message::SkyEqui(PySkyEqui::new(
+                skybox,
+                self.settings.sky_equi_height,
+            ))),
+            Err(error) => error!("{error}"),
+        }
+    }
+}
+
+fn log_entity_error(entity: &Entity, error: &EntityParseError) {
     let id = entity.id;
     let class_name = entity.class_name.clone();
 
-    error!(
-        "{}",
-        asset::Error::Entity {
-            id,
-            class_name,
-            error,
-        }
-    );
+    error!("entity {class_name} `{id}`: {error}");
 }

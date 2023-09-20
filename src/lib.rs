@@ -1,4 +1,4 @@
-#![deny(clippy::all, clippy::pedantic, clippy::multiple_crate_versions)]
+#![warn(clippy::all, clippy::pedantic, clippy::multiple_crate_versions)]
 // these are triggered by pyo3
 #![allow(clippy::used_underscore_binding, clippy::borrow_deref_ref)]
 // this doesn't matter
@@ -10,28 +10,31 @@ mod asset;
 mod filesystem;
 mod importer;
 
-use std::io::Write;
+use std::fmt;
 
-use asset::{entities::PyUnknownEntity, model::PyBoneRestData};
-use filesystem::{PyFileBrowser, PyFileBrowserEntry, PyFileSystem};
-
-use log::{error, info, LevelFilter};
 use pyo3::prelude::*;
+use tracing::{error, info, Event, Subscriber};
+use tracing_subscriber::{
+    fmt::{format, FmtContext, FormatEvent, FormatFields},
+    prelude::*,
+    registry::LookupSpan,
+};
 
 use crate::{
     asset::{
         brush::{PyBuiltBrushEntity, PyBuiltSolid, PyMergedSolids},
-        entities::{PyEnvLight, PyLight, PyLoadedProp, PySkyCamera, PySpotLight},
+        entities::{PyEnvLight, PyLight, PyLoadedProp, PySkyCamera, PySpotLight, PyUnknownEntity},
         material::{
             BuiltMaterialData, BuiltNode, BuiltNodeSocketRef, Material, Texture, TextureRef,
         },
         model::{
-            PyBoneAnimationData, PyLoadedAnimation, PyLoadedBone, PyLoadedMesh, PyModel,
-            QuaternionData, VectorData,
+            PyBoneAnimationData, PyBoneRestData, PyLoadedAnimation, PyLoadedBone, PyLoadedMesh,
+            PyModel, QuaternionData, VectorData,
         },
         overlay::PyBuiltOverlay,
         sky::PySkyEqui,
     },
+    filesystem::{PyFileBrowser, PyFileBrowserEntry, PyFileSystem},
     importer::PyImporter,
 };
 
@@ -99,9 +102,45 @@ fn plumber(_py: Python, m: &PyModule) -> PyResult<()> {
     Ok(())
 }
 
+struct PlumberLogFormatter;
+
+impl<S, N> FormatEvent<S, N> for PlumberLogFormatter
+where
+    S: Subscriber + for<'a> LookupSpan<'a>,
+    N: for<'a> FormatFields<'a> + 'static,
+{
+    fn format_event(
+        &self,
+        ctx: &FmtContext<'_, S, N>,
+        mut writer: format::Writer<'_>,
+        event: &Event<'_>,
+    ) -> fmt::Result {
+        // Format values from the event's's metadata:
+        let metadata = event.metadata();
+        write!(&mut writer, "[Plumber] [{}] ", metadata.level())?;
+
+        // Write fields on the event
+        ctx.field_format().format_fields(writer.by_ref(), event)?;
+
+        writeln!(writer)
+    }
+}
+
 fn initialize_logger() {
-    let _ = env_logger::Builder::new()
-        .format(|buf, record| writeln!(buf, "[Plumber] [{}] {}", record.level(), record.args()))
-        .filter_level(LevelFilter::Debug)
-        .try_init();
+    let layer = tracing_subscriber::fmt::layer().event_format(PlumberLogFormatter);
+
+    #[cfg(feature = "trace")]
+    {
+        let registry = tracing_subscriber::registry()
+            .with(tracing_tracy::TracyLayer::new())
+            .with(layer);
+
+        let _ = tracing::subscriber::set_global_default(registry);
+    }
+
+    #[cfg(feature = "normal_logging")]
+    {
+        let registry = tracing_subscriber::registry().with(layer);
+        let _ = tracing::subscriber::set_global_default(registry);
+    }
 }

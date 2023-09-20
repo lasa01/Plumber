@@ -6,11 +6,11 @@ use std::{
     time::Instant,
 };
 
-use log::{error, info, warn};
 use pyo3::{
     exceptions::{PyIOError, PyTypeError, PyUnicodeDecodeError, PyValueError},
     prelude::*,
 };
+use tracing::{error, info, warn};
 
 use plumber_core::{
     fs::{

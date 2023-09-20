@@ -306,7 +306,7 @@ def detect_games(context: Context):
         search_paths = filesystem.search_paths()
         game: Game = preferences.games.add()
         game.name = name
-        for (kind, path) in search_paths:
+        for kind, path in search_paths:
             search_path: GameSearchPath = game.search_paths.add()
             search_path.path = path
             search_path.kind = kind
@@ -355,7 +355,7 @@ def detect_gameinfo(path: str, context: Context):
     search_paths = filesystem.search_paths()
     game: Game = preferences.games.add()
     game.name = name
-    for (kind, path) in search_paths:
+    for kind, path in search_paths:
         search_path: GameSearchPath = game.search_paths.add()
         search_path.path = path
         search_path.kind = kind
@@ -373,7 +373,7 @@ class AddonPreferences(AddonPreferences):
         min=0,
         max=64,
         soft_min=1,
-        soft_max=min(os.cpu_count() or 4, 4),
+        soft_max=os.cpu_count(),
     )
 
     def update_enable_file_browser_panel(self, context: Context):
@@ -389,6 +389,21 @@ class AddonPreferences(AddonPreferences):
         description="Enable the game file browser panel in 3D view sidebar",
         default=True,
         update=update_enable_file_browser_panel,
+    )
+
+    def update_enable_benchmarking(self, context: Context):
+        from plumber.benchmark import BenchmarkVmf
+
+        if not self.enable_benchmarking:
+            bpy.utils.unregister_class(BenchmarkVmf)
+        else:
+            bpy.utils.register_class(BenchmarkVmf)
+
+    enable_benchmarking: BoolProperty(
+        name="Enable benchmarking operators",
+        description="Enable benchmarking operators printing import times to console",
+        default=False,
+        update=update_enable_benchmarking,
     )
 
     @staticmethod
@@ -409,6 +424,7 @@ class AddonPreferences(AddonPreferences):
     def draw(self, context: Context) -> None:
         layout: UILayout = self.layout
         layout.prop(self, "enable_file_browser_panel")
+        layout.prop(self, "enable_benchmarking")
         layout.prop(self, "threads")
 
         layout.separator()
@@ -497,7 +513,7 @@ def register():
     ].preferences
 
     if preferences.threads == 0:
-        preferences.threads = min(max(2, os.cpu_count() or 0), 4)
+        preferences.threads = max(2, os.cpu_count() or 0)
 
     if not preferences.games:
         detect_games(bpy.context)

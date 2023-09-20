@@ -1,8 +1,8 @@
 use std::{cmp::Ordering, collections::BTreeMap, mem, ptr};
 
-use log::debug;
 use plumber_core::fs::GamePathBuf;
 use pyo3::prelude::*;
+use tracing::debug;
 
 use super::{builder_base::BuiltInput, definitions::NODE_MARGIN};
 

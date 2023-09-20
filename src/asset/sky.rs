@@ -5,11 +5,11 @@ use float_ord::FloatOrd;
 use image::{ImageBuffer, ImageOutputFormat, Pixel, Rgba32FImage, RgbaImage};
 use pyo3::prelude::*;
 
-use plumber_core::asset::vmt::{SkyBox, SkyBoxData};
+use plumber_core::asset_vmt::skybox::{SkyBox, SkyBoxData};
 
 #[pyclass(module = "plumber", name = "SkyEqui")]
 pub struct PySkyEqui {
-    name: String,
+    pub name: String,
     width: u32,
     height: u32,
     format: &'static str,
