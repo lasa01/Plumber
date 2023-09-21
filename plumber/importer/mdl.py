@@ -58,6 +58,7 @@ class ImportMdl(
                 simple_materials=self.simple_materials,
                 allow_culling=self.allow_culling,
                 editor_materials=self.editor_materials,
+                texture_format=self.texture_format,
                 texture_interpolation=self.texture_interpolation,
                 root_search=None if self.from_game_fs else (self.filepath, "models"),
             )

@@ -161,7 +161,11 @@ impl Handler<Cached<MaterialConfig>> for BlenderAssetHandler {
         match output {
             Ok((name, material)) => {
                 if let Some(material) = material {
-                    self.send_asset(Message::Material(Material::new(&name, material)));
+                    self.send_asset(Message::Material(Material::new(
+                        &name,
+                        material,
+                        self.settings.material.texture_format,
+                    )));
                 }
             }
             Err(error) => error!("{error}"),
@@ -172,7 +176,10 @@ impl Handler<Cached<MaterialConfig>> for BlenderAssetHandler {
 impl Handler<Cached<VtfConfig>> for BlenderAssetHandler {
     fn handle(&self, output: Result<LoadedVtf, VtfError>) {
         match output {
-            Ok(texture) => self.send_asset(Message::Texture(Texture::new(&texture))),
+            Ok(texture) => self.send_asset(Message::Texture(Texture::new(
+                &texture,
+                self.settings.material.texture_format,
+            ))),
             Err(error) => error!("{error}"),
         }
     }

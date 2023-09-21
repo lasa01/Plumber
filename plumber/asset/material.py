@@ -7,18 +7,25 @@ from .utils import truncate_name
 from ..plumber import Material, Texture, TextureRef
 
 
+FORMAT_MAP = {
+    ".tga": "TARGA_RAW",
+    ".png": "PNG",
+}
+
+
 def import_texture(texture: Texture) -> None:
-    texture_name = truncate_name(texture.name() + ".tga")
+    format_ext = texture.format_ext()
+    texture_name = truncate_name(texture.name() + format_ext)
 
     image_data = bpy.data.images.get(texture_name)
     if image_data is None:
         width = texture.width()
         height = texture.height()
         image_data = bpy.data.images.new(texture_name, width, height, alpha=True)
-        image_data.file_format = "TARGA_RAW"
+        image_data.file_format = FORMAT_MAP[format_ext]
         image_data.source = "FILE"
-        bytes_tga = texture.bytes_tga()
-        image_data.pack(data=bytes_tga, data_len=len(bytes_tga))
+        bytes = texture.bytes()
+        image_data.pack(data=bytes, data_len=len(bytes))
         image_data.alpha_mode = "CHANNEL_PACKED"
 
 
@@ -37,9 +44,10 @@ def import_material(material: Material) -> None:
     out_node.location = (300, 0)
 
     built_data = material.data()
+    texture_ext = material.texture_ext()
 
     for property, value in built_data.properties().items():
-        setattr(material_data, property, resolve_value(value))
+        setattr(material_data, property, resolve_value(value, texture_ext))
 
     built_nodes: List[ShaderNode] = []
 
@@ -48,10 +56,10 @@ def import_material(material: Material) -> None:
         built_node.location = node.position()
 
         for property, value in node.properties().items():
-            setattr(built_node, property, resolve_value(value))
+            setattr(built_node, property, resolve_value(value, texture_ext))
 
         for socket, value in node.socket_values().items():
-            built_node.inputs[socket].default_value = resolve_value(value)
+            built_node.inputs[socket].default_value = resolve_value(value, texture_ext)
 
         for socket, link in node.socket_links().items():
             target_node: ShaderNode = built_nodes[link.node_index()]
@@ -66,14 +74,14 @@ def import_material(material: Material) -> None:
     nt.links.new(shader_node.outputs["BSDF"], out_node.inputs["Surface"])
 
     for texture_name, color_space in built_data.texture_color_spaces().items():
-        image_name = truncate_name(texture_name + ".tga")
+        image_name = truncate_name(texture_name + texture_ext)
         image = bpy.data.images[image_name]
         image.colorspace_settings.name = color_space
 
 
-def resolve_value(value):
+def resolve_value(value, texture_ext: str):
     if isinstance(value, TextureRef):
-        texture_name = truncate_name(value.path() + ".tga")
+        texture_name = truncate_name(value.path() + texture_ext)
         return bpy.data.images.get(texture_name)
 
     return value

@@ -137,6 +137,16 @@ class MaterialImporterOperatorProps:
         default=False,
     )
 
+    texture_format: EnumProperty(
+        name="Texture format",
+        description="Format to use for imported image textures",
+        items=[
+            ("Tga", "TGA", "Truevision TGA"),
+            ("Png", "PNG", "Portable Network Graphigs"),
+        ],
+        default="Tga",
+    )
+
     texture_interpolation: EnumProperty(
         name="Texture interpolation",
         description="Interpolation type to use for image textures",
@@ -167,6 +177,7 @@ class MaterialImporterOperatorProps:
     ):
         layout.use_property_split = True
         layout.prop(operator, "simple_materials")
+        layout.prop(operator, "texture_format")
         layout.prop(operator, "texture_interpolation")
         layout.prop(operator, "allow_culling")
         layout.prop(operator, "editor_materials")

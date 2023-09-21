@@ -4,7 +4,6 @@ use std::{
     panic::{catch_unwind, AssertUnwindSafe},
 };
 
-use image::ImageOutputFormat;
 use pyo3::{exceptions::PyRuntimeError, prelude::*};
 
 use plumber_core::{
@@ -15,7 +14,7 @@ use plumber_core::{
     vmt::MaterialInfo,
 };
 
-pub use builder::{build_material, Settings, TextureInterpolation};
+pub use builder::{build_material, Settings, TextureFormat, TextureInterpolation};
 pub use builder_base::BuiltMaterialData;
 pub use nodes::{BuiltNode, BuiltNodeSocketRef, TextureRef};
 
@@ -32,6 +31,7 @@ pub struct Texture {
     width: u32,
     height: u32,
     data: Vec<u8>,
+    format: TextureFormat,
 }
 
 #[pymethods]
@@ -48,26 +48,31 @@ impl Texture {
         self.height
     }
 
-    fn bytes_tga(&self) -> &[u8] {
+    fn format_ext(&self) -> &'static str {
+        self.format.to_ext_str()
+    }
+
+    fn bytes(&self) -> &[u8] {
         &self.data
     }
 }
 
 impl Texture {
-    pub fn new(texture: &LoadedVtf) -> Self {
+    pub fn new(texture: &LoadedVtf, format: TextureFormat) -> Self {
         let width = texture.data.width();
         let height = texture.data.height();
 
         let mut data = Vec::new();
         texture
             .data
-            .write_to(&mut Cursor::new(&mut data), ImageOutputFormat::Tga)
+            .write_to(&mut Cursor::new(&mut data), format.to_output_format())
             .unwrap();
 
         Self {
             name: texture.name.to_string(),
             width,
             height,
+            format,
             data,
         }
     }
@@ -77,6 +82,7 @@ impl Texture {
 pub struct Material {
     pub name: String,
     data: Option<BuiltMaterialData>,
+    texture_format: TextureFormat,
 }
 
 #[pymethods]
@@ -90,13 +96,18 @@ impl Material {
             .take()
             .ok_or_else(|| PyRuntimeError::new_err("material data already consumed"))
     }
+
+    fn texture_ext(&self) -> &str {
+        self.texture_format.to_ext_str()
+    }
 }
 
 impl Material {
-    pub fn new(name: &PathBuf, data: BuiltMaterialData) -> Self {
+    pub fn new(name: &PathBuf, data: BuiltMaterialData, texture_format: TextureFormat) -> Self {
         Self {
             name: name.to_string(),
             data: Some(data),
+            texture_format,
         }
     }
 }

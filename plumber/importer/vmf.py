@@ -285,6 +285,7 @@ class ImportVmf(
                 allow_culling=self.allow_culling,
                 editor_materials=self.editor_materials,
                 texture_interpolation=self.texture_interpolation,
+                texture_format=self.texture_format,
                 # automatic map data path detection happens here
                 vmf_path=self.filepath if map_data_path is None else None,
                 map_data_path=map_data_path,

@@ -45,6 +45,7 @@ class ImportVmt(
                 allow_culling=self.allow_culling,
                 editor_materials=self.editor_materials,
                 texture_interpolation=self.texture_interpolation,
+                texture_format=self.texture_format,
                 root_search=None if self.from_game_fs else (self.filepath, "materials"),
             )
         except OSError as err:

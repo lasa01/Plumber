@@ -26,7 +26,7 @@ use plumber_core::{
 
 use crate::{
     asset::{
-        material::{MaterialConfig, TextureInterpolation},
+        material::{MaterialConfig, TextureFormat, TextureInterpolation},
         BlenderAssetHandler, HandlerSettings, Message,
     },
     filesystem::PyFileSystem,
@@ -88,6 +88,10 @@ impl PyImporter {
                     "simple_materials" => settings.material.simple_materials = value.extract()?,
                     "allow_culling" => settings.material.allow_culling = value.extract()?,
                     "editor_materials" => settings.material.editor_materials = value.extract()?,
+                    "texture_format" => {
+                        settings.material.texture_format =
+                            TextureFormat::from_str(value.extract()?)?;
+                    }
                     "texture_interpolation" => {
                         settings.material.texture_interpolation =
                             TextureInterpolation::from_str(value.extract()?)?;

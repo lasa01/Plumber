@@ -1,6 +1,7 @@
 use std::str::FromStr;
 
 use glam::{Vec2, Vec3};
+use image::ImageOutputFormat;
 use pyo3::{exceptions::PyValueError, PyErr};
 use rgb::RGB;
 use tracing::warn;
@@ -61,6 +62,46 @@ impl TextureInterpolation {
     }
 }
 
+#[derive(Debug, Clone, Copy)]
+pub enum TextureFormat {
+    Tga,
+    Png,
+}
+
+impl FromStr for TextureFormat {
+    type Err = PyErr;
+
+    fn from_str(s: &str) -> Result<Self, Self::Err> {
+        match s {
+            "Tga" => Ok(Self::Tga),
+            "Png" => Ok(Self::Png),
+            _ => Err(PyValueError::new_err("invalid texture format")),
+        }
+    }
+}
+
+impl Default for TextureFormat {
+    fn default() -> Self {
+        Self::Tga
+    }
+}
+
+impl TextureFormat {
+    pub fn to_ext_str(self) -> &'static str {
+        match self {
+            TextureFormat::Tga => ".tga",
+            TextureFormat::Png => ".png",
+        }
+    }
+
+    pub fn to_output_format(self) -> ImageOutputFormat {
+        match self {
+            TextureFormat::Tga => ImageOutputFormat::Tga,
+            TextureFormat::Png => ImageOutputFormat::Png,
+        }
+    }
+}
+
 #[allow(clippy::struct_excessive_bools)]
 #[derive(Debug, Clone, Copy, Default)]
 pub struct Settings {
@@ -69,6 +110,7 @@ pub struct Settings {
     pub allow_culling: bool,
     pub editor_materials: bool,
     pub texture_interpolation: TextureInterpolation,
+    pub texture_format: TextureFormat,
 }
 
 impl MaterialBuilder {
