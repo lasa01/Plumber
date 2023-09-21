@@ -332,12 +332,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "hermit-abi"
-version = "0.3.3"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "d77f7ec81a6d05a3abb01ab6eb7590f6083d08449fe5a1c8b1e620283546ccb7"
-
-[[package]]
 name = "home"
 version = "0.5.5"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -474,9 +468,9 @@ dependencies = [
 
 [[package]]
 name = "matrixmultiply"
-version = "0.3.7"
+version = "0.3.8"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "090126dc04f95dc0d1c1c91f61bdd474b3930ca064c1edc8a849da2c6cbe1e77"
+checksum = "7574c1cf36da4798ab73da5b215bbf444f50718207754cb522201d78d1cd0ff2"
 dependencies = [
  "autocfg",
  "rawpointer",
@@ -600,16 +594,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "num_cpus"
-version = "1.16.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "4161fcb6d602d4d2081af7c3a45852d875a03dd337a6bfdd6e06407b61342a43"
-dependencies = [
- "hermit-abi",
- "libc",
-]
-
-[[package]]
 name = "once_cell"
 version = "1.18.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -718,7 +702,7 @@ dependencies = [
 [[package]]
 name = "plumber_asset_core"
 version = "0.1.0"
-source = "git+https://github.com/lasa01/plumber_core#44a0c3371f448c7e3f3f9fc76dec78c3772ffe5e"
+source = "git+https://github.com/lasa01/plumber_core#89b2b5e64439eef9da7a07513a23ca5ea12f21d6"
 dependencies = [
  "crossbeam-utils",
  "plumber_fs",
@@ -729,7 +713,7 @@ dependencies = [
 [[package]]
 name = "plumber_asset_mdl"
 version = "0.1.0"
-source = "git+https://github.com/lasa01/plumber_core#44a0c3371f448c7e3f3f9fc76dec78c3772ffe5e"
+source = "git+https://github.com/lasa01/plumber_core#89b2b5e64439eef9da7a07513a23ca5ea12f21d6"
 dependencies = [
  "plumber_asset_core",
  "plumber_asset_vmt",
@@ -743,7 +727,7 @@ dependencies = [
 [[package]]
 name = "plumber_asset_vmf"
 version = "0.1.0"
-source = "git+https://github.com/lasa01/plumber_core#44a0c3371f448c7e3f3f9fc76dec78c3772ffe5e"
+source = "git+https://github.com/lasa01/plumber_core#89b2b5e64439eef9da7a07513a23ca5ea12f21d6"
 dependencies = [
  "glam",
  "plumber_asset_core",
@@ -761,7 +745,7 @@ dependencies = [
 [[package]]
 name = "plumber_asset_vmt"
 version = "0.1.0"
-source = "git+https://github.com/lasa01/plumber_core#44a0c3371f448c7e3f3f9fc76dec78c3772ffe5e"
+source = "git+https://github.com/lasa01/plumber_core#89b2b5e64439eef9da7a07513a23ca5ea12f21d6"
 dependencies = [
  "half",
  "image",
@@ -780,7 +764,7 @@ dependencies = [
 [[package]]
 name = "plumber_asset_vtf"
 version = "0.1.0"
-source = "git+https://github.com/lasa01/plumber_core#44a0c3371f448c7e3f3f9fc76dec78c3772ffe5e"
+source = "git+https://github.com/lasa01/plumber_core#89b2b5e64439eef9da7a07513a23ca5ea12f21d6"
 dependencies = [
  "image",
  "plumber_asset_core",
@@ -792,7 +776,7 @@ dependencies = [
 [[package]]
 name = "plumber_core"
 version = "0.1.0"
-source = "git+https://github.com/lasa01/plumber_core#44a0c3371f448c7e3f3f9fc76dec78c3772ffe5e"
+source = "git+https://github.com/lasa01/plumber_core#89b2b5e64439eef9da7a07513a23ca5ea12f21d6"
 dependencies = [
  "plumber_asset_core",
  "plumber_asset_mdl",
@@ -812,7 +796,7 @@ dependencies = [
 [[package]]
 name = "plumber_fs"
 version = "0.1.0"
-source = "git+https://github.com/lasa01/plumber_core#44a0c3371f448c7e3f3f9fc76dec78c3772ffe5e"
+source = "git+https://github.com/lasa01/plumber_core#89b2b5e64439eef9da7a07513a23ca5ea12f21d6"
 dependencies = [
  "plumber_steam",
  "plumber_uncased",
@@ -827,7 +811,7 @@ dependencies = [
 [[package]]
 name = "plumber_mdl"
 version = "0.1.0"
-source = "git+https://github.com/lasa01/plumber_core#44a0c3371f448c7e3f3f9fc76dec78c3772ffe5e"
+source = "git+https://github.com/lasa01/plumber_core#89b2b5e64439eef9da7a07513a23ca5ea12f21d6"
 dependencies = [
  "approx",
  "bitflags 2.4.0",
@@ -845,7 +829,7 @@ dependencies = [
 [[package]]
 name = "plumber_steam"
 version = "0.1.0"
-source = "git+https://github.com/lasa01/plumber_core#44a0c3371f448c7e3f3f9fc76dec78c3772ffe5e"
+source = "git+https://github.com/lasa01/plumber_core#89b2b5e64439eef9da7a07513a23ca5ea12f21d6"
 dependencies = [
  "home",
  "itertools",
@@ -861,7 +845,7 @@ dependencies = [
 [[package]]
 name = "plumber_uncased"
 version = "0.1.0"
-source = "git+https://github.com/lasa01/plumber_core#44a0c3371f448c7e3f3f9fc76dec78c3772ffe5e"
+source = "git+https://github.com/lasa01/plumber_core#89b2b5e64439eef9da7a07513a23ca5ea12f21d6"
 dependencies = [
  "serde",
 ]
@@ -869,7 +853,7 @@ dependencies = [
 [[package]]
 name = "plumber_vdf"
 version = "0.1.0"
-source = "git+https://github.com/lasa01/plumber_core#44a0c3371f448c7e3f3f9fc76dec78c3772ffe5e"
+source = "git+https://github.com/lasa01/plumber_core#89b2b5e64439eef9da7a07513a23ca5ea12f21d6"
 dependencies = [
  "bytecount",
  "nom",
@@ -880,7 +864,7 @@ dependencies = [
 [[package]]
 name = "plumber_vmf"
 version = "0.1.0"
-source = "git+https://github.com/lasa01/plumber_core#44a0c3371f448c7e3f3f9fc76dec78c3772ffe5e"
+source = "git+https://github.com/lasa01/plumber_core#89b2b5e64439eef9da7a07513a23ca5ea12f21d6"
 dependencies = [
  "approx",
  "glam",
@@ -901,7 +885,7 @@ dependencies = [
 [[package]]
 name = "plumber_vmt"
 version = "0.1.0"
-source = "git+https://github.com/lasa01/plumber_core#44a0c3371f448c7e3f3f9fc76dec78c3772ffe5e"
+source = "git+https://github.com/lasa01/plumber_core#89b2b5e64439eef9da7a07513a23ca5ea12f21d6"
 dependencies = [
  "glam",
  "nom",
@@ -918,7 +902,7 @@ dependencies = [
 [[package]]
 name = "plumber_vpk"
 version = "0.1.0"
-source = "git+https://github.com/lasa01/plumber_core#44a0c3371f448c7e3f3f9fc76dec78c3772ffe5e"
+source = "git+https://github.com/lasa01/plumber_core#89b2b5e64439eef9da7a07513a23ca5ea12f21d6"
 dependencies = [
  "byteorder",
  "crc",
@@ -1009,9 +993,9 @@ checksum = "60a357793950651c4ed0f3f52338f53b2f809f32d83a07f72909fa13e4c6c1e3"
 
 [[package]]
 name = "rayon"
-version = "1.7.0"
+version = "1.8.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "1d2df5196e37bcc87abebc0053e20787d73847bb33134a69841207dd0a47f03b"
+checksum = "9c27db03db7734835b3f53954b534c91069375ce6ccaa2e065441e07d9b6cdb1"
 dependencies = [
  "either",
  "rayon-core",
@@ -1019,14 +1003,12 @@ dependencies = [
 
 [[package]]
 name = "rayon-core"
-version = "1.11.0"
+version = "1.12.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "4b8f95bd6966f5c87776639160a66bd8ab9895d9d4ab01ddba9fc60661aebe8d"
+checksum = "5ce3fb6ad83f861aac485e76e1985cd109d9a3713802152be56c3b1f0e0658ed"
 dependencies = [
- "crossbeam-channel",
  "crossbeam-deque",
  "crossbeam-utils",
- "num_cpus",
 ]
 
 [[package]]
