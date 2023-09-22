@@ -32,16 +32,16 @@ Supported file types are `.vmf`, `.mdl`, `.vmt` and `.vtf`. For a more complete 
 
 ## Requirements
 - OS: Windows recommended. Linux and macOS supported. M1 Macs not supported.
-- Blender: 2.82 or newer.
+- Blender: 2.90 or newer (tested up to 3.6).
 
 ## Quick start
-- Make sure you are using Blender 2.82 or newer.
+- Make sure you are using Blender 2.90 or newer.
 - Install the latest release of this addon and enable it.
 - Open the Blender console to get progress updates and start importing from the `File -> Import -> Plumber` menu.
 
 ## Installation
 You can also check the [video tutorial](https://www.youtube.com/watch?v=tMQt8RHkDzA).
-- Make sure you are using Blender 2.82 or newer.
+- Make sure you are using Blender 2.90 or newer.
 - Download the latest addon release from the [releases](https://github.com/lasa01/io_import_vmf/releases) tab.
 Make sure you download a file starting with `plumber-v1.x.x`, not the source code.
 Also make sure that you downloaded the correct version for your operating system.
