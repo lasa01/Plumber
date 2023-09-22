@@ -210,6 +210,7 @@ def import_armature(
     armature: Object = bpy.data.objects.new(model_name, object_data=armature_data)
     collection.objects.link(armature)
 
+    old_active_object = bpy.context.view_layer.objects.active
     armature.select_set(True)
     bpy.context.view_layer.objects.active = armature
     bpy.ops.object.mode_set(mode="EDIT")
@@ -241,6 +242,9 @@ def import_armature(
         rot = Euler(rest_data.rotation())
         matrix = Matrix.Translation(pos) @ rot.to_matrix().to_4x4()
         bl_bone.matrix = bl_bone.parent.matrix @ matrix if bl_bone.parent else matrix
+
+    armature.select_set(False)
+    bpy.context.view_layer.objects.active = old_active_object
 
     return armature
 

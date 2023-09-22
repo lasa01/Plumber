@@ -14,7 +14,5 @@ def import_sky_camera(
     obj.scale = sky_camera.scale()
     collection.objects.link(obj)
 
-    for selected_obj in context.selected_objects:
-        selected_obj.select_set(False)
     obj.select_set(True)
     context.view_layer.objects.active = obj
