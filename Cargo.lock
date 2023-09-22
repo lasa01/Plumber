@@ -713,7 +713,7 @@ checksum = "26072860ba924cbfa98ea39c8c19b4dd6a4a25423dbdf219c1eca91aa0cf6964"
 
 [[package]]
 name = "plumber"
-version = "1.0.0-beta4"
+version = "1.0.0-rc1"
 dependencies = [
  "crossbeam-channel",
  "float-ord",
