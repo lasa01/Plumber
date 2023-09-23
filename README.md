@@ -1,12 +1,13 @@
 # io_import_vmf 0.6.9
 
 ## Legacy version
->This is the old version of the importer addon, before being renamed to Plumber.
+This is the old version of the importer addon, before being renamed to Plumber.
 **It is recommended to use Plumber over this one in most cases.**
 Plumber is generally better in most ways.
 This old version is still useful if you want to import AGR files with materials, which is not supported with Plumber.
 As this version is much more difficult to configure than Plumber, make sure to read this document in detail.
 
+## Description
 A Valve Map Format (.vmf) and Valve Material Type (.vmt) importer addon for Blender.
 
 This addon makes it possible to import full CS:GO, TF2, CS:S or other Source game maps into Blender.
@@ -46,7 +47,7 @@ The addon ships bundled with [Crowbar-Command-Line](https://github.com/UltraTech
 ## Quick start
 - Make sure you are using Blender 2.82 or newer.
 - Install [Blender Source Tools](https://steamreview.org/BlenderSourceTools/) and enable it.
-- Install the latest release of this addon and enable it.
+- Install the 0.6.9 release of this addon and enable it.
 - Open the addon's preferences.
 - (Optional) Specify a cache directory (used for caching processed game files).
 - Add a game definition using the "+" button.
@@ -59,7 +60,7 @@ The addon ships bundled with [Crowbar-Command-Line](https://github.com/UltraTech
 You can also check the [video tutorial](https://www.youtube.com/watch?v=tMQt8RHkDzA).
 - Make sure you are using Blender 2.82 or newer.
 - Download [Blender Source Tools](https://steamreview.org/BlenderSourceTools/).
-- Download the latest addon release from the [releases](https://github.com/lasa01/io_import_vmf/releases) tab.
+- Download the 0.6.9 addon release from [here](https://github.com/lasa01/io_import_vmf/releases/tag/v0.6.9).
 Make sure you download a file called `io_import_vmf.zip`, not the source code.
 - Do **not** extract the downloaded files.
 - Open Blender and install Blender Source Tools:
