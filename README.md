@@ -1,4 +1,11 @@
-# io_import_vmf
+# io_import_vmf 0.6.9
+
+## Legacy version
+>This is the old version of the importer addon, before being renamed to Plumber.
+**It is recommended to use Plumber over this one in most cases.**
+Plumber is generally better in most ways.
+This old version is still useful if you want to import AGR files with materials, which is not supported with Plumber.
+As this version is much more difficult to configure than Plumber, make sure to read this document in detail.
 
 A Valve Map Format (.vmf) and Valve Material Type (.vmt) importer addon for Blender.
 
