@@ -151,6 +151,7 @@ The default is 0.01, but 0.0254 can be used for more realistic scale.
 Options:
 - `Simple materials`: You should enable this if you plan on exporting outside Blender.
 This will disable advanced features such as blended materials.
+- `Texture format`: Selects the file format for imported textures. Can be changed to PNG to compress imported textures and use less memory.
 - `Texture interpolation`: Selects the interpolation type for textures, the default value is a good choice.
 - `Allow backface culling`: You can enable this if you know you need it.
 - `Import editor materials`: Imports the materials visible inside Hammer instead of invisible materials for tool materials etc.
@@ -176,8 +177,8 @@ If you can't find your problem there, you can ask on the [AGR TechSupport Discor
 When asking for help, always remember to open the Blender console from `Window -> Toggle System Console` before importing and to send the console logs afterwards with the help request by copy-pasting.
 
 ## Credits
-- Me for the addon, [backing library](https://github.com/lasa01/plumber_core) and [VTFLib wrapper](https://github.com/lasa01/vtflib-rs).
-- Nemesis for original [VTFLib](https://github.com/NeilJed/VTFLib) and panzi for a Linux-compatible port.
+- Me for the addon, [backing library](https://github.com/lasa01/plumber_core) and [VTFLib wrapper](https://github.com/lasa01/vtflib2-rs).
+- Nemesis for original [VTFLib](https://github.com/NeilJed/VTFLib) and panzi for a Linux-compatible port, and me for a version that is easier to run multi-threaded.
 
 MDL reading is based on:
 - ZeqMacaw's [Crowbar](https://steamcommunity.com/groups/CrowbarTool)
