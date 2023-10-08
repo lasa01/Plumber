@@ -144,7 +144,7 @@ class MaterialImporterOperatorProps:
             ("Tga", "TGA", "Truevision TGA"),
             ("Png", "PNG", "Portable Network Graphigs"),
         ],
-        default="Tga",
+        default="Png",
     )
 
     texture_interpolation: EnumProperty(

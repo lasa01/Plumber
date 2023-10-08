@@ -88,7 +88,7 @@ class ImportVmf(
                 "Create a separate mesh object for each solid (slower)",
             ),
         ],
-        default="MERGE",
+        default="SEPARATE",
     )
 
     invisible_solids: EnumProperty(
