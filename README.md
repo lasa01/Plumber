@@ -1,15 +1,16 @@
 # Plumber
 
-A Blender addon for importing Source engine maps, models, materials and textures.
+A Blender addon for importing Source 1 engine maps, models, materials and textures.
 
-This addon makes it possible to import full CS:GO, TF2, CS:S or other Source game maps into Blender.
+This addon makes it possible to import full CS:GO, TF2, CS:S or other Source 1 game maps into Blender.
+Source 2 games, such as CS2, are not supported.
 The imported maps have accurate materials and overlays and correctly placed props and lights.
 Skyboxes are converted into a Blender-compatible format
 and 3D skyboxes can be easily transformed into the correct position and scale with minimal user intervention.
 No manual game file extraction is required and installed Source games on Steam are detected automatically.
 You just need to select the correct game and start importing.
 
-Supported file types are `.vmf`, `.mdl`, `.vmt` and `.vtf`. For a more complete overview of supported features, see [Supported features for imported assets](https://github.com/lasa01/io_import_vmf/wiki/Supported-features-for-imported-assets).
+Supported file types are `.vmf`, `.mdl`, `.vmt` and `.vtf`. For a more complete overview of supported features, see [Supported features for imported assets](https://github.com/lasa01/Plumber/wiki/Supported-features-for-imported-assets).
 
 ![Import dialog](img/import_dialog.png)
 
@@ -20,6 +21,7 @@ Supported file types are `.vmf`, `.mdl`, `.vmt` and `.vtf`. For a more complete 
     - [Installing latest from source (very advanced users)](#installing-latest-from-source-very-advanced-users)
 - [Usage](#usage)
     - [Detecting new Steam games](#detecting-new-steam-games)
+    - [Importing from old CS:GO installation](#importing-from-old-csgo-installation)
     - [Common import options](#common-import-options)
     - [Maps](#maps)
     - [MDL](#mdl)
@@ -40,9 +42,11 @@ Supported file types are `.vmf`, `.mdl`, `.vmt` and `.vtf`. For a more complete 
 - Open the Blender console to get progress updates and start importing from the `File -> Import -> Plumber` menu.
 
 ## Installation
-You can also check the [video tutorial](https://www.youtube.com/watch?v=tMQt8RHkDzA).
+You can also follow a video tutorial, such as [this one](https://www.youtube.com/watch?v=jOJJzqOudw8) by ItsJustChris.
+This tutorial is recorded using a beta version, but also applies to the current version.
+
 - Make sure you are using Blender 2.90 or newer.
-- Download the latest addon release from the [releases](https://github.com/lasa01/io_import_vmf/releases) tab.
+- Download the latest addon release from the [releases](https://github.com/lasa01/Plumber/releases) tab.
 Make sure you download a file starting with `plumber-v1.x.x`, not the source code.
 Also make sure that you downloaded the correct version for your operating system.
 - Do **not** extract the downloaded files.
@@ -79,6 +83,14 @@ by pressing the `Redetect installed games` button.
 If you need to manually detect a game that is not installed in Steam,
 you can use the `Detect from gameinfo.txt` button in the preferences.
 
+### Importing from old CS:GO installation
+If you have the old CS:GO files somewhere, it is possible to manually configure
+a game to import old CS:GO assets.
+
+You need to open preferences, and use the `Detect from gameinfo.txt` button.
+This opens a file select dialog, where you need to choose the gameinfo.txt
+file, which is present in `csgo` directory inside the old CS:GO installation.
+
 ### Common import options
 - `Game`: Select the game you're importing assets from.
 
@@ -108,8 +120,10 @@ this will be automatically detected when importing decompiled maps.
     - `Overlays`: Imports overlays that are on top of solids, such as bomb site sprays.
     - `Epsilon`: You should not touch this.
     - `Cut threshold`: You should not touch this.
-    - `Merge solids`: By choosing `Separate`, the importer will create more objects in Blender.
-    This makes the import a lot slower and also affects post-import performance, but can make the map easier to edit afterwards.
+    - `Merge solids`: By choosing `Merge`, the importer will merge most of the map into
+    a single object. 
+    This can improve performance, but makes the map harder to edit and may cause issues
+    in 3D sky transformation.
     - `Invisible solids`: By default, invisible solids are not imported.
     If you want, you can import them by changing this.
 - `Lights`: Imports point lights and spotlights and the environment light (the sun).
@@ -151,13 +165,17 @@ The default is 0.01, but 0.0254 can be used for more realistic scale.
 Options:
 - `Simple materials`: You should enable this if you plan on exporting outside Blender.
 This will disable advanced features such as blended materials.
-- `Texture format`: Selects the file format for imported textures. Can be changed to PNG to compress imported textures and use less memory.
+- `Texture format`: Selects the file format for imported textures.
+Can be changed to TGA for better import performance, at the cost of higher memory usage.
 - `Texture interpolation`: Selects the interpolation type for textures, the default value is a good choice.
 - `Allow backface culling`: You can enable this if you know you need it.
 - `Import editor materials`: Imports the materials visible inside Hammer instead of invisible materials for tool materials etc.
 
 ### Textures
 `File -> Import -> Plumber -> Valve Texture Format (.vtf)`
+
+The texture is imported as an image in Blender, and is not immediately visible after import.
+It can be used in materials with a Image Texture node, for example.
 
 ### Game file browser
 
@@ -171,7 +189,7 @@ The browser only browser supported file types by default.
 This can be changed to display all files by opening the arrow on the lower left corner of the file list.
 
 ## Troubleshooting
-The [FAQ](https://github.com/lasa01/io_import_vmf/wiki/FAQ) has instructions for dealing with some common problems and errors.
+The [FAQ](https://github.com/lasa01/Plumber/wiki/FAQ-(Plumber)) has instructions for dealing with some common problems and errors.
 
 If you can't find your problem there, you can ask on the [AGR TechSupport Discord's](https://discord.gg/wd8Rcdj) #blender channel or open a new issue.
 When asking for help, always remember to open the Blender console from `Window -> Toggle System Console` before importing and to send the console logs afterwards with the help request by copy-pasting.
