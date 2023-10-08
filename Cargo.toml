@@ -1,6 +1,6 @@
 [package]
 name = "plumber"
-version = "1.0.0-rc2"
+version = "1.0.0"
 authors = ["Lassi Säike"]
 edition = "2021"
 

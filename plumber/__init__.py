@@ -8,7 +8,7 @@ bl_info = {
     "blender": (2, 82, 0),
     "location": "File > Import -> Plumber",
     "description": "Imports Source Engine assets.",
-    "warning": "rc2",
+    "warning": "",
     "tracker_url": "https://github.com/lasa01/plumber",
     "category": "Import-Export",
 }
