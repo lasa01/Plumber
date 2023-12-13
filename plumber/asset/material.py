@@ -12,6 +12,12 @@ FORMAT_MAP = {
     ".png": "PNG",
 }
 
+NODE_INPUT_SOCKET_MAP = {}
+
+if bpy.app.version >= (4, 0, 0):
+    NODE_INPUT_SOCKET_MAP["Specular"] = "Specular IOR Level"
+    NODE_INPUT_SOCKET_MAP["Emission"] = "Emission Color"
+
 
 def import_texture(texture: Texture) -> None:
     format_ext = texture.format_ext()
@@ -59,12 +65,14 @@ def import_material(material: Material) -> None:
             setattr(built_node, property, resolve_value(value, texture_ext))
 
         for socket, value in node.socket_values().items():
+            socket = resolve_input_socket(socket)
             built_node.inputs[socket].default_value = resolve_value(value, texture_ext)
 
         for socket, link in node.socket_links().items():
             target_node: ShaderNode = built_nodes[link.node_index()]
             target_socket = target_node.outputs[link.socket()]
 
+            socket = resolve_input_socket(socket)
             nt.links.new(built_node.inputs[socket], target_socket)
 
         built_nodes.append(built_node)
@@ -85,3 +93,7 @@ def resolve_value(value, texture_ext: str):
         return bpy.data.images.get(texture_name)
 
     return value
+
+
+def resolve_input_socket(socket: str):
+    return NODE_INPUT_SOCKET_MAP.get(socket, socket)
