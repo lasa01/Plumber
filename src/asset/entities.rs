@@ -1,4 +1,4 @@
-use std::f32::consts::FRAC_PI_2;
+use std::{collections::BTreeMap, f32::consts::FRAC_PI_2, mem};
 
 use glam::{EulerRot, Quat};
 use pyo3::prelude::*;
@@ -378,6 +378,7 @@ pub struct PyUnknownEntity {
     position: [f32; 3],
     rotation: [f32; 3],
     scale: [f32; 3],
+    properties: BTreeMap<String, String>,
 }
 
 #[pymethods]
@@ -401,6 +402,10 @@ impl PyUnknownEntity {
     fn scale(&self) -> [f32; 3] {
         self.scale
     }
+
+    fn properties(&mut self) -> BTreeMap<String, String> {
+        mem::take(&mut self.properties)
+    }
 }
 
 impl PyUnknownEntity {
@@ -410,6 +415,12 @@ impl PyUnknownEntity {
 
         let position = (entity.origin().unwrap_or_default() * scale).into();
         let rotation = entity.angles().unwrap_or_default();
+        let properties = entity
+            .entity()
+            .properties
+            .iter()
+            .map(|(k, v)| (k.as_str().to_owned(), v.clone()))
+            .collect();
 
         Self {
             class_name,
@@ -421,6 +432,7 @@ impl PyUnknownEntity {
                 rotation[1].to_radians(),
             ],
             scale: [scale, scale, scale],
+            properties,
         }
     }
 }
