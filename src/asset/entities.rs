@@ -1,4 +1,4 @@
-use std::f32::consts::FRAC_PI_2;
+use std::{collections::BTreeMap, f32::consts::FRAC_PI_2, mem};
 
 use glam::{EulerRot, Quat};
 use pyo3::prelude::*;
@@ -23,6 +23,7 @@ pub struct PyLoadedProp {
     rotation: [f32; 3],
     scale: [f32; 3],
     color: [f32; 4],
+    properties: BTreeMap<String, String>,
 }
 
 #[pymethods]
@@ -54,12 +55,22 @@ impl PyLoadedProp {
     fn color(&self) -> [f32; 4] {
         self.color
     }
+
+    fn properties(&mut self) -> BTreeMap<String, String> {
+        mem::take(&mut self.properties)
+    }
 }
 
 impl PyLoadedProp {
     pub fn new(prop: LoadedProp) -> Self {
         let rotation = prop.rotation;
-
+        let properties = prop
+            .prop.entity()
+            .properties
+            .iter()
+            .map(|(k, v)| (k.as_str().to_owned(), v.clone()))
+            .collect();
+        
         Self {
             model: prop.model_path.into_string(),
             class_name: prop.prop.entity().class_name.clone(),
@@ -76,6 +87,7 @@ impl PyLoadedProp {
                 .map_alpha(|a| f32::from(a) / 255.)
                 .map_rgb(|c| srgb_to_linear(f32::from(c) / 255.))
                 .into(),
+            properties,
         }
     }
 }
@@ -103,6 +115,7 @@ pub struct PyLight {
     energy: f32,
     position: [f32; 3],
     pub id: i32,
+    properties: BTreeMap<String, String>,
 }
 
 #[pymethods]
@@ -122,6 +135,10 @@ impl PyLight {
     fn energy(&self) -> f32 {
         self.energy
     }
+
+    fn properties(&mut self) -> BTreeMap<String, String> {
+        mem::take(&mut self.properties)
+    }
 }
 
 impl PyLight {
@@ -140,12 +157,19 @@ impl PyLight {
 
         let id = light.entity().id;
         let position = (light.origin()? * scale).into();
+        let properties = light
+            .entity()
+            .properties
+            .iter()
+            .map(|(k, v)| (k.as_str().to_owned(), v.clone()))
+            .collect();
 
         Ok(Self {
             color: color.map(|c| srgb_to_linear(f32::from(c) / 255.)).into(),
             energy: brightness * settings.light_factor,
             position,
             id,
+            properties,
         })
     }
 }
@@ -170,6 +194,8 @@ pub struct PySpotLight {
     position: [f32; 3],
     rotation: [f32; 3],
     pub id: i32,
+    properties: BTreeMap<String, String>,
+    
 }
 
 #[pymethods]
@@ -201,6 +227,10 @@ impl PySpotLight {
     fn spot_blend(&self) -> f32 {
         self.spot_blend
     }
+
+    fn properties(&mut self) -> BTreeMap<String, String> {
+        mem::take(&mut self.properties)
+    }
 }
 
 impl PySpotLight {
@@ -227,7 +257,12 @@ impl PySpotLight {
         let position = (light.origin()? * scale).into();
 
         let rotation = get_light_rotation(light.angles()?);
-
+        let properties = light
+            .entity()
+            .properties
+            .iter()
+            .map(|(k, v)| (k.as_str().to_owned(), v.clone()))
+            .collect();
         Ok(Self {
             color: color.map(|c| srgb_to_linear(f32::from(c) / 255.)).into(),
             energy: brightness * settings.light_factor,
@@ -236,6 +271,7 @@ impl PySpotLight {
             position,
             rotation,
             id,
+            properties,
         })
     }
 }
@@ -250,6 +286,7 @@ pub struct PyEnvLight {
     position: [f32; 3],
     rotation: [f32; 3],
     pub id: i32,
+    properties: BTreeMap<String, String>,
 }
 
 #[pymethods]
@@ -285,6 +322,9 @@ impl PyEnvLight {
     fn angle(&self) -> f32 {
         self.angle
     }
+    fn properties(&mut self) -> BTreeMap<String, String> {
+        mem::take(&mut self.properties)
+    }
 }
 
 impl PyEnvLight {
@@ -316,6 +356,13 @@ impl PyEnvLight {
 
         let rotation = get_light_rotation(light.angles()?);
 
+        let properties = light
+            .entity()
+            .properties
+            .iter()
+            .map(|(k, v)| (k.as_str().to_owned(), v.clone()))
+            .collect();
+
         Ok(Self {
             sun_color: sun_color
                 .map(|c| srgb_to_linear(f32::from(c) / 255.))
@@ -330,6 +377,7 @@ impl PyEnvLight {
             position,
             rotation,
             id,
+            properties,
         })
     }
 }
@@ -378,6 +426,7 @@ pub struct PyUnknownEntity {
     position: [f32; 3],
     rotation: [f32; 3],
     scale: [f32; 3],
+    properties: BTreeMap<String, String>,
 }
 
 #[pymethods]
@@ -401,6 +450,10 @@ impl PyUnknownEntity {
     fn scale(&self) -> [f32; 3] {
         self.scale
     }
+
+    fn properties(&mut self) -> BTreeMap<String, String> {
+        mem::take(&mut self.properties)
+    }
 }
 
 impl PyUnknownEntity {
@@ -410,6 +463,12 @@ impl PyUnknownEntity {
 
         let position = (entity.origin().unwrap_or_default() * scale).into();
         let rotation = entity.angles().unwrap_or_default();
+        let properties = entity
+            .entity()
+            .properties
+            .iter()
+            .map(|(k, v)| (k.as_str().to_owned(), v.clone()))
+            .collect();
 
         Self {
             class_name,
@@ -421,6 +480,7 @@ impl PyUnknownEntity {
                 rotation[1].to_radians(),
             ],
             scale: [scale, scale, scale],
+            properties,
         }
     }
 }
