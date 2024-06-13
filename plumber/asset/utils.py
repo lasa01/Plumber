@@ -13,17 +13,6 @@ def _hashed(s: str) -> str:
         :_B64_LEN
     ].decode("ascii")
 
-def three(a):
-    counter = 0
-    pos = -1
-    for i in a:
-        if a == "/":
-            counter += 1
-        pos += 1
-        if counter == 3:
-            return pos
-    return None
-
 def truncate_name(name: str, maxlen: int = 59) -> str:
     name = name.replace("\\", "/").strip("/")
     if len(name) <= maxlen:
