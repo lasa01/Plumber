@@ -64,10 +64,12 @@ class ModelTracker:
             if material is None:
                 material_data = get_unknown_material()
             else:
+                material_original_name = material
                 material = truncate_name(material)
                 material_data = bpy.data.materials.get(material)
                 if material_data is None:
                     material_data = bpy.data.materials.new(material)
+                material_data['path_id'] = material_original_name
             bl_materials.append(material_data)
 
         meshes = model.meshes()
@@ -158,6 +160,8 @@ def import_mesh(
     else:
         mesh_data.clear_geometry()
         mesh_data.materials.clear()
+
+    mesh_data['path_id'] = mesh_name
 
     polygons_len = mesh.polygons_len()
 
