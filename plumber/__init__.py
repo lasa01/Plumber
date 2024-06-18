@@ -22,7 +22,10 @@ if version_pre != "":
     version_str += f"-{version_pre}"
 
 # check if imported by setup.py or actually running in Blender
-from bpy.app import version as bpy_version
+try:
+    from bpy.app import version as bpy_version
+except ImportError:
+    bpy_version = None
 
 if bpy_version is not None:
     is_windows = platform.system() == "Windows"
