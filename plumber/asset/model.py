@@ -173,7 +173,9 @@ def import_mesh(
     mesh_data.polygons.foreach_set("use_smooth", [True] * polygons_len)
     mesh_data.update(calc_edges=True)
 
-    mesh_data.use_auto_smooth = True
+    if bpy.app.version < (4, 1, 0):
+        mesh_data.use_auto_smooth = True
+
     mesh_data.normals_split_custom_set_from_vertices(mesh.normals())
 
     uv_layer = mesh_data.uv_layers.new()
