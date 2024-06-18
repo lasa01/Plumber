@@ -66,7 +66,7 @@ jobs:
     needs: check-version
   
     steps:
-    - uses: actions/checkout@v4
+    - uses: actions/checkout@v3
     - name: Select Python version
       run: echo "/opt/python/cp310-cp310/bin" >> $GITHUB_PATH
     - uses: actions-rs/toolchain@v1
@@ -83,7 +83,7 @@ jobs:
       shell: bash
       run: for filename in dist/*.zip; do mv "${filename}" "${filename%.zip}-${{ runner.os }}.zip"; done;
     - name: Release
-      uses: softprops/action-gh-release@v2
+      uses: softprops/action-gh-release@v1
       with:
         draft: true
         fail_on_unmatched_files: true
