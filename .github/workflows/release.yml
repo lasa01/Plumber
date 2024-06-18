@@ -13,8 +13,8 @@ jobs:
     runs-on: ubuntu-latest
     
     steps:
-    - uses: actions/checkout@v2
-    - uses: actions/setup-python@v3
+    - uses: actions/checkout@v4
+    - uses: actions/setup-python@v5
       with:
         python-version: '3.10'
         cache: 'pip'
@@ -37,8 +37,8 @@ jobs:
     needs: check-version
 
     steps:
-    - uses: actions/checkout@v2
-    - uses: actions/setup-python@v3
+    - uses: actions/checkout@v4
+    - uses: actions/setup-python@v5
       with:
         python-version: '3.10'
         cache: 'pip'
@@ -53,7 +53,7 @@ jobs:
       shell: bash
       run: for filename in dist/*.zip; do mv "${filename}" "${filename%.zip}-${{ runner.os }}-${{ runner.arch }}.zip"; done;
     - name: Release
-      uses: softprops/action-gh-release@v1
+      uses: softprops/action-gh-release@v2
       with:
         draft: true
         fail_on_unmatched_files: true
@@ -66,7 +66,7 @@ jobs:
     needs: check-version
   
     steps:
-    - uses: actions/checkout@v2
+    - uses: actions/checkout@v4
     - name: Select Python version
       run: echo "/opt/python/cp310-cp310/bin" >> $GITHUB_PATH
     - uses: actions-rs/toolchain@v1
@@ -83,7 +83,7 @@ jobs:
       shell: bash
       run: for filename in dist/*.zip; do mv "${filename}" "${filename%.zip}-${{ runner.os }}.zip"; done;
     - name: Release
-      uses: softprops/action-gh-release@v1
+      uses: softprops/action-gh-release@v2
       with:
         draft: true
         fail_on_unmatched_files: true
