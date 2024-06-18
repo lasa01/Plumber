@@ -4,8 +4,8 @@ import os
 bl_info = {
     "name": "Plumber",
     "author": "Lassi Säike",
-    "version": (1, 0, 1),
-    "blender": (2, 82, 0),
+    "version": (1, 0, 2),
+    "blender": (2, 90, 0),
     "location": "File > Import -> Plumber",
     "description": "Imports Source Engine assets.",
     "warning": "",
