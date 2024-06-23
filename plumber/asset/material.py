@@ -41,8 +41,7 @@ def import_material(material: Material) -> None:
     material_data = bpy.data.materials.get(material_name)
     if material_data is None:
         material_data = bpy.data.materials.new(material_name)
-
-    material_data['path_id'] = material.name()
+        material_data["path_id"] = material.name()
 
     material_data.use_nodes = True
     nt = material_data.node_tree

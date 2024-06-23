@@ -2,7 +2,7 @@ from hashlib import md5
 from base64 import urlsafe_b64encode
 from posixpath import split, splitext
 from typing import Optional
-import bpy, os
+import bpy
 
 _HASH_LEN = 6
 _B64_LEN = 8
@@ -12,6 +12,7 @@ def _hashed(s: str) -> str:
     return urlsafe_b64encode(md5(s.encode("utf-8")).digest()[:_HASH_LEN])[
         :_B64_LEN
     ].decode("ascii")
+
 
 def truncate_name(name: str, maxlen: int = 59) -> str:
     name = name.replace("\\", "/").strip("/")

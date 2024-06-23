@@ -16,7 +16,7 @@ def import_light(light: Light, collection: Collection) -> None:
     collection.objects.link(obj)
 
     obj.location = light.position()
-    obj['props'] = light.properties()
+    obj["props"] = light.properties()
 
 
 def import_spot_light(light: SpotLight, collection: Collection) -> None:
@@ -34,7 +34,7 @@ def import_spot_light(light: SpotLight, collection: Collection) -> None:
 
     obj.location = light.position()
     obj.rotation_euler = light.rotation()
-    obj['props'] = light.properties()
+    obj["props"] = light.properties()
 
 
 def import_env_light(light: EnvLight, context: Context, collection: Collection) -> None:
@@ -48,7 +48,7 @@ def import_env_light(light: EnvLight, context: Context, collection: Collection) 
 
     obj = bpy.data.objects.new(name, object_data=light_data)
     collection.objects.link(obj)
-    obj['props'] = light.properties()
+    obj["props"] = light.properties()
 
     obj.location = light.position()
     obj.rotation_euler = light.rotation()

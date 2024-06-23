@@ -65,12 +65,13 @@ impl PyLoadedProp {
     pub fn new(prop: LoadedProp) -> Self {
         let rotation = prop.rotation;
         let properties = prop
-            .prop.entity()
+            .prop
+            .entity()
             .properties
             .iter()
             .map(|(k, v)| (k.as_str().to_owned(), v.clone()))
             .collect();
-        
+
         Self {
             model: prop.model_path.into_string(),
             class_name: prop.prop.entity().class_name.clone(),
@@ -195,7 +196,6 @@ pub struct PySpotLight {
     rotation: [f32; 3],
     pub id: i32,
     properties: BTreeMap<String, String>,
-    
 }
 
 #[pymethods]
@@ -263,6 +263,7 @@ impl PySpotLight {
             .iter()
             .map(|(k, v)| (k.as_str().to_owned(), v.clone()))
             .collect();
+
         Ok(Self {
             color: color.map(|c| srgb_to_linear(f32::from(c) / 255.)).into(),
             energy: brightness * settings.light_factor,
