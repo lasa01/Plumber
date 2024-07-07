@@ -16,6 +16,8 @@ def import_prop(
 ) -> None:
     model_name = prop.model()
     obj = model_tracker.get_model_copy(model_name, collection)
+    obj["path_id"] = model_name
+    obj["props"] = prop.properties()
 
     name = f"{prop.class_name()}_{prop.id()}"
 
