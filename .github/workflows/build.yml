@@ -7,8 +7,8 @@ on:
       - "Cargo.lock"
       - "Cargo.toml"
       - "setup.py"
-    tags-ignore:
-      - "v*.*.*"
+    branches:
+      - "**"
   pull_request:
     paths:
       - "*.rs"
