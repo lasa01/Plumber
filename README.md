@@ -148,6 +148,11 @@ Transforming the 3D sky
 - The 3D sky is usually clearly outside the main map area and in much smaller scale.
 - Ensure you have the 3D sky origin (sky_camera) selected as the active object, and press `Object -> Transform VMF 3D sky` to transform the objects into the correct position and scale.
 
+Imported metadata for external scripts / addons
+- Some extra metadata is imported as custom properties for Blender 3.0 and above.
+- This can be used by external scripts and addons to further process the imported data.
+- This includes full paths for props' models and materials as `path_id`, and Source engine-defined properties for entities as `props`.
+
 ### MDL
 `File -> Import -> Plumber -> Source Model (.mdl)`
 
