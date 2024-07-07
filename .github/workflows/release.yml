@@ -61,12 +61,12 @@ jobs:
 
   build-manylinux:
     runs-on: ubuntu-latest
-    container: quay.io/pypa/manylinux2014_x86_64
+    container: quay.io/pypa/manylinux_2_28_x86_64
     
     needs: check-version
   
     steps:
-    - uses: actions/checkout@v3
+    - uses: actions/checkout@v4
     - name: Select Python version
       run: echo "/opt/python/cp310-cp310/bin" >> $GITHUB_PATH
     - uses: actions-rs/toolchain@v1
@@ -83,7 +83,7 @@ jobs:
       shell: bash
       run: for filename in dist/*.zip; do mv "${filename}" "${filename%.zip}-${{ runner.os }}-${{ runner.arch }}.zip"; done;
     - name: Release
-      uses: softprops/action-gh-release@v1
+      uses: softprops/action-gh-release@v2
       with:
         draft: true
         fail_on_unmatched_files: true
