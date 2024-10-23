@@ -41,6 +41,7 @@ class ImportVmt(
                 fs,
                 AssetCallbacks(context),
                 self.get_threads_suggestion(context),
+                import_materials=True,
                 simple_materials=self.simple_materials,
                 allow_culling=self.allow_culling,
                 editor_materials=self.editor_materials,
