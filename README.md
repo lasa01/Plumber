@@ -34,7 +34,7 @@ Supported file types are `.vmf`, `.mdl`, `.vmt` and `.vtf`. For a more complete 
 
 ## Requirements
 - OS: Windows recommended. Linux and macOS supported.
-- Blender: 2.90 or newer (tested up to 4.1).
+- Blender: 2.90 or newer (tested up to 4.2).
 
 ## Quick start
 - Make sure you are using Blender 2.90 or newer.
