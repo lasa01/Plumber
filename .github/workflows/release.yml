@@ -31,6 +31,22 @@ jobs:
     strategy:
       matrix:
         os: [macos-13, macos-latest, windows-latest]
+        include:
+          - os: macos-13
+            blender-install: |
+              brew update
+              brew install --cask blender
+            filename-match: "dist/*-macos_x64.zip"
+          - os: macos-latest
+            blender-install: |
+              brew update
+              brew install --cask blender
+            filename-match: "dist/*-macos_arm64.zip"
+          - os: windows-latest
+            blender-install: |
+              choco install blender --version=4.2.2
+              echo "C:\Program Files\Blender Foundation\Blender 4.2\" | Out-File -FilePath $env:GITHUB_PATH -Encoding utf8 -Append
+            filename-match: "dist/*-windows_x64.zip"
       fail-fast: false
     runs-on: ${{ matrix.os }}
     
@@ -48,16 +64,19 @@ jobs:
         python -m pip install --upgrade pip
         pip install -r requirements-dev.txt
     - name: Build
-      run: python setup.py bdist_blender_addon
-    - name: Rename artifact
-      shell: bash
-      run: for filename in dist/*.zip; do mv "${filename}" "${filename%.zip}-${{ runner.os }}-${{ runner.arch }}.zip"; done;
+      run: python setup.py build_rust --inplace --release
+    - name: Install Blender
+      run: ${{ matrix.blender-install }}
+    - name: Package addon into Blender extension
+      run: |
+        mkdir -p dist
+        blender --command extension build --source-dir ./plumber --output-dir ./dist --split-platforms
     - name: Release
       uses: softprops/action-gh-release@v2
       with:
         draft: true
         fail_on_unmatched_files: true
-        files: dist/*.zip
+        files: ${{ matrix.filename-match }}
 
   build-manylinux:
     runs-on: ubuntu-latest
@@ -78,13 +97,20 @@ jobs:
         python -m pip install --upgrade pip
         pip install -r requirements-dev.txt
     - name: Build
-      run: python setup.py bdist_blender_addon
-    - name: Rename artifact
-      shell: bash
-      run: for filename in dist/*.zip; do mv "${filename}" "${filename%.zip}-${{ runner.os }}-${{ runner.arch }}.zip"; done;
+      run: python setup.py build_rust --inplace --release
+    - name: Install Blender
+      run: |
+        dnf install -y wget libXi
+        wget https://download.blender.org/release/Blender4.2/blender-4.2.3-linux-x64.tar.xz
+        tar -xf blender-4.2.3-linux-x64.tar.xz
+        echo "$PWD/blender-4.2.3-linux-x64" >> $GITHUB_PATH
+    - name: Package addon into Blender extension
+      run: |
+        mkdir -p dist
+        blender --command extension build --source-dir ./plumber --output-dir ./dist --split-platforms
     - name: Release
       uses: softprops/action-gh-release@v2
       with:
         draft: true
         fail_on_unmatched_files: true
-        files: dist/*.zip
+        files: "dist/*-linux_x64.zip"

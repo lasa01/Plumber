@@ -1,7 +1,11 @@
 from setuptools import setup, find_packages, sic
 from setuptools_rust import Binding, RustExtension
+import toml
 
-from plumber import version_str
+with open("plumber/blender_manifest.toml", "r") as f:
+    manifest = toml.load(f)
+
+version_str = manifest["version"]
 
 rust_extension = RustExtension(
     "plumber.plumber",

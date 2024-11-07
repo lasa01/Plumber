@@ -1,6 +1,6 @@
 [package]
 name = "plumber"
-version = "1.1.1"
+version = "1.1.1-extensiontest"
 authors = ["Lassi Säike"]
 edition = "2021"
 
