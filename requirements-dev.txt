@@ -1,5 +1,5 @@
 fake-bpy-module-2.82
 setuptools
 setuptools-rust
-blender.distutils
 black
+toml

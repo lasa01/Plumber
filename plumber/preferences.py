@@ -377,7 +377,7 @@ class AddonPreferences(AddonPreferences):
     )
 
     def update_enable_file_browser_panel(self, context: Context):
-        from plumber.tools import GameFileBrowserPanel
+        from .tools import GameFileBrowserPanel
 
         if not self.enable_file_browser_panel:
             bpy.utils.unregister_class(GameFileBrowserPanel)
@@ -392,7 +392,7 @@ class AddonPreferences(AddonPreferences):
     )
 
     def update_enable_benchmarking(self, context: Context):
-        from plumber.benchmark import BenchmarkVmf
+        from .benchmark import BenchmarkVmf
 
         if not self.enable_benchmarking:
             bpy.utils.unregister_class(BenchmarkVmf)

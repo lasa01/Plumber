@@ -1,0 +1,19 @@
+schema_version = "1.0.0"
+
+id = "plumber"
+version = "1.1.1"
+name = "Plumber"
+tagline = "Imports Source 1 engine maps, models, materials and textures"
+maintainer = "Lassi Säike <lassi.saike01@gmail.com>"
+type = "add-on"
+website = "https://github.com/lasa01/Plumber"
+tags = ["Import-Export"]
+blender_version_min = "4.2.0"
+license = ["SPDX:GPL-3.0-or-later"]
+platforms = ["windows-x64", "macos-x64", "macos-arm64", "linux-x64"]
+
+[permissions]
+files = "Import/extract assets from/to disk, detect installed games"
+
+[build]
+paths_exclude_pattern = ["__pycache__/", "/.git/", "/*.zip", "/*.pyi"]

@@ -12,7 +12,7 @@ from bpy.props import (
 )
 import bpy
 
-from plumber.importer import (
+from .importer import (
     DisableCommonPanel,
     GameFileImporterOperator,
     GameFileImporterOperatorProps,

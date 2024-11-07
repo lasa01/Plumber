@@ -1,7 +1,7 @@
 import bpy
 from bpy.types import Context, Menu
 
-from . import preferences, importer, tools, benchmark, version_str
+from . import preferences, importer, tools, benchmark
 from .importer import ImportMdl, ImportVmf, ImportVmt, ImportVtf
 from .tools import IMPORT_MT_plumber_browse
 
@@ -32,15 +32,6 @@ def menu_func_import(self: Menu, context: Context):
 
 
 def register():
-    from . import plumber
-
-    rust_version = plumber.version()
-    if rust_version != version_str:
-        raise Exception(
-            f"Native code version {rust_version} does not match Python code version {version_str}. "
-            + "Please restart Blender and reinstall the addon."
-        )
-
     preferences.register()
     importer.register()
     tools.register()

@@ -34,7 +34,7 @@ Supported file types are `.vmf`, `.mdl`, `.vmt` and `.vtf`. For a more complete 
 
 ## Requirements
 - OS: Windows recommended. Linux and macOS supported.
-- Blender: 2.90 or newer (tested up to 4.2).
+- Blender: 2.90 or newer (up to version 1.1.1), 4.2 or newer (version 1.1.2 onwards).
 
 ## Quick start
 - Make sure you are using Blender 2.90 or newer.
@@ -45,15 +45,29 @@ Supported file types are `.vmf`, `.mdl`, `.vmt` and `.vtf`. For a more complete 
 You can also follow a video tutorial, such as [this one](https://www.youtube.com/watch?v=jOJJzqOudw8) by ItsJustChris.
 This tutorial is recorded using a beta version, but also applies to the current version.
 
+### Blender 4.2 and above
+- Make sure you are using Blender 4.2 or newer.
+- Download the latest extension release from the [releases](https://github.com/lasa01/Plumber/releases) tab.
+Make sure you download a file starting with `plumber-1.x.x`, not the source code.
+- Do **not** extract the downloaded files.
+- Open Blender and install the extension by dragging and dropping the downloaded .zip file into the Blender window.
+
+<details>
+<summary>Blender 4.1 and below</summary>
+
 - Make sure you are using Blender 2.90 or newer.
-- Download the latest addon release from the [releases](https://github.com/lasa01/Plumber/releases) tab.
-Make sure you download a file starting with `plumber-v1.x.x`, not the source code.
+- Download the v1.1.1 addon release from the [releases](https://github.com/lasa01/Plumber/releases/tag/v1.1.1) tab.
+Make sure you download a file starting with `plumber-v1.1.1`, not the source code.
 Also make sure that you downloaded the correct version for your operating system.
 - Do **not** extract the downloaded files.
 - Open Blender and install the addon:
 ![Install addon](img/install_addon.gif)
 
-### Installing latest from source (very advanced users)
+</details>
+
+<details>
+<summary>Installing latest from source (very advanced users)</summary>
+
 Make sure the following dependencies for building the addon are installed.
 The links are for Windows, for other platforms you need to figure it out yourself.
 - [Python 3](https://www.python.org/downloads/) with "Add python to environment variables" selected in the installer
@@ -63,10 +77,15 @@ The links are for Windows, for other platforms you need to figure it out yoursel
 - [CMake](https://cmake.org/download/)
 
 After installing the dependencies, follow the following steps:
-- Download the repository as a .zip from the green "Code" button in the top right corner and extract it somewhere (or alternatively, clone it).
+- Download the repository as a .zip from the green "Code" button in the top right corner and extract it somewhere (or alternatively, clone it). Make sure you get the master branch, not the default release branch, if you want the latest changes.
 - Run `pip install -r requirements-dev.txt` on a terminal.
-- Run `python setup.py bdist_blender_addon`.
-- The built addon will be in the `dist` directory.
+- Run `python setup.py build_rust --inplace --release`.
+- Figure out where your Blender is installed, and take note of the path of blender executable.
+- Create the `dist` directory.
+- Run `{path/to/blender} --command extension build --source-dir plumber --output-dir dist`
+- The built extension will be in the `dist` directory.
+
+</details>
 
 ## Usage
 
