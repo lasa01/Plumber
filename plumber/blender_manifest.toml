@@ -1,7 +1,7 @@
 schema_version = "1.0.0"
 
 id = "plumber"
-version = "1.1.1"
+version = "1.1.2-rc1"
 name = "Plumber"
 tagline = "Imports Source 1 engine maps, models, materials and textures"
 maintainer = "Lassi Säike <lassi.saike01@gmail.com>"
