@@ -43,7 +43,8 @@ Supported file types are `.vmf`, `.mdl`, `.vmt` and `.vtf`. For a more complete 
 
 ## Installation
 You can also follow a video tutorial, such as [this one](https://www.youtube.com/watch?v=jOJJzqOudw8) by ItsJustChris.
-This tutorial is recorded using a beta version, but also applies to the current version.
+If you are using Blender 4.2 or above, you need to follow the text instructions below for installation.
+This tutorial is recorded using a beta version, but also applies to the latest version apart from the addon installation.
 
 ### Blender 4.2 and above
 - Make sure you are using Blender 4.2 or newer.

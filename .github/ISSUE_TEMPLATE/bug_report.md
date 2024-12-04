@@ -33,8 +33,8 @@ If applicable, add screenshots to help explain your problem.
 
 **Details (please complete the following information):**
  - OS: [e.g. Windows]
- - Blender Version: [e.g. 2.91]
- - Addon Version: [e.g. 0.6.0]
+ - Blender Version: [e.g. 4.3]
+ - Addon Version: [e.g. 1.1.2]
  - Did you download a release or build the addon yourself: [e.g. downloaded a release]
  - Related Game: [e.g. CS:GO]
 
