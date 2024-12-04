@@ -32,7 +32,7 @@ jobs:
     - uses: actions/checkout@v4
     - uses: actions/setup-python@v5
       with:
-        python-version: '3.10'
+        python-version: '3.12'
         cache: 'pip'
         cache-dependency-path: 'requirements-dev.txt'
     - name: Dependencies
@@ -49,7 +49,7 @@ jobs:
     steps:
     - uses: actions/checkout@v4
     - name: Select Python version
-      run: echo "/opt/python/cp310-cp310/bin" >> $GITHUB_PATH
+      run: echo "/opt/python/cp312-cp312/bin" >> $GITHUB_PATH
     - uses: actions-rs/toolchain@v1
       with:
         profile: minimal

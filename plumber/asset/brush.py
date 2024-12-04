@@ -33,9 +33,7 @@ def import_solid(collection: Collection, brush_name: str, solid: BuiltSolid) -> 
     mesh.polygons.foreach_set("vertices", solid.polygon_vertices())
     mesh.polygons.foreach_set("material_index", solid.polygon_material_indices())
 
-    # Blender 3.6 sets meshes to smooth by default, which looks bad
-    if bpy.app.version >= (3, 6, 0):
-        mesh.shade_flat()
+    mesh.shade_flat()
 
     mesh.update()
 
@@ -74,9 +72,7 @@ def import_merged_solids(
         "material_index", merged_solids.polygon_material_indices()
     )
 
-    # Blender 3.6 sets meshes to smooth by default, which looks bad
-    if bpy.app.version >= (3, 6, 0):
-        mesh.shade_flat()
+    mesh.shade_flat()
 
     mesh.update()
 

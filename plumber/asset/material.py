@@ -12,11 +12,10 @@ FORMAT_MAP = {
     ".png": "PNG",
 }
 
-NODE_INPUT_SOCKET_MAP = {}
-
-if bpy.app.version >= (4, 0, 0):
-    NODE_INPUT_SOCKET_MAP["Specular"] = "Specular IOR Level"
-    NODE_INPUT_SOCKET_MAP["Emission"] = "Emission Color"
+NODE_INPUT_SOCKET_MAP = {
+    "Specular": "Specular IOR Level",
+    "Emission": "Emission Color",
+}
 
 
 def import_texture(texture: Texture) -> None:
