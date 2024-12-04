@@ -1029,6 +1029,21 @@ pub mod groups {
         outputs: &[("val", NodeSocketRef::new("mix2", Position(0)))],
         ..NodeGroup::default()
     };
+
+    pub static CLIP_ALPHA: NodeGroup = NodeGroup {
+        nodes: &[Node {
+            kind: &nodes::MATH,
+            id: "clip",
+            properties: &[("operation", Value::Enum("GREATER_THAN"))],
+            ..Node::default()
+        }],
+        inputs: &[
+            ("value", NodeSocketRef::new("clip", Position(0))),
+            ("ref", NodeSocketRef::new("clip", Position(1))),
+        ],
+        outputs: &[("value", NodeSocketRef::new("clip", Position(0)))],
+        ..NodeGroup::default()
+    };
 }
 
 #[cfg(test)]
@@ -1079,6 +1094,7 @@ mod tests {
         &groups::MULTIBLEND_TEXTURE,
         &groups::MULTIBLEND_VALUE,
         &groups::BLEND_3_VALUES,
+        &groups::CLIP_ALPHA,
     ];
 
     #[test]

@@ -69,7 +69,7 @@ impl PyImporter {
         let mut settings = HandlerSettings::default();
 
         if let Some(kwargs) = kwargs {
-            for (key, value) in kwargs.iter() {
+            for (key, value) in kwargs {
                 if value.is_none() {
                     continue;
                 }
@@ -182,7 +182,7 @@ impl PyImporter {
         let mut settings = VmfConfig::new(self.material_config);
 
         if let Some(kwargs) = kwargs {
-            for (key, value) in kwargs.iter() {
+            for (key, value) in kwargs {
                 match key.extract()? {
                     "import_brushes" => {
                         import_brushes = value.extract()?;
@@ -337,7 +337,7 @@ impl PyImporter {
     fn process_assets(&self, py: Python) {
         let callback_ref = self.callback_obj.as_ref(py);
 
-        for asset in self.receiver.iter() {
+        for asset in &self.receiver {
             let kind = asset.kind();
             let id = asset.id();
 
@@ -373,7 +373,7 @@ impl PyImporter {
         let mut settings = MdlConfig::new(self.material_config);
 
         if let Some(kwargs) = kwargs {
-            for (key, value) in kwargs.iter() {
+            for (key, value) in kwargs {
                 match key.extract()? {
                     "import_animations" => settings.import_animations = value.extract()?,
                     _ => return Err(PyTypeError::new_err("unexpected kwarg")),

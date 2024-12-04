@@ -315,11 +315,7 @@ impl MaterialBuilder {
 }
 
 fn build_nodraw_material() -> BuiltMaterialData {
-    let mut builder = MaterialBuilder::new(&shaders::TRANSPARENT);
-
-    builder
-        .property("blend_method", Value::Enum("CLIP"))
-        .property("shadow_method", Value::Enum("CLIP"));
+    let builder = MaterialBuilder::new(&shaders::TRANSPARENT);
 
     builder.build()
 }
@@ -332,8 +328,6 @@ fn build_water_material(
     let mut builder = MaterialBuilder::new(&shaders::GLASS);
 
     builder
-        .property("blend_method", Value::Enum("BLEND"))
-        .property("shadow_method", Value::Enum("HASHED"))
         .socket_value("IOR", Value::Float(1.333))
         .socket_value("Roughness", Value::Float(0.3));
 
@@ -824,8 +818,7 @@ impl<'a, 'b, 'c, 'd> NormalMaterialBuilder<'a, 'b, 'c, 'd> {
         }
 
         self.builder
-            .property("blend_method", Value::Enum("BLEND"))
-            .property("shadow_method", Value::Enum("HASHED"));
+            .property("use_transparent_shadow", Value::Bool(true));
 
         if self.builder.has_input("$basetexture") {
             let output = self.builder.output("Alpha", "$basetexture", "alpha");
@@ -849,28 +842,43 @@ impl<'a, 'b, 'c, 'd> NormalMaterialBuilder<'a, 'b, 'c, 'd> {
         }
 
         self.builder
-            .property("blend_method", Value::Enum("CLIP"))
-            .property("shadow_method", Value::Enum("CLIP"));
+            .property("use_transparent_shadow", Value::Bool(true));
 
         let reference = self.vmt.extract_param("$alphatestreference").unwrap_or(0.7);
-        self.builder
-            .property("alpha_threshold", Value::Float(reference));
-
-        if self.vmt.extract_param_or_default("$allowalphatocoverage") {
-            self.builder.property("blend_method", Value::Enum("HASHED"));
-        }
 
         if self.builder.has_input("$basetexture") {
             let output = self.builder.output("Alpha", "$basetexture", "alpha");
+            let mut input_linked = false;
 
             if let Some(alpha) = self.vmt.extract_param("$alpha") {
                 output
                     .push(&groups::MULTIPLY_VALUE)
                     .link_input(&groups::MULTIPLY_VALUE, "value")
                     .link(&groups::MULTIPLY_VALUE, "fac", Value::Float(alpha));
+
+                input_linked = true;
             }
-        } else {
-            self.handle_alpha();
+
+            if !self
+                .vmt
+                .extract_param_or_default::<bool>("$allowalphatocoverage")
+            {
+                output.push(&groups::CLIP_ALPHA).link(
+                    &groups::CLIP_ALPHA,
+                    "ref",
+                    Value::Float(reference),
+                );
+
+                if !input_linked {
+                    output.link_input(&groups::CLIP_ALPHA, "value");
+                }
+            }
+        } else if let Some(alpha) = self.vmt.extract_param("$alpha") {
+            if reference >= alpha {
+                self.builder.socket_value("Alpha", Value::Float(0.0));
+            } else {
+                self.builder.socket_value("Alpha", Value::Float(1.0));
+            }
         }
 
         true
@@ -882,8 +890,7 @@ impl<'a, 'b, 'c, 'd> NormalMaterialBuilder<'a, 'b, 'c, 'd> {
         }
 
         self.builder
-            .property("blend_method", Value::Enum("BLEND"))
-            .property("shadow_method", Value::Enum("HASHED"));
+            .property("use_transparent_shadow", Value::Bool(true));
 
         let output = self.builder.output("Alpha", "vertex_color", "alpha");
 
@@ -993,8 +1000,7 @@ impl<'a, 'b, 'c, 'd> NormalMaterialBuilder<'a, 'b, 'c, 'd> {
 
     fn build_normal(&mut self) {
         self.builder
-            .property("blend_method", Value::Enum("OPAQUE"))
-            .property("shadow_method", Value::Enum("OPAQUE"))
+            .property("use_transparent_shadow", Value::Bool(false))
             .socket_value("Specular", Value::Float(0.1))
             .socket_value("Roughness", Value::Float(0.9));
 
@@ -1068,8 +1074,7 @@ impl<'a, 'b, 'c, 'd> NormalMaterialBuilder<'a, 'b, 'c, 'd> {
         }
 
         self.builder
-            .property("blend_method", Value::Enum("BLEND"))
-            .property("shadow_method", Value::Enum("HASHED"));
+            .property("use_transparent_shadow", Value::Bool(true));
 
         if self.builder.has_input("$basetexture") {
             self.builder.output("Alpha", "$basetexture", "alpha");
@@ -1086,16 +1091,7 @@ impl<'a, 'b, 'c, 'd> NormalMaterialBuilder<'a, 'b, 'c, 'd> {
         }
 
         self.builder
-            .property("blend_method", Value::Enum("CLIP"))
-            .property("shadow_method", Value::Enum("CLIP"));
-
-        let reference = self.vmt.extract_param("$alphatestreference").unwrap_or(0.7);
-        self.builder
-            .property("alpha_threshold", Value::Float(reference));
-
-        if self.vmt.extract_param_or_default("$allowalphatocoverage") {
-            self.builder.property("blend_method", Value::Enum("HASHED"));
-        }
+            .property("use_transparent_shadow", Value::Bool(true));
 
         if self.builder.has_input("$basetexture") {
             self.builder.output("Alpha", "$basetexture", "alpha");
@@ -1172,8 +1168,7 @@ impl<'a, 'b, 'c, 'd> NormalMaterialBuilder<'a, 'b, 'c, 'd> {
 
     fn build_simple(&mut self) {
         self.builder
-            .property("blend_method", Value::Enum("OPAQUE"))
-            .property("shadow_method", Value::Enum("OPAQUE"))
+            .property("use_transparent_shadow", Value::Bool(false))
             .socket_value("Specular", Value::Float(0.1))
             .socket_value("Roughness", Value::Float(0.9));
 
@@ -1496,8 +1491,7 @@ impl<'a, 'b, 'c, 'd> NormalMaterialBuilder<'a, 'b, 'c, 'd> {
 
     fn build_fwb(&mut self) {
         self.builder
-            .property("blend_method", Value::Enum("OPAQUE"))
-            .property("shadow_method", Value::Enum("OPAQUE"))
+            .property("use_transparent_shadow", Value::Bool(false))
             .socket_value("Specular", Value::Float(0.1))
             .socket_value("Roughness", Value::Float(0.9));
 
