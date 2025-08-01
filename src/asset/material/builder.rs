@@ -367,33 +367,61 @@ fn build_water_material(
     builder.build()
 }
 
-fn build_mod2x_material(
+fn build_modulate_material(
     context: &mut Context<BlenderAssetHandler>,
     vmt: &VmtHelper,
     settings: Settings,
 ) -> BuiltMaterialData {
-    let mut builder = MaterialBuilder::new(&shaders::TRANSPARENT);
+    let shader = vmt.shader().shader.as_uncased_str();
+    let is_mod2x = shader == "decalmodulate".as_uncased()
+        || (shader == "modulate".as_uncased() && vmt.extract_param_or_default::<bool>("$mod2x"));
 
-    // Handle the base texture with non-color space to preserve 50% gray
+    let mut builder = if is_mod2x {
+        // For mod2x materials, use transparent shader for proper blending
+        MaterialBuilder::new(&shaders::TRANSPARENT)
+    } else {
+        // For regular modulate, use principled shader with multiply blend
+        MaterialBuilder::new(&shaders::PRINCIPLED)
+    };
+
+    // Handle the base texture
+    let color_space = if is_mod2x {
+        // Use non-color space to preserve 50% gray values for mod2x
+        ColorSpace::NonColor
+    } else {
+        // Use sRGB for regular modulate
+        ColorSpace::Srgb
+    };
+
     if builder.handle_texture(
         context,
         vmt,
         "$basetexture",
         Some("$basetexturetransform"),
-        ColorSpace::NonColor,
+        color_space,
         settings.texture_interpolation,
     ) {
-        // Apply mod2x operation: multiply color by 2 to convert 50% gray to white
-        let output = builder.output("Color", "$basetexture", "color");
-        output
-            .push(&groups::DETAIL_TEXTURE)
-            .link_input(&groups::DETAIL_TEXTURE, "detail")
-            .link(
-                &groups::DETAIL_TEXTURE,
-                "color",
-                Value::Color([0.0, 0.0, 0.0, 1.0]),
-            )
-            .link(&groups::DETAIL_TEXTURE, "fac", Value::Float(1.0));
+        if is_mod2x {
+            // Apply mod2x operation: multiply color by 2 to convert 50% gray to white
+            let output = builder.output("Color", "$basetexture", "color");
+            output
+                .push(&groups::MOD2X)
+                .link_input(&groups::MOD2X, "color");
+        } else {
+            // For regular modulate, connect texture directly to base color
+            builder.output("Base Color", "$basetexture", "color");
+        }
+    }
+
+    // Handle alpha for transparency
+    if builder.has_input("$basetexture") {
+        let output = builder.output("Alpha", "$basetexture", "alpha");
+        if let Some(alpha) = vmt.extract_param("$alpha") {
+            output
+                .push(&groups::MULTIPLY_VALUE)
+                .link_input(&groups::MULTIPLY_VALUE, "value")
+                .link(&groups::MULTIPLY_VALUE, "fac", Value::Float(alpha));
+        }
     }
 
     builder.build()
@@ -1549,20 +1577,9 @@ impl NormalMaterialBuilder<'_, '_, '_, '_> {
     }
 }
 
-fn is_mod2x_shader(vmt: &VmtHelper) -> bool {
+fn is_modulate_shader(vmt: &VmtHelper) -> bool {
     let shader = vmt.shader().shader.as_uncased_str();
-
-    // DecalModulate shader always uses mod2x
-    if shader == "decalmodulate".as_uncased() {
-        return true;
-    }
-
-    // Modulate shader only uses mod2x when $mod2x parameter is present
-    if shader == "modulate".as_uncased() {
-        return vmt.extract_param_or_default::<bool>("$mod2x");
-    }
-
-    false
+    shader == "decalmodulate".as_uncased() || shader == "modulate".as_uncased()
 }
 
 pub fn build_material(
@@ -1579,8 +1596,8 @@ pub fn build_material(
         build_nodraw_material()
     } else if vmt.extract_param_or_default("%compilewater") {
         build_water_material(context, vmt, settings)
-    } else if is_mod2x_shader(vmt) {
-        build_mod2x_material(context, vmt, settings)
+    } else if is_modulate_shader(vmt) {
+        build_modulate_material(context, vmt, settings)
     } else {
         NormalMaterialBuilder::new(context, vmt, settings).build()
     })
