@@ -375,13 +375,17 @@ fn build_modulate_material(
 ) -> BuiltMaterialData {
     let mut builder = MaterialBuilder::new(&shaders::TRANSPARENT);
 
+    // For mod2x, use non-color space to preserve 50% gray as 50% gray
+    // For regular modulate, use sRGB color space
+    let color_space = if use_mod2x { ColorSpace::NonColor } else { ColorSpace::Srgb };
+
     // Handle base texture with appropriate processing
     if builder.handle_texture(
         context,
         vmt, 
         "$basetexture",
         Some("$basetexturetransform"),
-        ColorSpace::NonColor, // Use non-color to preserve 50% gray
+        color_space,
         settings.texture_interpolation,
     ) {
         if use_mod2x {
