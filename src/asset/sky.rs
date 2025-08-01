@@ -138,7 +138,7 @@ impl SkyboxFace {
             SkyboxFace::Back => (x, y, z),
         };
 
-        [(xc / ma.abs() + 1.0) / 2.0, (yc / ma.abs() + 1.0) / 2.0]
+        [f32::midpoint(xc / ma.abs(), 1.0), f32::midpoint(yc / ma.abs(), 1.0)]
     }
 }
 
