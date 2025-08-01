@@ -49,7 +49,6 @@
 ## Integration Points
 - **External:**
   - Steam game detection (auto/manual)
-  - Rust backend (`plumber_core` repo) checked out for reference in `/temp/plumber_core`
   - Blender API (via `bpy` module)
 - **Internal:**
   - Custom Blender properties for imported metadata (see README)

@@ -27,12 +27,6 @@ jobs:
     steps:
       - name: Checkout Plumber code
         uses: actions/checkout@v4
-    
-      - name: Checkout plumber_core code for reference
-        uses: actions/checkout@v4
-        with:
-          repository: lasa01/plumber_core
-          path: /temp/plumber_core
 
       - name: Set up Python
         uses: actions/setup-python@v5
