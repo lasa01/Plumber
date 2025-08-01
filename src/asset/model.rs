@@ -77,7 +77,7 @@ impl PyModel {
                 .collect();
 
             rest_positions = BTreeMap::new();
-        };
+        }
 
         let mut meshes: Vec<_> = m.meshes.into_iter().map(PyLoadedMesh::new).collect();
 
@@ -268,6 +268,7 @@ impl PyLoadedMesh {
     }
 }
 
+#[allow(clippy::struct_field_names)]
 #[derive(Default)]
 #[pyclass(module = "plumber", name = "QuaternionData")]
 pub struct QuaternionData {
@@ -332,6 +333,7 @@ impl QuaternionData {
     }
 }
 
+#[allow(clippy::struct_field_names)]
 #[derive(Default)]
 #[pyclass(module = "plumber", name = "VectorData")]
 pub struct VectorData {

@@ -188,9 +188,11 @@ class DirEntryList(UIList):
 
         if len(filter_funcs) != 0:
             flt_flags = [
-                self.bitflag_filter_item
-                if all(filter_func(entry) for filter_func in filter_funcs)
-                else 0
+                (
+                    self.bitflag_filter_item
+                    if all(filter_func(entry) for filter_func in filter_funcs)
+                    else 0
+                )
                 for entry in entries
             ]
 

@@ -274,9 +274,9 @@ class ImportVmf(
                 sun_factor=self.sun_factor,
                 ambient_factor=self.ambient_factor,
                 import_sky_camera=self.import_sky_camera,
-                sky_equi_height=self.sky_equi_height
-                if self.sky_equi_height != 0
-                else None,
+                sky_equi_height=(
+                    self.sky_equi_height if self.sky_equi_height != 0 else None
+                ),
                 import_unknown_entities=self.import_unknown_entities,
                 scale=self.scale,
                 target_fps=self.get_target_fps(context),

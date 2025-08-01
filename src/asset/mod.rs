@@ -238,7 +238,7 @@ impl Handler<Asset<OtherEntityConfig>> for BlenderAssetHandler {
     }
 }
 
-impl<'a> Handler<Asset<BrushConfig<'a, MaterialConfig>>> for BlenderAssetHandler {
+impl Handler<Asset<BrushConfig<'_, MaterialConfig>>> for BlenderAssetHandler {
     fn handle(&self, output: Result<BuiltBrushEntity<'_>, NoError>) {
         let brush = output.unwrap();
 
@@ -246,7 +246,7 @@ impl<'a> Handler<Asset<BrushConfig<'a, MaterialConfig>>> for BlenderAssetHandler
     }
 }
 
-impl<'a> Handler<Asset<OverlayConfig<'a, MaterialConfig>>> for BlenderAssetHandler {
+impl Handler<Asset<OverlayConfig<'_, MaterialConfig>>> for BlenderAssetHandler {
     fn handle(&self, output: Result<BuiltOverlay<'_>, OverlayError>) {
         match output {
             Ok(overlay) => self.send_asset(Message::Overlay(PyBuiltOverlay::new(overlay))),

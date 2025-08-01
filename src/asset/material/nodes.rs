@@ -39,6 +39,7 @@ pub struct NodeType {
     pub size: [f32; 2],
     pub input_sockets: &'static [NodeSocketId],
     pub output_sockets: &'static [NodeSocketId],
+    #[allow(dead_code)]
     pub properties: &'static [&'static str],
 }
 
@@ -501,7 +502,7 @@ impl PartialOrd for NodeGroupRef {
 
 impl Ord for NodeGroupRef {
     fn cmp(&self, other: &Self) -> Ordering {
-        match (self.target as *const NodeGroup).cmp(&(other.target as *const _)) {
+        match ptr::from_ref::<NodeGroup>(self.target).cmp(&ptr::from_ref(other.target)) {
             Ordering::Equal => {}
             ord => return ord,
         }

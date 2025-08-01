@@ -444,9 +444,9 @@ class AddonPreferences(AddonPreferences):
         col = row.column()
         col.operator(AddGameOperator.bl_idname, text="", icon="ADD")
         col.operator(RemoveGameOperator.bl_idname, text="", icon="REMOVE")
-        col.operator(
-            MoveGameOperator.bl_idname, text="", icon="TRIA_UP"
-        ).direction = "UP"
+        col.operator(MoveGameOperator.bl_idname, text="", icon="TRIA_UP").direction = (
+            "UP"
+        )
         col.operator(
             MoveGameOperator.bl_idname, text="", icon="TRIA_DOWN"
         ).direction = "DOWN"

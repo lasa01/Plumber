@@ -571,7 +571,7 @@ impl<'a, 'b, 'c, 'd> NormalMaterialBuilder<'a, 'b, 'c, 'd> {
 }
 
 // Normal material building
-impl<'a, 'b, 'c, 'd> NormalMaterialBuilder<'a, 'b, 'c, 'd> {
+impl NormalMaterialBuilder<'_, '_, '_, '_> {
     fn handle_blendmodulatetexture(&mut self) -> Ref {
         let vertex_blend_input = Ref::new("vertex_color", "color");
 
@@ -1037,7 +1037,7 @@ impl<'a, 'b, 'c, 'd> NormalMaterialBuilder<'a, 'b, 'c, 'd> {
 }
 
 // Simple material building
-impl<'a, 'b, 'c, 'd> NormalMaterialBuilder<'a, 'b, 'c, 'd> {
+impl NormalMaterialBuilder<'_, '_, '_, '_> {
     fn handle_basetexture_simple(&mut self) -> bool {
         if !self.handle_texture(
             "$basetexture",
@@ -1195,7 +1195,7 @@ impl<'a, 'b, 'c, 'd> NormalMaterialBuilder<'a, 'b, 'c, 'd> {
 }
 
 // 4WayBlend material building
-impl<'a, 'b, 'c, 'd> NormalMaterialBuilder<'a, 'b, 'c, 'd> {
+impl NormalMaterialBuilder<'_, '_, '_, '_> {
     fn handle_texture_4wayblend(
         &mut self,
         parameter: &'static str,

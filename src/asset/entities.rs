@@ -93,6 +93,7 @@ impl PyLoadedProp {
     }
 }
 
+#[allow(clippy::struct_field_names)]
 #[derive(Debug, Clone)]
 pub struct LightSettings {
     pub light_factor: f32,
