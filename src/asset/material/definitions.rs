@@ -1044,6 +1044,22 @@ pub mod groups {
         outputs: &[("value", NodeSocketRef::new("clip", Position(0)))],
         ..NodeGroup::default()
     };
+
+    pub static MOD2X_TEXTURE: NodeGroup = NodeGroup {
+        nodes: &[Node {
+            kind: &nodes::MIX_RGB,
+            id: "mod2x",
+            properties: &[("blend_type", Value::Enum("MULTIPLY"))],
+            values: &[
+                (Name("Color2"), Value::Color([2.0, 2.0, 2.0, 1.0])),
+                (Name("Fac"), Value::Float(1.0)),
+            ],
+            ..Node::default()
+        }],
+        inputs: &[("color", NodeSocketRef::new("mod2x", Name("Color1")))],
+        outputs: &[("color", NodeSocketRef::new("mod2x", Name("Color")))],
+        ..NodeGroup::default()
+    };
 }
 
 #[cfg(test)]
@@ -1095,6 +1111,7 @@ mod tests {
         &groups::MULTIBLEND_VALUE,
         &groups::BLEND_3_VALUES,
         &groups::CLIP_ALPHA,
+        &groups::MOD2X_TEXTURE,
     ];
 
     #[test]
