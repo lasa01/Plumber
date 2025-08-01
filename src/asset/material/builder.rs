@@ -376,22 +376,11 @@ fn build_modulate_material(
     let is_mod2x = shader == "decalmodulate".as_uncased()
         || (shader == "modulate".as_uncased() && vmt.extract_param_or_default::<bool>("$mod2x"));
 
-    let mut builder = if is_mod2x {
-        // For mod2x materials, use transparent shader for proper blending
-        MaterialBuilder::new(&shaders::TRANSPARENT)
-    } else {
-        // For regular modulate, use principled shader with multiply blend
-        MaterialBuilder::new(&shaders::PRINCIPLED)
-    };
+    // Both regular modulate and mod2x use transparent shader for multiply blending
+    let mut builder = MaterialBuilder::new(&shaders::TRANSPARENT);
 
-    // Handle the base texture
-    let color_space = if is_mod2x {
-        // Use non-color space to preserve 50% gray values for mod2x
-        ColorSpace::NonColor
-    } else {
-        // Use sRGB for regular modulate
-        ColorSpace::Srgb
-    };
+    // Both regular modulate and mod2x use non-color space to preserve raw texture values
+    let color_space = ColorSpace::NonColor;
 
     if builder.handle_texture(
         context,
@@ -408,19 +397,8 @@ fn build_modulate_material(
                 .push(&groups::MOD2X)
                 .link_input(&groups::MOD2X, "color");
         } else {
-            // For regular modulate, connect texture directly to base color
-            builder.output("Base Color", "$basetexture", "color");
-        }
-    }
-
-    // Handle alpha for transparency
-    if builder.has_input("$basetexture") {
-        let output = builder.output("Alpha", "$basetexture", "alpha");
-        if let Some(alpha) = vmt.extract_param("$alpha") {
-            output
-                .push(&groups::MULTIPLY_VALUE)
-                .link_input(&groups::MULTIPLY_VALUE, "value")
-                .link(&groups::MULTIPLY_VALUE, "fac", Value::Float(alpha));
+            // For regular modulate, connect texture directly to color
+            builder.output("Color", "$basetexture", "color");
         }
     }
 
