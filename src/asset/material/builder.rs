@@ -367,6 +367,38 @@ fn build_water_material(
     builder.build()
 }
 
+fn build_mod2x_material(
+    context: &mut Context<BlenderAssetHandler>,
+    vmt: &VmtHelper,
+    settings: Settings,
+) -> BuiltMaterialData {
+    let mut builder = MaterialBuilder::new(&shaders::TRANSPARENT);
+
+    // Handle the base texture with non-color space to preserve 50% gray
+    if builder.handle_texture(
+        context,
+        vmt,
+        "$basetexture",
+        Some("$basetexturetransform"),
+        ColorSpace::NonColor,
+        settings.texture_interpolation,
+    ) {
+        // Apply mod2x operation: multiply color by 2 to convert 50% gray to white
+        let output = builder.output("Color", "$basetexture", "color");
+        output
+            .push(&groups::DETAIL_TEXTURE)
+            .link_input(&groups::DETAIL_TEXTURE, "detail")
+            .link(
+                &groups::DETAIL_TEXTURE,
+                "color",
+                Value::Color([0.0, 0.0, 0.0, 1.0]),
+            )
+            .link(&groups::DETAIL_TEXTURE, "fac", Value::Float(1.0));
+    }
+
+    builder.build()
+}
+
 struct FwbBlendData {
     lum_start: [f32; 4],
     lum_end: [f32; 4],
@@ -1517,6 +1549,22 @@ impl NormalMaterialBuilder<'_, '_, '_, '_> {
     }
 }
 
+fn is_mod2x_shader(vmt: &VmtHelper) -> bool {
+    let shader = vmt.shader().shader.as_uncased_str();
+
+    // DecalModulate shader always uses mod2x
+    if shader == "decalmodulate".as_uncased() {
+        return true;
+    }
+
+    // Modulate shader only uses mod2x when $mod2x parameter is present
+    if shader == "modulate".as_uncased() {
+        return vmt.extract_param_or_default::<bool>("$mod2x");
+    }
+
+    false
+}
+
 pub fn build_material(
     context: &mut Context<BlenderAssetHandler>,
     vmt: &VmtHelper,
@@ -1531,6 +1579,8 @@ pub fn build_material(
         build_nodraw_material()
     } else if vmt.extract_param_or_default("%compilewater") {
         build_water_material(context, vmt, settings)
+    } else if is_mod2x_shader(vmt) {
+        build_mod2x_material(context, vmt, settings)
     } else {
         NormalMaterialBuilder::new(context, vmt, settings).build()
     })
