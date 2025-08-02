@@ -113,38 +113,32 @@ class ParallelImportBuilder:
         self._jobs.append(ImportJob(AssetType.MDL, path, from_game, **options))
         return self
 
-    def add_vmt(
-        self, path: str, from_game: bool = True, **options
-    ) -> "ParallelImportBuilder":
+    def add_vmt(self, path: str, from_game: bool = True) -> "ParallelImportBuilder":
         """
         Add a VMT import job.
 
         Args:
             path: Path to VMT file
             from_game: Whether to load from game file system
-            **options: VMT import options (see import_vmt for details)
 
         Returns:
             Self for method chaining
         """
-        self._jobs.append(ImportJob(AssetType.VMT, path, from_game, **options))
+        self._jobs.append(ImportJob(AssetType.VMT, path, from_game))
         return self
 
-    def add_vtf(
-        self, path: str, from_game: bool = True, **options
-    ) -> "ParallelImportBuilder":
+    def add_vtf(self, path: str, from_game: bool = True) -> "ParallelImportBuilder":
         """
         Add a VTF import job.
 
         Args:
             path: Path to VTF file
             from_game: Whether to load from game file system
-            **options: VTF import options (see import_vtf for details)
 
         Returns:
             Self for method chaining
         """
-        self._jobs.append(ImportJob(AssetType.VTF, path, from_game, **options))
+        self._jobs.append(ImportJob(AssetType.VTF, path, from_game))
         return self
 
     def execute(self, context=None) -> None:
@@ -351,12 +345,12 @@ def import_vmf(
         context = bpy.context
 
     try:
-        from ..plumber import Importer
+        import plumber
 
         callbacks = _create_asset_callbacks(context, **options)
         threads = _get_threads_suggestion(context)
 
-        importer = Importer(
+        api_importer = plumber.ApiImporter(
             file_system._fs,
             callbacks,
             threads,
@@ -367,7 +361,7 @@ def import_vmf(
             editor_materials=editor_materials,
         )
 
-        importer.import_vmf(
+        api_importer.add_vmf_job(
             path,
             from_game,
             map_data_path=map_data_path,
@@ -381,6 +375,8 @@ def import_vmf(
             invisible_solids=invisible_solids,
             optimize_props=optimize_props,
         )
+
+        api_importer.execute_jobs()
 
     except Exception as e:
         raise AssetImportError(f"VMF import failed: {e}") from e
@@ -437,12 +433,12 @@ def import_mdl(
         context = bpy.context
 
     try:
-        from ..plumber import Importer
+        import plumber
 
         callbacks = _create_asset_callbacks(context, **options)
         threads = _get_threads_suggestion(context)
 
-        importer = Importer(
+        api_importer = plumber.ApiImporter(
             file_system._fs,
             callbacks,
             threads,
@@ -453,12 +449,14 @@ def import_mdl(
             editor_materials=editor_materials,
         )
 
-        importer.import_mdl(
+        api_importer.add_mdl_job(
             path,
             from_game,
             import_animations=import_animations,
             import_materials=import_materials,
         )
+
+        api_importer.execute_jobs()
 
     except Exception as e:
         raise AssetImportError(f"MDL import failed: {e}") from e
@@ -501,12 +499,12 @@ def import_vmt(
         context = bpy.context
 
     try:
-        from ..plumber import Importer
+        import plumber
 
         callbacks = _create_asset_callbacks(context)
         threads = _get_threads_suggestion(context)
 
-        importer = Importer(
+        api_importer = plumber.ApiImporter(
             file_system._fs,
             callbacks,
             threads,
@@ -517,7 +515,9 @@ def import_vmt(
             editor_materials=editor_materials,
         )
 
-        importer.import_vmt(path, from_game)
+        api_importer.add_vmt_job(path, from_game)
+
+        api_importer.execute_jobs()
 
     except Exception as e:
         raise AssetImportError(f"VMT import failed: {e}") from e
@@ -554,12 +554,12 @@ def import_vtf(
         context = bpy.context
 
     try:
-        from ..plumber import Importer
+        import plumber
 
         callbacks = _create_asset_callbacks(context)
         threads = _get_threads_suggestion(context)
 
-        importer = Importer(
+        api_importer = plumber.ApiImporter(
             file_system._fs,
             callbacks,
             threads,
@@ -567,7 +567,9 @@ def import_vtf(
             texture_interpolation=texture_interpolation,
         )
 
-        importer.import_vtf(path, from_game)
+        api_importer.add_vtf_job(path, from_game)
+
+        api_importer.execute_jobs()
 
     except Exception as e:
         raise AssetImportError(f"VTF import failed: {e}") from e
