@@ -237,23 +237,23 @@ def _create_asset_callbacks(context, **options) -> Any:
 
     brush_collection = options.get("brush_collection")
     if brush_collection is None:
-        brush_collection = context.scene.collection
+        brush_collection = main_collection
 
     overlay_collection = options.get("overlay_collection")
     if overlay_collection is None:
-        overlay_collection = context.scene.collection
+        overlay_collection = main_collection
 
     prop_collection = options.get("prop_collection")
     if prop_collection is None:
-        prop_collection = context.scene.collection
+        prop_collection = main_collection
 
     light_collection = options.get("light_collection")
     if light_collection is None:
-        light_collection = context.scene.collection
+        light_collection = main_collection
 
     entity_collection = options.get("entity_collection")
     if entity_collection is None:
-        entity_collection = context.scene.collection
+        entity_collection = main_collection
 
     apply_armatures = options.get("apply_armatures", False)
 

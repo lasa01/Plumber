@@ -184,18 +184,7 @@ class GameFileSystem:
             FileSystemError: If file reading fails
         """
         try:
-            # For now, we need to use extract to a temp location since the Rust
-            # interface doesn't provide direct file reading. This may need extension.
-            import tempfile
-            import os
-
-            with tempfile.TemporaryDirectory() as temp_dir:
-                temp_file = os.path.join(temp_dir, "temp_file")
-                self._fs.extract(filepath, False, temp_file)
-
-                with open(temp_file, "r", encoding="utf-8") as f:
-                    return f.read()
-
+            return self._fs.read_file_text(filepath)
         except Exception as e:
             raise FileSystemError(f"Failed to read file '{filepath}': {e}") from e
 
