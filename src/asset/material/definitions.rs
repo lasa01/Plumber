@@ -1215,7 +1215,7 @@ mod tests {
                 .find(|n| n.id == target.target)
                 .expect("invalid node group property target");
             assert!(
-                node.kind.input_sockets.iter().any(|&s| s == target.socket),
+                node.kind.input_sockets.contains(&target.socket),
                 "invalid node group input target `{target:?}`"
             );
         }
@@ -1231,7 +1231,7 @@ mod tests {
                 .find(|n| n.id == target.target)
                 .expect("invalid node group property target");
             assert!(
-                node.kind.output_sockets.iter().any(|&s| s == target.socket),
+                node.kind.output_sockets.contains(&target.socket),
                 "invalid node group output target `{target:?}`"
             );
         }
