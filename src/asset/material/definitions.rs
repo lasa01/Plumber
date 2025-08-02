@@ -26,6 +26,7 @@ pub mod shaders {
     pub static TRANSPARENT: NodeType = NodeType {
         blender_id: "ShaderNodeBsdfTransparent",
         size: [140.0, 75.0],
+        input_sockets: &[Name("Color")],
         output_sockets: &[Position(0)],
         ..NodeType::default()
     };
@@ -1044,6 +1045,22 @@ pub mod groups {
         outputs: &[("value", NodeSocketRef::new("clip", Position(0)))],
         ..NodeGroup::default()
     };
+
+    pub static MOD2X: NodeGroup = NodeGroup {
+        nodes: &[Node {
+            kind: &nodes::MIX_RGB,
+            id: "multiply",
+            properties: &[("blend_type", Value::Enum("MULTIPLY"))],
+            values: &[
+                (Name("Color2"), Value::Color([2.0, 2.0, 2.0, 1.0])),
+                (Name("Fac"), Value::Float(1.0)),
+            ],
+            ..Node::default()
+        }],
+        inputs: &[("color", NodeSocketRef::new("multiply", Name("Color1")))],
+        outputs: &[("color", NodeSocketRef::new("multiply", Name("Color")))],
+        ..NodeGroup::default()
+    };
 }
 
 #[cfg(test)]
@@ -1095,6 +1112,7 @@ mod tests {
         &groups::MULTIBLEND_VALUE,
         &groups::BLEND_3_VALUES,
         &groups::CLIP_ALPHA,
+        &groups::MOD2X,
     ];
 
     #[test]

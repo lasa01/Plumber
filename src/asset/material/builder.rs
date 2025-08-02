@@ -367,6 +367,47 @@ fn build_water_material(
     builder.build()
 }
 
+fn build_modulate_material(
+    context: &mut Context<BlenderAssetHandler>,
+    vmt: &VmtHelper,
+    settings: Settings,
+) -> BuiltMaterialData {
+    let shader = vmt.shader().shader.as_uncased_str();
+    let is_mod2x = shader == "decalmodulate".as_uncased()
+        || (shader == "modulate".as_uncased() && vmt.extract_param_or_default::<bool>("$mod2x"));
+
+    // Both regular modulate and mod2x use transparent shader for multiply blending
+    let mut builder = MaterialBuilder::new(&shaders::TRANSPARENT);
+
+    // Set surface render method to BLENDED for proper Eevee rendering
+    builder.property("surface_render_method", Value::Enum("BLENDED"));
+
+    // Both regular modulate and mod2x use non-color space to preserve raw texture values
+    let color_space = ColorSpace::NonColor;
+
+    if builder.handle_texture(
+        context,
+        vmt,
+        "$basetexture",
+        Some("$basetexturetransform"),
+        color_space,
+        settings.texture_interpolation,
+    ) {
+        if is_mod2x {
+            // Apply mod2x operation: multiply color by 2 to convert 50% gray to white
+            let output = builder.output("Color", "$basetexture", "color");
+            output
+                .push(&groups::MOD2X)
+                .link_input(&groups::MOD2X, "color");
+        } else {
+            // For regular modulate, connect texture directly to color
+            builder.output("Color", "$basetexture", "color");
+        }
+    }
+
+    builder.build()
+}
+
 struct FwbBlendData {
     lum_start: [f32; 4],
     lum_end: [f32; 4],
@@ -1517,6 +1558,11 @@ impl NormalMaterialBuilder<'_, '_, '_, '_> {
     }
 }
 
+fn is_modulate_shader(vmt: &VmtHelper) -> bool {
+    let shader = vmt.shader().shader.as_uncased_str();
+    shader == "decalmodulate".as_uncased() || shader == "modulate".as_uncased()
+}
+
 pub fn build_material(
     context: &mut Context<BlenderAssetHandler>,
     vmt: &VmtHelper,
@@ -1531,6 +1577,8 @@ pub fn build_material(
         build_nodraw_material()
     } else if vmt.extract_param_or_default("%compilewater") {
         build_water_material(context, vmt, settings)
+    } else if is_modulate_shader(vmt) {
+        build_modulate_material(context, vmt, settings)
     } else {
         NormalMaterialBuilder::new(context, vmt, settings).build()
     })

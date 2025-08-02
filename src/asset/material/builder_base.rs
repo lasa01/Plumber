@@ -517,23 +517,42 @@ impl MaterialBuilder {
         let output_x = x_max + NODE_MARGIN;
         let mut output_y = 0.0;
 
-        let shader_socket_links = sorted_outputs_reversed
-            .into_iter()
-            .rev()
-            .map(|output| {
-                let ret = output.build(
-                    &built_inputs,
-                    &mut nodes,
-                    [output_x, output_y],
-                    &mut x_max,
-                    &mut output_y,
-                );
+        let shader_socket_links: BTreeMap<NodeSocketId, BuiltNodeSocketRef> =
+            sorted_outputs_reversed
+                .into_iter()
+                .rev()
+                .map(|output| {
+                    let ret = output.build(
+                        &built_inputs,
+                        &mut nodes,
+                        [output_x, output_y],
+                        &mut x_max,
+                        &mut output_y,
+                    );
 
-                output_y += NODE_MARGIN;
+                    output_y += NODE_MARGIN;
 
-                ret
-            })
-            .collect();
+                    ret
+                })
+                .collect();
+
+        // Validate that all shader socket connections reference existing input sockets
+        for socket_id in shader_socket_links.keys() {
+            assert!(
+                self.shader.input_sockets.contains(socket_id),
+                "Material builder attempted to connect to non-existent shader socket: {:?}. Available sockets: {:?}",
+                socket_id, self.shader.input_sockets
+            );
+        }
+
+        // Validate that all shader socket values reference existing input sockets
+        for socket_id in self.shader_socket_values.keys() {
+            assert!(
+                self.shader.input_sockets.contains(socket_id),
+                "Material builder attempted to set value on non-existent shader socket: {:?}. Available sockets: {:?}",
+                socket_id, self.shader.input_sockets
+            );
+        }
 
         let shader_x = x_max + NODE_MARGIN;
 
