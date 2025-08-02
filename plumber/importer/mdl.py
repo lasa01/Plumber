@@ -76,7 +76,7 @@ class ImportMdl(
             return {"CANCELLED"}
 
         try:
-            if is_batch:
+            if is_batch and not self.from_game_fs:
                 # Start batch tracking for scale application
                 asset_callbacks.model_tracker.start_batch()
 

@@ -60,7 +60,7 @@ class ImporterOperator(Operator, ImporterOperatorProps):
 
     def is_batch_import(self) -> bool:
         """Check if this is a batch import (multiple files selected)"""
-        return len(self.files) > 0
+        return len(self.files) > 1
 
     def get_file_paths(self) -> List[str]:
         """Get list of file paths to import"""
