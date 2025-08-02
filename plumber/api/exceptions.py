@@ -21,7 +21,7 @@ class FileSystemError(PlumberAPIError):
     pass
 
 
-class ImportError(PlumberAPIError):
+class AssetImportError(PlumberAPIError):
     """Raised when there's an error during asset import."""
 
     pass

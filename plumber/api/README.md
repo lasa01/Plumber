@@ -45,8 +45,8 @@ fs = cs_go.get_file_system()
 
 # Or create a custom file system
 fs = GameFileSystem.from_search_paths("My Game", [
-    ("DIR", "/path/to/game"),
-    ("VPK", "/path/to/pak01_dir.vpk"),
+    ("DIR", "C:\\Program Files (x86)\\Steam\\steamapps\\common\\Counter-Strike Global Offensive\\csgo"),
+    ("VPK", "C:\\Program Files (x86)\\Steam\\steamapps\\common\\Counter-Strike Global Offensive\\csgo\\pak01_dir.vpk"),
 ])
 
 # Create empty file system for special cases
@@ -54,10 +54,10 @@ empty_fs = GameFileSystem.empty()
 
 # Browse directories
 try:
-    entries = fs.browse_directory("maps")
+    entries = fs.browse_directory("models/player")
     for entry in entries:
-        if entry.is_file and entry.name.endswith('.vmf'):
-            print(f"Found map: {entry.path}")
+        if entry.is_file and entry.name.endswith('.mdl'):
+            print(f"Found model: {entry.path}")
 except FileSystemError as e:
     print(f"Failed to browse: {e}")
 
@@ -139,7 +139,7 @@ Here's a comprehensive example that demonstrates finding a game, browsing for fi
 ```python
 from plumber.api import (
     Games, GameFileSystem, ParallelImportBuilder, 
-    GameNotFoundError, FileSystemError, ImportError
+    GameNotFoundError, FileSystemError, AssetImportError
 )
 import re
 
@@ -198,7 +198,7 @@ def find_and_import_models():
         
     except GameNotFoundError as e:
         print(f"Game not found: {e}")
-    except ImportError as e:
+    except AssetImportError as e:
         print(f"Import failed: {e}")
     except Exception as e:
         print(f"Unexpected error: {e}")
@@ -249,18 +249,9 @@ if __name__ == "__main__":
 - `PlumberAPIError` - Base exception for all API errors
 - `GameNotFoundError` - Game not found in preferences
 - `FileSystemError` - File system access error
-- `ImportError` - Asset import error
+- `AssetImportError` - Asset import error
 
 ## Requirements
 
 - Blender with Plumber addon installed and configured
-- At least one game definition in Plumber preferences
 - Game files accessible from configured search paths
-
-## Notes
-
-- The API wraps internal Plumber classes and provides a stable interface
-- All paths use forward slashes regardless of platform
-- File reading operations extract files to temporary locations
-- Parallel imports currently execute sequentially (may be improved in future)
-- Import options match those available in Plumber's UI operators

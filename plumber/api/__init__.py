@@ -18,14 +18,13 @@ from .importer import (
     import_mdl,
     import_vmt,
     import_vtf,
-    batch_import,
     ParallelImportBuilder,
 )
 from .exceptions import (
     PlumberAPIError,
     GameNotFoundError,
     FileSystemError,
-    ImportError,
+    AssetImportError,
 )
 
 __all__ = [
@@ -39,11 +38,10 @@ __all__ = [
     "import_mdl",
     "import_vmt",
     "import_vtf",
-    "batch_import",
     "ParallelImportBuilder",
     # Exceptions
     "PlumberAPIError",
     "GameNotFoundError",
     "FileSystemError",
-    "ImportError",
+    "AssetImportError",
 ]

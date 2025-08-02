@@ -58,17 +58,9 @@ class FileBrowserEntry:
 class GameFileSystem:
     """
     Interface for browsing and reading files from a game file system.
-
-    Wraps the internal Rust FileSystem class to provide a clean API.
     """
 
     def __init__(self, fs_internal):
-        """
-        Initialize with internal FileSystem instance.
-
-        Args:
-            fs_internal: Internal plumber.FileSystem instance
-        """
         self._fs = fs_internal
         self._browser = None
 
@@ -221,16 +213,7 @@ class GameFileSystem:
             FileSystemError: If file reading fails
         """
         try:
-            import tempfile
-            import os
-
-            with tempfile.TemporaryDirectory() as temp_dir:
-                temp_file = os.path.join(temp_dir, "temp_file")
-                self._fs.extract(filepath, False, temp_file)
-
-                with open(temp_file, "rb") as f:
-                    return f.read()
-
+            return self._fs.read_file_bytes(filepath)
         except Exception as e:
             raise FileSystemError(f"Failed to read file '{filepath}': {e}") from e
 
@@ -245,14 +228,7 @@ class GameFileSystem:
             True if file exists, False otherwise
         """
         try:
-            # Try to read directory containing the file and check if it's listed
-            import os
-
-            directory = os.path.dirname(filepath) if os.path.dirname(filepath) else ""
-            filename = os.path.basename(filepath)
-
-            entries = self.browse_directory(directory)
-            return any(entry.name == filename and entry.is_file for entry in entries)
+            return self._fs.file_exists(filepath)
         except FileSystemError:
             return False
 

@@ -5,7 +5,7 @@ Asset import functionality for individual and batch imports.
 from typing import Any, Dict, List, Optional, Union, Callable
 from enum import Enum
 
-from .exceptions import ImportError
+from .exceptions import AssetImportError
 from .filesystem import GameFileSystem
 
 
@@ -132,55 +132,48 @@ class ParallelImportBuilder:
             context: Blender context (uses bpy.context if None)
 
         Raises:
-            ImportError: If parallel import execution fails
+            AssetImportError: If parallel import execution fails
         """
         if not self._jobs:
             return
 
         if context is None:
             import bpy
-            import bpy
-        context = bpy.context
+            context = bpy.context
 
         try:
-            # For now, execute jobs sequentially since we need to design the Rust interface
-            # for mixed parallel imports. This is a placeholder implementation.
+            # Use the new Rust API importer for better performance
+            import plumber
+            
+            callbacks = _create_asset_callbacks(context)
+            threads = _get_threads_suggestion(context)
+            
+            # Create API importer
+            api_importer = plumber.ApiImporter(
+                self._file_system._fs,
+                callbacks,
+                threads,
+            )
+            
+            # Add all jobs to the API importer
             for job in self._jobs:
                 if job.asset_type == AssetType.VMF:
-                    import_vmf(
-                        self._file_system,
-                        job.path,
-                        job.from_game,
-                        context,
-                        **job.options,
-                    )
+                    api_importer.add_vmf_job(job.path, job.from_game, **job.options)
                 elif job.asset_type == AssetType.MDL:
-                    import_mdl(
-                        self._file_system,
-                        job.path,
-                        job.from_game,
-                        context,
-                        **job.options,
-                    )
+                    api_importer.add_mdl_job(job.path, job.from_game, **job.options)
                 elif job.asset_type == AssetType.VMT:
-                    import_vmt(
-                        self._file_system,
-                        job.path,
-                        job.from_game,
-                        context,
-                        **job.options,
-                    )
+                    api_importer.add_vmt_job(job.path, job.from_game)
                 elif job.asset_type == AssetType.VTF:
-                    import_vtf(
-                        self._file_system,
-                        job.path,
-                        job.from_game,
-                        context,
-                        **job.options,
-                    )
+                    api_importer.add_vtf_job(job.path, job.from_game)
+            
+            # Execute all jobs
+            api_importer.execute_jobs()
+            
+            # Clear jobs after execution
+            self._jobs.clear()
 
         except Exception as e:
-            raise ImportError(f"Parallel import execution failed: {e}") from e
+            raise AssetImportError(f"Parallel import execution failed: {e}") from e
 
     def clear(self) -> "ParallelImportBuilder":
         """Clear all import jobs."""
@@ -194,12 +187,17 @@ class ParallelImportBuilder:
 
 
 def _create_asset_callbacks(context, **options) -> Any:
-    """Create AssetCallbacks instance with options."""
     from ..asset import AssetCallbacks
 
-    # Extract collection options
+    # Extract collection options - default to main collection if not specified
     main_collection = options.get("main_collection")
+    if main_collection is None:
+        main_collection = context.scene.collection
+    
     brush_collection = options.get("brush_collection")
+    if brush_collection is None:
+        brush_collection = context.scene.collection
+        
     overlay_collection = options.get("overlay_collection")
     prop_collection = options.get("prop_collection")
     light_collection = options.get("light_collection")
@@ -292,7 +290,7 @@ def import_vmf(
         apply_armatures: Apply armatures to models
 
     Raises:
-        ImportError: If import fails
+        AssetImportError: If import fails
     """
     if context is None:
         import bpy
@@ -332,7 +330,7 @@ def import_vmf(
         )
 
     except Exception as e:
-        raise ImportError(f"VMF import failed: {e}") from e
+        raise AssetImportError(f"VMF import failed: {e}") from e
 
 
 def import_mdl(
@@ -378,7 +376,7 @@ def import_mdl(
         apply_armatures: Apply armatures to models
 
     Raises:
-        ImportError: If import fails
+        AssetImportError: If import fails
     """
     if context is None:
         import bpy
@@ -410,7 +408,7 @@ def import_mdl(
         )
 
     except Exception as e:
-        raise ImportError(f"MDL import failed: {e}") from e
+        raise AssetImportError(f"MDL import failed: {e}") from e
 
 
 def import_vmt(
@@ -442,7 +440,7 @@ def import_vmt(
         editor_materials: Import editor materials instead of invisible ones
 
     Raises:
-        ImportError: If import fails
+        AssetImportError: If import fails
     """
     if context is None:
         import bpy
@@ -469,7 +467,7 @@ def import_vmt(
         importer.import_vmt(path, from_game)
 
     except Exception as e:
-        raise ImportError(f"VMT import failed: {e}") from e
+        raise AssetImportError(f"VMT import failed: {e}") from e
 
 
 def import_vtf(
@@ -495,7 +493,7 @@ def import_vtf(
         texture_interpolation: Texture interpolation ("Linear", "Closest", "Cubic", "Smart")
 
     Raises:
-        ImportError: If import fails
+        AssetImportError: If import fails
     """
     if context is None:
         import bpy
@@ -519,66 +517,4 @@ def import_vtf(
         importer.import_vtf(path, from_game)
 
     except Exception as e:
-        raise ImportError(f"VTF import failed: {e}") from e
-
-
-def batch_import(
-    file_system: GameFileSystem,
-    assets: List[Dict[str, Any]],
-    context=None,
-) -> None:
-    """
-    Import multiple assets with similar settings.
-
-    Args:
-        file_system: GameFileSystem to use for asset loading
-        assets: List of asset definitions, each should be a dict with:
-                - 'type': Asset type ('vmf', 'mdl', 'vmt', 'vtf')
-                - 'path': Path to asset file
-                - 'from_game': Whether to load from game file system (default True)
-                - Additional options specific to asset type
-        context: Blender context (uses bpy.context if None)
-
-    Example:
-        assets = [
-            {'type': 'mdl', 'path': 'models/player.mdl', 'import_animations': False},
-            {'type': 'vmt', 'path': 'materials/concrete.vmt'},
-            {'type': 'vtf', 'path': 'materials/concrete.vtf'},
-        ]
-        batch_import(fs, assets)
-
-    Raises:
-        ImportError: If batch import fails
-    """
-    if context is None:
-        import bpy
-
-        context = bpy.context
-
-    try:
-        for i, asset in enumerate(assets):
-            asset_type = asset.get("type", "").lower()
-            path = asset.get("path", "")
-            from_game = asset.get("from_game", True)
-
-            if not asset_type or not path:
-                raise ValueError(f"Asset {i}: 'type' and 'path' are required")
-
-            # Remove standard keys from options
-            options = {
-                k: v for k, v in asset.items() if k not in ["type", "path", "from_game"]
-            }
-
-            if asset_type == "vmf":
-                import_vmf(file_system, path, from_game, context, **options)
-            elif asset_type == "mdl":
-                import_mdl(file_system, path, from_game, context, **options)
-            elif asset_type == "vmt":
-                import_vmt(file_system, path, from_game, context, **options)
-            elif asset_type == "vtf":
-                import_vtf(file_system, path, from_game, context, **options)
-            else:
-                raise ValueError(f"Asset {i}: Unknown asset type '{asset_type}'")
-
-    except Exception as e:
-        raise ImportError(f"Batch import failed: {e}") from e
+        raise AssetImportError(f"VTF import failed: {e}") from e
