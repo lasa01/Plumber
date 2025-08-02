@@ -1,7 +1,7 @@
 use std::{
     cmp::Ordering,
     fs::{self, File},
-    io::{BufRead, BufReader, Write},
+    io::{BufRead, BufReader, Read, Write},
     path::{Path as StdPath, PathBuf as StdPathBuf},
     time::Instant,
 };
@@ -91,6 +91,63 @@ impl PyFileSystem {
         Ok(PyFileBrowser {
             file_system: opened,
         })
+    }
+
+    fn read_file_text(&self, path: &str) -> PyResult<String> {
+        let opened = self
+            .file_system
+            .open()
+            .map_err(|e| PyIOError::new_err(e.to_string()))?;
+
+        let path = GamePathBuf::from(path);
+        let file = opened
+            .open_file(&path)
+            .map_err(|e| PyIOError::new_err(e.to_string()))?;
+
+        let mut reader = BufReader::new(file);
+        let mut content = String::new();
+
+        reader
+            .read_to_string(&mut content)
+            .map_err(|e| PyIOError::new_err(e.to_string()))?;
+
+        Ok(content)
+    }
+
+    fn read_file_bytes(&self, path: &str) -> PyResult<Vec<u8>> {
+        let opened = self
+            .file_system
+            .open()
+            .map_err(|e| PyIOError::new_err(e.to_string()))?;
+
+        let path = GamePathBuf::from(path);
+        let file = opened
+            .open_file(&path)
+            .map_err(|e| PyIOError::new_err(e.to_string()))?;
+
+        let mut reader = BufReader::new(file);
+        let mut content = Vec::new();
+
+        reader
+            .read_to_end(&mut content)
+            .map_err(|e| PyIOError::new_err(e.to_string()))?;
+
+        Ok(content)
+    }
+
+    fn file_exists(&self, path: &str) -> PyResult<bool> {
+        let opened = self
+            .file_system
+            .open()
+            .map_err(|e| PyIOError::new_err(e.to_string()))?;
+
+        let path = GamePathBuf::from(path);
+
+        // Try to open the file - if it exists, this will succeed
+        match opened.open_file(&path) {
+            Ok(_) => Ok(true),
+            Err(_) => Ok(false),
+        }
     }
 
     fn extract(&self, path: &str, is_dir: bool, target_path: &str) -> PyResult<()> {

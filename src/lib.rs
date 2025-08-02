@@ -6,6 +6,7 @@
 // this is annoying
 #![allow(clippy::module_name_repetitions)]
 
+mod api;
 mod asset;
 mod filesystem;
 mod importer;
@@ -21,6 +22,7 @@ use tracing_subscriber::{
 };
 
 use crate::{
+    api::PyApiImporter,
     asset::{
         brush::{PyBuiltBrushEntity, PyBuiltSolid, PyMergedSolids},
         entities::{PyEnvLight, PyLight, PyLoadedProp, PySkyCamera, PySpotLight, PyUnknownEntity},
@@ -45,6 +47,7 @@ fn plumber(_py: Python, m: &PyModule) -> PyResult<()> {
     m.add_class::<PyFileSystem>()?;
     m.add_class::<PyFileBrowser>()?;
     m.add_class::<PyFileBrowserEntry>()?;
+    m.add_class::<PyApiImporter>()?;
     m.add_class::<PySkyEqui>()?;
     m.add_class::<Texture>()?;
     m.add_class::<Material>()?;
