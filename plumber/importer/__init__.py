@@ -22,6 +22,7 @@ class ImporterOperatorProps:
     filepath: StringProperty(
         name="Path",
         maxlen=1024,
+        subtype="FILE_PATH",
         options={"HIDDEN"},
     )
 

@@ -518,7 +518,7 @@ class ExtractGameDirectory(
 
     source_path: StringProperty(options={"HIDDEN"})
 
-    directory: StringProperty(options={"HIDDEN"})
+    directory: StringProperty(subtype="DIR_PATH", options={"HIDDEN"})
     filepath: None
     filename_ext = "."
     use_filter_folder = True
@@ -558,7 +558,7 @@ class ExtractGameFile(
 
     source_path: StringProperty(options={"HIDDEN"})
 
-    filename: StringProperty(options={"HIDDEN"})
+    filename: StringProperty(subtype="FILE_NAME", options={"HIDDEN"})
     check_existing: BoolProperty(options={"HIDDEN"}, default=True)
     filename_ext: StringProperty(options={"HIDDEN"})
 
