@@ -40,6 +40,7 @@ class ModelTracker:
     def __init__(self) -> None:
         self.imported_objects = {}
         self.batch_imported = []  # Track models imported in current batch
+        self.track_batch = False  # Only track batch when needed (MDL imports)
 
     def import_model(self, model: Model, collection: Collection) -> None:
         original_name = model.name()
@@ -98,16 +99,14 @@ class ModelTracker:
         model_state = ModelState(parent_obj, children, collection)
         self.imported_objects[original_name.lower()] = model_state
 
-        # Track this model for batch operations
-        self.batch_imported.append(parent_obj)
+        # Track this model for batch operations only if batch tracking is enabled (MDL imports)
+        if self.track_batch:
+            self.batch_imported.append(parent_obj)
 
     def start_batch(self) -> None:
         """Start tracking models for a batch import"""
         self.batch_imported = []
-
-    def get_batch_imported(self) -> List[Object]:
-        """Get all models imported in the current batch"""
-        return self.batch_imported.copy()
+        self.track_batch = True
 
     def apply_scale_to_batch(self, scale: float) -> None:
         """Apply scale to all models imported in the current batch"""

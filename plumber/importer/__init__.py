@@ -12,12 +12,6 @@ from ..preferences import AddonPreferences
 from .. import __package__ as ADDON_NAME
 
 
-class SelectedFile(PropertyGroup):
-    """Property group for selected files in batch import"""
-
-    name: StringProperty(name="File Name")
-
-
 class ImporterOperatorProps:
     game: EnumProperty(
         items=AddonPreferences.game_enum_items,
@@ -41,7 +35,7 @@ class ImporterOperatorProps:
     )
 
     files: CollectionProperty(
-        type=SelectedFile,
+        type=bpy.types.OperatorFileListElement,
         options={"HIDDEN"},
     )
 
@@ -281,7 +275,6 @@ from .vtf import ImportVtf
 
 
 CLASSES = [
-    SelectedFile,
     PLUMBER_PT_importer_common,
     PLUMBER_PT_vmf_map_data,
     PLUMBER_PT_vmf_geometry,
