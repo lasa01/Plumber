@@ -39,7 +39,6 @@ class ModelTracker:
 
     def __init__(self) -> None:
         self.imported_objects = {}
-        self.batch_start_keys = set()  # Keys present at batch start
 
     def import_model(self, model: Model, collection: Collection) -> None:
         original_name = model.name()
@@ -98,14 +97,10 @@ class ModelTracker:
         model_state = ModelState(parent_obj, children, collection)
         self.imported_objects[original_name.lower()] = model_state
 
-    def start_batch(self) -> None:
-        """Start tracking models for a batch import"""
-        self.batch_start_keys = set(self.imported_objects.keys())
-
     def apply_scale_to_batch(self, scale: float) -> None:
         """Apply scale to all models imported in the current batch"""
-        for key, model_state in self.imported_objects.items():
-            if key not in self.batch_start_keys and model_state.object is not None:
+        for model_state in self.imported_objects.values():
+            if model_state.object is not None:
                 model_state.object.scale = (scale, scale, scale)
 
     def get_model_copy(

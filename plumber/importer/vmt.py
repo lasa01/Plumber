@@ -63,7 +63,7 @@ class ImportVmt(
             return {"CANCELLED"}
 
         try:
-            if is_batch:
+            if is_batch and not self.from_game_fs:
                 importer.import_vmt_batch(file_paths, self.from_game_fs)
             else:
                 importer.import_vmt(self.filepath, self.from_game_fs)

@@ -48,7 +48,7 @@ class ImportVtf(
             return {"CANCELLED"}
 
         try:
-            if is_batch:
+            if is_batch and not self.from_game_fs:
                 importer.import_vtf_batch(file_paths, self.from_game_fs)
             else:
                 importer.import_vtf(self.filepath, self.from_game_fs)
