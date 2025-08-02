@@ -46,15 +46,38 @@ class ParallelImportBuilder:
     Allows mixing different asset types for parallel import using the Rust-side executor.
     """
 
-    def __init__(self, file_system: GameFileSystem):
+    def __init__(
+        self,
+        file_system: GameFileSystem,
+        # Material options (applied to all imports in this builder)
+        simple_materials: bool = False,
+        texture_format: str = "Png",
+        texture_interpolation: str = "Linear",
+        allow_culling: bool = False,
+        editor_materials: bool = False,
+    ):
         """
         Initialize the builder.
 
         Args:
             file_system: GameFileSystem to use for imports
+            simple_materials: Import simple, exporter-friendly materials
+            texture_format: Texture format ("Png", "Tga")
+            texture_interpolation: Texture interpolation ("Linear", "Closest", "Cubic", "Smart")
+            allow_culling: Enable backface culling
+            editor_materials: Import editor materials instead of invisible ones
         """
         self._file_system = file_system
         self._jobs: List[ImportJob] = []
+
+        # Store material settings to be used for all imports
+        self._material_settings = {
+            "simple_materials": simple_materials,
+            "texture_format": texture_format,
+            "texture_interpolation": texture_interpolation,
+            "allow_culling": allow_culling,
+            "editor_materials": editor_materials,
+        }
 
     def add_vmf(
         self, path: str, from_game: bool = True, **options
@@ -149,19 +172,36 @@ class ParallelImportBuilder:
             callbacks = _create_asset_callbacks(context)
             threads = _get_threads_suggestion(context)
 
-            # Create API importer
+            # Create API importer with material settings
             api_importer = plumber.ApiImporter(
                 self._file_system._fs,
                 callbacks,
                 threads,
+                **self._material_settings,
             )
 
             # Add all jobs to the API importer
             for job in self._jobs:
                 if job.asset_type == AssetType.VMF:
-                    api_importer.add_vmf_job(job.path, job.from_game, **job.options)
+                    # VMF jobs don't pass material options since they're already in the importer
+                    non_material_options = {
+                        k: v
+                        for k, v in job.options.items()
+                        if k not in self._material_settings
+                    }
+                    api_importer.add_vmf_job(
+                        job.path, job.from_game, **non_material_options
+                    )
                 elif job.asset_type == AssetType.MDL:
-                    api_importer.add_mdl_job(job.path, job.from_game, **job.options)
+                    # MDL jobs don't pass material options since they're already in the importer
+                    non_material_options = {
+                        k: v
+                        for k, v in job.options.items()
+                        if k not in self._material_settings
+                    }
+                    api_importer.add_mdl_job(
+                        job.path, job.from_game, **non_material_options
+                    )
                 elif job.asset_type == AssetType.VMT:
                     api_importer.add_vmt_job(job.path, job.from_game)
                 elif job.asset_type == AssetType.VTF:
@@ -200,9 +240,21 @@ def _create_asset_callbacks(context, **options) -> Any:
         brush_collection = context.scene.collection
 
     overlay_collection = options.get("overlay_collection")
+    if overlay_collection is None:
+        overlay_collection = context.scene.collection
+
     prop_collection = options.get("prop_collection")
+    if prop_collection is None:
+        prop_collection = context.scene.collection
+
     light_collection = options.get("light_collection")
+    if light_collection is None:
+        light_collection = context.scene.collection
+
     entity_collection = options.get("entity_collection")
+    if entity_collection is None:
+        entity_collection = context.scene.collection
+
     apply_armatures = options.get("apply_armatures", False)
 
     return AssetCallbacks(

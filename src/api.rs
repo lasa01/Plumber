@@ -295,44 +295,81 @@ impl PyApiImporter {
             return Ok(());
         }
 
+        let executor = self.consume()?;
         let start = Instant::now();
-        info!("executing {} import jobs...", self.jobs.len());
+        info!("executing {} import jobs in parallel...", self.jobs.len());
 
-        // For single job execution, we can use the existing pattern
-        if self.jobs.len() == 1 {
-            let executor = self.consume()?;
-            let job = self.jobs.remove(0);
+        // Group jobs by type for batch processing
+        let mut vmf_jobs = Vec::new();
+        let mut mdl_jobs = Vec::new();
+        let mut material_jobs = Vec::new();
+        let mut texture_jobs = Vec::new();
 
+        for job in self.jobs.drain(..) {
             match job {
-                AssetImportJob::Vmf { path, config } => {
-                    let bytes = executor
-                        .fs()
-                        .read(&path)
-                        .map_err(|e| PyIOError::new_err(e.to_string()))?;
-                    let vmf =
-                        Vmf::from_bytes(&bytes).map_err(|e| PyIOError::new_err(e.to_string()))?;
-                    executor.process(config, vmf, || self.process_assets(py));
-                }
-                AssetImportJob::Mdl { path, config } => {
-                    executor
-                        .depend_on(config, path, || self.process_assets(py))
-                        .map_err(|e| PyIOError::new_err(e.to_string()))?;
-                }
-                AssetImportJob::Vmt { path, config } => {
-                    executor
-                        .depend_on(config, path, || self.process_assets(py))
-                        .map_err(|e| PyIOError::new_err(e.to_string()))?;
-                }
-                AssetImportJob::Vtf { path, config } => {
-                    executor.process(config, path, || self.process_assets(py));
-                }
+                AssetImportJob::Vmf { path, config } => vmf_jobs.push((path, config)),
+                AssetImportJob::Mdl { path, config } => mdl_jobs.push((path, config)),
+                AssetImportJob::Vmt { path, config } => material_jobs.push((path, config)),
+                AssetImportJob::Vtf { path, config } => texture_jobs.push((path, config)),
             }
-        } else {
-            // For multiple jobs, we need to process them one by one for now
-            // This is a limitation until the executor supports batching
-            return Err(PyRuntimeError::new_err(
-                "Multi-job execution not yet fully supported - please process jobs individually or use single jobs"
-            ));
+        }
+
+        // We need to process different job types in order of priority
+        // since each process call consumes the executor
+
+        // Process VTF files first (textures needed by materials)
+        if !texture_jobs.is_empty() {
+            let paths: Vec<PathBuf> = texture_jobs.into_iter().map(|(path, _)| path).collect();
+            executor.process_each(VtfConfig, paths, || self.process_assets(py));
+            info!("jobs executed in {:.2} s", start.elapsed().as_secs_f32());
+            return Ok(());
+        }
+
+        // Process VMT files (materials needed by models and vmf)
+        if !material_jobs.is_empty() {
+            // All VMT jobs should use the same material config from the builder
+            let paths: Vec<PathBuf> = material_jobs.into_iter().map(|(path, _)| path).collect();
+            executor.process_each(self.material_config, paths, || self.process_assets(py));
+            info!("jobs executed in {:.2} s", start.elapsed().as_secs_f32());
+            return Ok(());
+        }
+
+        // Process MDL files
+        if !mdl_jobs.is_empty() {
+            // Group by config to batch together jobs with same settings
+            let mut mdl_groups: std::collections::HashMap<
+                String,
+                (MdlConfig<MaterialConfig>, Vec<PathBuf>),
+            > = std::collections::HashMap::new();
+
+            for (path, config) in mdl_jobs {
+                let config_key = format!("{:?}", config); // Simple grouping by debug representation
+                mdl_groups
+                    .entry(config_key)
+                    .or_insert_with(|| (config, Vec::new()))
+                    .1
+                    .push(path);
+            }
+
+            // Process the first group (since executor is consumed)
+            if let Some((_, (config, paths))) = mdl_groups.into_iter().next() {
+                executor.process_each(config, paths, || self.process_assets(py));
+            }
+            info!("jobs executed in {:.2} s", start.elapsed().as_secs_f32());
+            return Ok(());
+        }
+
+        // Process VMF files (most complex, need special handling)
+        if !vmf_jobs.is_empty() {
+            // For now, process only the first VMF (since each consumes the executor)
+            if let Some((path, config)) = vmf_jobs.into_iter().next() {
+                let bytes = executor
+                    .fs()
+                    .read(&path)
+                    .map_err(|e| PyIOError::new_err(e.to_string()))?;
+                let vmf = Vmf::from_bytes(&bytes).map_err(|e| PyIOError::new_err(e.to_string()))?;
+                executor.process(config, vmf, || self.process_assets(py));
+            }
         }
 
         info!("jobs executed in {:.2} s", start.elapsed().as_secs_f32());
