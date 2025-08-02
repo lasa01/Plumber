@@ -1,7 +1,7 @@
 use std::{
     cmp::Ordering,
     fs::{self, File},
-    io::{BufRead, BufReader, Write},
+    io::{BufRead, BufReader, Read, Write},
     path::{Path as StdPath, PathBuf as StdPathBuf},
     time::Instant,
 };
@@ -107,7 +107,6 @@ impl PyFileSystem {
         let mut reader = BufReader::new(file);
         let mut content = String::new();
 
-        use std::io::Read;
         reader
             .read_to_string(&mut content)
             .map_err(|e| PyIOError::new_err(e.to_string()))?;
@@ -129,7 +128,6 @@ impl PyFileSystem {
         let mut reader = BufReader::new(file);
         let mut content = Vec::new();
 
-        use std::io::Read;
         reader
             .read_to_end(&mut content)
             .map_err(|e| PyIOError::new_err(e.to_string()))?;

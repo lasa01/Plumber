@@ -9,7 +9,7 @@ use pyo3::{
 use tracing::{debug_span, error, info};
 
 use plumber_core::{
-    asset_core::Executor,
+    asset_core::{AssetConfig, Context, Executor, NoError},
     asset_mdl::MdlConfig,
     asset_vmf::{BrushSetting, VmfConfig},
     asset_vtf::VtfConfig,
@@ -28,20 +28,66 @@ use crate::{
     filesystem::PyFileSystem,
 };
 
-/// Unified config enum for mixed asset processing
+/// Enum representing different types of asset import jobs for unified processing
 #[derive(Debug, Clone)]
-pub enum UnifiedConfig {
-    Vtf(VtfConfig),
-    Vmt(MaterialConfig),
-    Mdl(MdlConfig<MaterialConfig>),
-    Vmf(VmfConfig<MaterialConfig>),
+pub enum UnifiedAssetJob {
+    Vtf {
+        path: PathBuf,
+    },
+    Vmt {
+        path: PathBuf,
+    },
+    Mdl {
+        path: PathBuf,
+        config: MdlConfig<MaterialConfig>,
+    },
+    Vmf {
+        path: PathBuf,
+        config: VmfConfig<MaterialConfig>,
+    },
 }
 
-/// Job with unified config for process_each
-#[derive(Debug, Clone)]
-pub struct UnifiedJob {
-    pub path: PathBuf,
-    pub config: UnifiedConfig,
+/// Unified asset config that can process mixed asset types
+#[derive(Debug, Clone, Copy)]
+pub struct UnifiedAssetConfig {
+    pub material_config: MaterialConfig,
+}
+
+impl AssetConfig<BlenderAssetHandler> for UnifiedAssetConfig {
+    type Input<'a> = UnifiedAssetJob;
+    type Output<'a> = ();
+    type Error<'a> = NoError;
+
+    fn process<'a>(
+        self,
+        input: Self::Input<'a>,
+        context: &mut Context<BlenderAssetHandler>,
+    ) -> Result<Self::Output<'a>, Self::Error<'a>> {
+        match input {
+            UnifiedAssetJob::Vtf { path } => {
+                context.queue(VtfConfig, path);
+            }
+            UnifiedAssetJob::Vmt { path } => {
+                context.queue(self.material_config, path);
+            }
+            UnifiedAssetJob::Mdl { path, config } => {
+                context.queue(config, path);
+            }
+            UnifiedAssetJob::Vmf { path, config } => {
+                // VMF files need special handling - read and parse first
+                if let Ok(bytes) = context.fs().read(&path) {
+                    if let Ok(vmf) = Vmf::from_bytes(&bytes) {
+                        context.queue(config, vmf);
+                    } else {
+                        error!("Failed to parse VMF file: {}", path);
+                    }
+                } else {
+                    error!("Failed to read VMF file: {}", path);
+                }
+            }
+        }
+        Ok(())
+    }
 }
 
 /// Enum representing different types of assets that can be imported
@@ -57,32 +103,10 @@ pub enum AssetImportJob {
     },
     Vmt {
         path: PathBuf,
-        config: MaterialConfig,
     },
     Vtf {
         path: PathBuf,
-        config: VtfConfig,
     },
-}
-
-impl AssetImportJob {
-    pub fn path(&self) -> &PathBuf {
-        match self {
-            AssetImportJob::Vmf { path, .. } => path,
-            AssetImportJob::Mdl { path, .. } => path,
-            AssetImportJob::Vmt { path, .. } => path,
-            AssetImportJob::Vtf { path, .. } => path,
-        }
-    }
-
-    pub fn asset_type(&self) -> &'static str {
-        match self {
-            AssetImportJob::Vmf { .. } => "vmf",
-            AssetImportJob::Mdl { .. } => "mdl",
-            AssetImportJob::Vmt { .. } => "vmt",
-            AssetImportJob::Vtf { .. } => "vtf",
-        }
-    }
 }
 
 /// Python wrapper for parallel import builder
@@ -283,10 +307,7 @@ impl PyApiImporter {
             StdPathBuf::from(path).into()
         };
 
-        self.jobs.push(AssetImportJob::Vmt {
-            path,
-            config: self.material_config,
-        });
+        self.jobs.push(AssetImportJob::Vmt { path });
 
         Ok(())
     }
@@ -298,10 +319,7 @@ impl PyApiImporter {
             StdPathBuf::from(path).into()
         };
 
-        self.jobs.push(AssetImportJob::Vtf {
-            path,
-            config: VtfConfig,
-        });
+        self.jobs.push(AssetImportJob::Vtf { path });
 
         Ok(())
     }
@@ -315,84 +333,24 @@ impl PyApiImporter {
         let start = Instant::now();
         info!("executing {} import jobs in parallel...", self.jobs.len());
 
-        /*
-         * PROBLEM: process_each requires a single config type that implements IntoProcessable<A, H>.
-         * We have mixed job types with different config types (VtfConfig, MaterialConfig, etc.).
-         *
-         * The process_each API doesn't natively support mixed config types in a single call.
-         * Attempts to create a unified enum config failed due to trait implementation complexity.
-         * Dynamic dispatch also doesn't work directly since process_each needs compile-time config types.
-         *
-         * Current limitation: We cannot achieve true mixed-type parallel processing in a single
-         * process_each call due to the executor.process_each API design requiring homogeneous configs.
-         *
-         * TODO: This needs either:
-         * 1. Changes to plumber_core's process_each API to support heterogeneous configs
-         * 2. A different parallel processing approach in plumber_core
-         * 3. Or acceptance that jobs must be grouped by type for process_each
-         */
+        // Convert jobs to unified format
+        let unified_jobs: Vec<UnifiedAssetJob> = self
+            .jobs
+            .drain(..)
+            .map(|job| match job {
+                AssetImportJob::Vtf { path } => UnifiedAssetJob::Vtf { path },
+                AssetImportJob::Vmt { path } => UnifiedAssetJob::Vmt { path },
+                AssetImportJob::Mdl { path, config } => UnifiedAssetJob::Mdl { path, config },
+                AssetImportJob::Vmf { path, config } => UnifiedAssetJob::Vmf { path, config },
+            })
+            .collect();
 
-        // For now, process jobs in dependency order with type grouping
-        // This gives us parallelism within each type, which is better than serial processing
+        // Use single process_each call with unified config
+        let unified_config = UnifiedAssetConfig {
+            material_config: self.material_config,
+        };
 
-        // Group jobs by type for dependency-ordered batch processing
-        let mut vtf_paths = Vec::new();
-        let mut vmt_paths = Vec::new();
-        let mut mdl_groups: std::collections::HashMap<
-            String,
-            (MdlConfig<MaterialConfig>, Vec<PathBuf>),
-        > = std::collections::HashMap::new();
-        let mut vmf_jobs = Vec::new();
-
-        for job in self.jobs.drain(..) {
-            match job {
-                AssetImportJob::Vtf { path, .. } => vtf_paths.push(path),
-                AssetImportJob::Vmt { path, .. } => vmt_paths.push(path),
-                AssetImportJob::Mdl { path, config } => {
-                    let config_key = format!("{:?}", config);
-                    mdl_groups
-                        .entry(config_key)
-                        .or_insert_with(|| (config, Vec::new()))
-                        .1
-                        .push(path);
-                }
-                AssetImportJob::Vmf { path, config } => vmf_jobs.push((path, config)),
-            }
-        }
-
-        // Process in dependency order: VTF -> VMT -> MDL -> VMF
-        // Each type gets parallel processing via process_each
-
-        if !vtf_paths.is_empty() {
-            executor.process_each(VtfConfig, vtf_paths, || self.process_assets(py));
-            info!("jobs executed in {:.2} s", start.elapsed().as_secs_f32());
-            return Ok(());
-        }
-
-        if !vmt_paths.is_empty() {
-            executor.process_each(self.material_config, vmt_paths, || self.process_assets(py));
-            info!("jobs executed in {:.2} s", start.elapsed().as_secs_f32());
-            return Ok(());
-        }
-
-        if !mdl_groups.is_empty() {
-            if let Some((_, (config, paths))) = mdl_groups.into_iter().next() {
-                executor.process_each(config, paths, || self.process_assets(py));
-            }
-            info!("jobs executed in {:.2} s", start.elapsed().as_secs_f32());
-            return Ok(());
-        }
-
-        if !vmf_jobs.is_empty() {
-            if let Some((path, config)) = vmf_jobs.into_iter().next() {
-                let bytes = executor
-                    .fs()
-                    .read(&path)
-                    .map_err(|e| PyIOError::new_err(e.to_string()))?;
-                let vmf = Vmf::from_bytes(&bytes).map_err(|e| PyIOError::new_err(e.to_string()))?;
-                executor.process(config, vmf, || self.process_assets(py));
-            }
-        }
+        executor.process_each(unified_config, unified_jobs, || self.process_assets(py));
 
         info!("jobs executed in {:.2} s", start.elapsed().as_secs_f32());
         Ok(())
