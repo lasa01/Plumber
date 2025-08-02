@@ -48,7 +48,16 @@ class ImportMdl(
         fs = self.get_game_fs(context)
         asset_callbacks = AssetCallbacks(context)
 
+        file_paths = self.get_file_paths()
+        is_batch = self.is_batch_import()
+
         try:
+            # For batch imports, determine the root search path from the first file
+            root_search = None
+            if not self.from_game_fs:
+                first_path = file_paths[0] if file_paths else self.filepath
+                root_search = (first_path, "models")
+
             importer = Importer(
                 fs,
                 asset_callbacks,
@@ -60,24 +69,37 @@ class ImportMdl(
                 editor_materials=self.editor_materials,
                 texture_format=self.texture_format,
                 texture_interpolation=self.texture_interpolation,
-                root_search=None if self.from_game_fs else (self.filepath, "models"),
+                root_search=root_search,
             )
         except OSError as err:
             self.report({"ERROR"}, f"could not open file system: {err}")
             return {"CANCELLED"}
 
         try:
-            importer.import_mdl(
-                self.filepath,
-                self.from_game_fs,
-                import_animations=self.import_animations,
-            )
+            if is_batch and not self.from_game_fs:
+                importer.import_mdl_batch(
+                    file_paths,
+                    self.from_game_fs,
+                    import_animations=self.import_animations,
+                )
+
+                # Apply scale to all models in the batch
+                asset_callbacks.model_tracker.apply_scale_to_batch(self.scale)
+            else:
+                importer.import_mdl(
+                    self.filepath,
+                    self.from_game_fs,
+                    import_animations=self.import_animations,
+                )
+
+                # Apply scale to the single imported model
+                imported_obj = asset_callbacks.model_tracker.get_last_imported()
+                if imported_obj is not None:
+                    imported_obj.scale = (self.scale, self.scale, self.scale)
+
         except OSError as err:
             self.report({"ERROR"}, f"could not import mdl: {err}")
             return {"CANCELLED"}
-
-        imported_obj = asset_callbacks.model_tracker.get_last_imported()
-        imported_obj.scale = (self.scale, self.scale, self.scale)
 
         return {"FINISHED"}
 

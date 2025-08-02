@@ -36,7 +36,16 @@ class ImportVmt(
     def execute(self, context: Context) -> Set[str]:
         fs = self.get_game_fs(context)
 
+        file_paths = self.get_file_paths()
+        is_batch = self.is_batch_import()
+
         try:
+            # For batch imports, determine the root search path from the first file
+            root_search = None
+            if not self.from_game_fs:
+                first_path = file_paths[0] if file_paths else self.filepath
+                root_search = (first_path, "materials")
+
             importer = Importer(
                 fs,
                 AssetCallbacks(context),
@@ -47,14 +56,17 @@ class ImportVmt(
                 editor_materials=self.editor_materials,
                 texture_interpolation=self.texture_interpolation,
                 texture_format=self.texture_format,
-                root_search=None if self.from_game_fs else (self.filepath, "materials"),
+                root_search=root_search,
             )
         except OSError as err:
             self.report({"ERROR"}, f"could not open file system: {err}")
             return {"CANCELLED"}
 
         try:
-            importer.import_vmt(self.filepath, self.from_game_fs)
+            if is_batch and not self.from_game_fs:
+                importer.import_vmt_batch(file_paths, self.from_game_fs)
+            else:
+                importer.import_vmt(self.filepath, self.from_game_fs)
         except OSError as err:
             self.report({"ERROR"}, f"could not import vmt: {err}")
             return {"CANCELLED"}

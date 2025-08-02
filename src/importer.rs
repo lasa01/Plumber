@@ -318,6 +318,96 @@ impl PyImporter {
         Ok(())
     }
 
+    #[args(paths, from_game, kwargs = "**")]
+    fn import_mdl_batch(
+        &mut self,
+        py: Python,
+        paths: Vec<&str>,
+        from_game: bool,
+        kwargs: Option<&PyDict>,
+    ) -> PyResult<()> {
+        let executor = self.consume()?;
+
+        let paths: Vec<PathBuf> = paths
+            .into_iter()
+            .map(|path| {
+                if from_game {
+                    GamePathBuf::from(path).into()
+                } else {
+                    StdPathBuf::from(path).into()
+                }
+            })
+            .collect();
+
+        let settings = self.mdl_settings(kwargs)?;
+
+        let start = Instant::now();
+        info!("importing {} mdl files...", paths.len());
+
+        executor.process_each(settings, paths, || self.process_assets(py));
+
+        info!(
+            "mdl batch imported in {:.2} s",
+            start.elapsed().as_secs_f32()
+        );
+
+        Ok(())
+    }
+
+    fn import_vmt_batch(&mut self, py: Python, paths: Vec<&str>, from_game: bool) -> PyResult<()> {
+        let executor = self.consume()?;
+
+        let paths: Vec<PathBuf> = paths
+            .into_iter()
+            .map(|path| {
+                if from_game {
+                    GamePathBuf::from(path).into()
+                } else {
+                    StdPathBuf::from(path).into()
+                }
+            })
+            .collect();
+
+        let start = Instant::now();
+        info!("importing {} vmt files...", paths.len());
+
+        executor.process_each(self.material_config, paths, || self.process_assets(py));
+
+        info!(
+            "vmt batch imported in {:.2} s",
+            start.elapsed().as_secs_f32()
+        );
+
+        Ok(())
+    }
+
+    fn import_vtf_batch(&mut self, py: Python, paths: Vec<&str>, from_game: bool) -> PyResult<()> {
+        let executor = self.consume()?;
+
+        let paths: Vec<PathBuf> = paths
+            .into_iter()
+            .map(|path| {
+                if from_game {
+                    GamePathBuf::from(path).into()
+                } else {
+                    StdPathBuf::from(path).into()
+                }
+            })
+            .collect();
+
+        let start = Instant::now();
+        info!("importing {} vtf files...", paths.len());
+
+        executor.process_each(VtfConfig, paths, || self.process_assets(py));
+
+        info!(
+            "vtf batch imported in {:.2} s",
+            start.elapsed().as_secs_f32()
+        );
+
+        Ok(())
+    }
+
     fn import_assets(&mut self, py: Python) {
         // drop the importer, causing the asset channel to disconnect
         // if we don't do this, process_assets will hang forever waiting for new assets to be sent

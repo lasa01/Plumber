@@ -1,9 +1,10 @@
-from typing import Set
+from typing import Set, List
 from os.path import basename, dirname
+import os
 
 import bpy
-from bpy.props import EnumProperty, BoolProperty, StringProperty
-from bpy.types import Context, Operator, Panel, UILayout
+from bpy.props import EnumProperty, BoolProperty, StringProperty, CollectionProperty
+from bpy.types import Context, Operator, Panel, UILayout, PropertyGroup
 
 from ..plumber import FileSystem
 from ..preferences import AddonPreferences
@@ -26,6 +27,18 @@ class ImporterOperatorProps:
         options={"HIDDEN"},
     )
 
+    directory: StringProperty(
+        name="Directory",
+        maxlen=1024,
+        subtype="DIR_PATH",
+        options={"HIDDEN"},
+    )
+
+    files: CollectionProperty(
+        type=bpy.types.OperatorFileListElement,
+        options={"HIDDEN"},
+    )
+
 
 class ImporterOperator(Operator, ImporterOperatorProps):
     def get_game_fs(self, context: Context):
@@ -44,6 +57,17 @@ class ImporterOperator(Operator, ImporterOperatorProps):
     def get_target_fps(self, context: Context) -> float:
         scene = context.scene
         return scene.render.fps / scene.render.fps_base
+
+    def is_batch_import(self) -> bool:
+        """Check if this is a batch import (multiple files selected)"""
+        return len(self.files) > 1
+
+    def get_file_paths(self) -> List[str]:
+        """Get list of file paths to import"""
+        if self.is_batch_import():
+            return [os.path.join(self.directory, file.name) for file in self.files]
+        else:
+            return [self.filepath]
 
     def invoke(self, context: Context, event) -> Set[str]:
         context.window_manager.fileselect_add(self)

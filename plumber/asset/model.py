@@ -94,9 +94,14 @@ class ModelTracker:
                 # this only gets called if there is 1 mesh
                 parent_obj = mesh_obj
 
-        self.imported_objects[original_name.lower()] = ModelState(
-            parent_obj, children, collection
-        )
+        model_state = ModelState(parent_obj, children, collection)
+        self.imported_objects[original_name.lower()] = model_state
+
+    def apply_scale_to_batch(self, scale: float) -> None:
+        """Apply scale to all models imported in the current batch"""
+        for model_state in self.imported_objects.values():
+            if model_state.object is not None:
+                model_state.object.scale = (scale, scale, scale)
 
     def get_model_copy(
         self, model_name: str, collection: Collection
