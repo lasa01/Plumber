@@ -139,22 +139,23 @@ class ParallelImportBuilder:
 
         if context is None:
             import bpy
+
             context = bpy.context
 
         try:
             # Use the new Rust API importer for better performance
             import plumber
-            
+
             callbacks = _create_asset_callbacks(context)
             threads = _get_threads_suggestion(context)
-            
+
             # Create API importer
             api_importer = plumber.ApiImporter(
                 self._file_system._fs,
                 callbacks,
                 threads,
             )
-            
+
             # Add all jobs to the API importer
             for job in self._jobs:
                 if job.asset_type == AssetType.VMF:
@@ -165,10 +166,10 @@ class ParallelImportBuilder:
                     api_importer.add_vmt_job(job.path, job.from_game)
                 elif job.asset_type == AssetType.VTF:
                     api_importer.add_vtf_job(job.path, job.from_game)
-            
+
             # Execute all jobs
             api_importer.execute_jobs()
-            
+
             # Clear jobs after execution
             self._jobs.clear()
 
@@ -193,11 +194,11 @@ def _create_asset_callbacks(context, **options) -> Any:
     main_collection = options.get("main_collection")
     if main_collection is None:
         main_collection = context.scene.collection
-    
+
     brush_collection = options.get("brush_collection")
     if brush_collection is None:
         brush_collection = context.scene.collection
-        
+
     overlay_collection = options.get("overlay_collection")
     prop_collection = options.get("prop_collection")
     light_collection = options.get("light_collection")

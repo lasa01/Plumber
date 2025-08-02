@@ -1,8 +1,4 @@
-use std::{
-    path::PathBuf as StdPathBuf,
-    str::FromStr,
-    time::Instant,
-};
+use std::{path::PathBuf as StdPathBuf, str::FromStr, time::Instant};
 
 use crossbeam_channel::Receiver;
 use pyo3::{
@@ -62,7 +58,7 @@ impl AssetImportJob {
             AssetImportJob::Vtf { path, .. } => path,
         }
     }
-    
+
     pub fn asset_type(&self) -> &'static str {
         match self {
             AssetImportJob::Vmf { .. } => "vmf",
@@ -167,7 +163,7 @@ impl PyApiImporter {
             callback_obj,
         })
     }
-    
+
     #[args(path, from_game, kwargs = "**")]
     fn add_vmf_job(
         &mut self,
@@ -233,14 +229,14 @@ impl PyApiImporter {
             StdPathBuf::from(path).into()
         };
 
-        self.jobs.push(AssetImportJob::Vmf { 
-            path, 
-            config: settings 
+        self.jobs.push(AssetImportJob::Vmf {
+            path,
+            config: settings,
         });
 
         Ok(())
     }
-    
+
     #[args(path, from_game, kwargs = "**")]
     fn add_mdl_job(
         &mut self,
@@ -256,9 +252,9 @@ impl PyApiImporter {
             StdPathBuf::from(path).into()
         };
 
-        self.jobs.push(AssetImportJob::Mdl { 
-            path, 
-            config: settings 
+        self.jobs.push(AssetImportJob::Mdl {
+            path,
+            config: settings,
         });
 
         Ok(())
@@ -271,9 +267,9 @@ impl PyApiImporter {
             StdPathBuf::from(path).into()
         };
 
-        self.jobs.push(AssetImportJob::Vmt { 
-            path, 
-            config: self.material_config 
+        self.jobs.push(AssetImportJob::Vmt {
+            path,
+            config: self.material_config,
         });
 
         Ok(())
@@ -286,14 +282,14 @@ impl PyApiImporter {
             StdPathBuf::from(path).into()
         };
 
-        self.jobs.push(AssetImportJob::Vtf { 
-            path, 
-            config: VtfConfig 
+        self.jobs.push(AssetImportJob::Vtf {
+            path,
+            config: VtfConfig,
         });
 
         Ok(())
     }
-    
+
     fn execute_jobs(&mut self, py: Python) -> PyResult<()> {
         if self.jobs.is_empty() {
             return Ok(());
@@ -306,11 +302,15 @@ impl PyApiImporter {
         if self.jobs.len() == 1 {
             let executor = self.consume()?;
             let job = self.jobs.remove(0);
-            
+
             match job {
                 AssetImportJob::Vmf { path, config } => {
-                    let bytes = executor.fs().read(&path).map_err(|e| PyIOError::new_err(e.to_string()))?;
-                    let vmf = Vmf::from_bytes(&bytes).map_err(|e| PyIOError::new_err(e.to_string()))?;
+                    let bytes = executor
+                        .fs()
+                        .read(&path)
+                        .map_err(|e| PyIOError::new_err(e.to_string()))?;
+                    let vmf =
+                        Vmf::from_bytes(&bytes).map_err(|e| PyIOError::new_err(e.to_string()))?;
                     executor.process(config, vmf, || self.process_assets(py));
                 }
                 AssetImportJob::Mdl { path, config } => {

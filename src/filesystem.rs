@@ -100,14 +100,18 @@ impl PyFileSystem {
             .map_err(|e| PyIOError::new_err(e.to_string()))?;
 
         let path = GamePathBuf::from(path);
-        let file = opened.open_file(&path).map_err(|e| PyIOError::new_err(e.to_string()))?;
-        
+        let file = opened
+            .open_file(&path)
+            .map_err(|e| PyIOError::new_err(e.to_string()))?;
+
         let mut reader = BufReader::new(file);
         let mut content = String::new();
-        
+
         use std::io::Read;
-        reader.read_to_string(&mut content).map_err(|e| PyIOError::new_err(e.to_string()))?;
-        
+        reader
+            .read_to_string(&mut content)
+            .map_err(|e| PyIOError::new_err(e.to_string()))?;
+
         Ok(content)
     }
 
@@ -118,14 +122,18 @@ impl PyFileSystem {
             .map_err(|e| PyIOError::new_err(e.to_string()))?;
 
         let path = GamePathBuf::from(path);
-        let file = opened.open_file(&path).map_err(|e| PyIOError::new_err(e.to_string()))?;
-        
+        let file = opened
+            .open_file(&path)
+            .map_err(|e| PyIOError::new_err(e.to_string()))?;
+
         let mut reader = BufReader::new(file);
         let mut content = Vec::new();
-        
+
         use std::io::Read;
-        reader.read_to_end(&mut content).map_err(|e| PyIOError::new_err(e.to_string()))?;
-        
+        reader
+            .read_to_end(&mut content)
+            .map_err(|e| PyIOError::new_err(e.to_string()))?;
+
         Ok(content)
     }
 
@@ -136,7 +144,7 @@ impl PyFileSystem {
             .map_err(|e| PyIOError::new_err(e.to_string()))?;
 
         let path = GamePathBuf::from(path);
-        
+
         // Try to open the file - if it exists, this will succeed
         match opened.open_file(&path) {
             Ok(_) => Ok(true),
