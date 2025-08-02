@@ -379,6 +379,9 @@ fn build_modulate_material(
     // Both regular modulate and mod2x use transparent shader for multiply blending
     let mut builder = MaterialBuilder::new(&shaders::TRANSPARENT);
 
+    // Set surface render method to BLENDED for proper Eevee rendering
+    builder.property("surface_render_method", Value::Enum("BLENDED"));
+
     // Both regular modulate and mod2x use non-color space to preserve raw texture values
     let color_space = ColorSpace::NonColor;
 
