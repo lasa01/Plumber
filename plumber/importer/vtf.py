@@ -34,6 +34,9 @@ class ImportVtf(
     def execute(self, context: Context) -> Set[str]:
         fs = self.get_game_fs(context)
 
+        file_paths = self.get_file_paths()
+        is_batch = self.is_batch_import()
+
         try:
             importer = Importer(
                 fs,
@@ -45,7 +48,10 @@ class ImportVtf(
             return {"CANCELLED"}
 
         try:
-            importer.import_vtf(self.filepath, self.from_game_fs)
+            if is_batch:
+                importer.import_vtf_batch(file_paths, self.from_game_fs)
+            else:
+                importer.import_vtf(self.filepath, self.from_game_fs)
         except OSError as err:
             self.report({"ERROR"}, f"could not import vtf: {err}")
             return {"CANCELLED"}

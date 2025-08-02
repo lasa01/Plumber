@@ -1,14 +1,21 @@
-from typing import Set
+from typing import Set, List
 from os.path import basename, dirname
+import os
 
 import bpy
-from bpy.props import EnumProperty, BoolProperty, StringProperty
-from bpy.types import Context, Operator, Panel, UILayout
+from bpy.props import EnumProperty, BoolProperty, StringProperty, CollectionProperty
+from bpy.types import Context, Operator, Panel, UILayout, PropertyGroup
 
 from ..plumber import FileSystem
 from ..preferences import AddonPreferences
 
 from .. import __package__ as ADDON_NAME
+
+
+class SelectedFile(PropertyGroup):
+    """Property group for selected files in batch import"""
+
+    name: StringProperty(name="File Name")
 
 
 class ImporterOperatorProps:
@@ -23,6 +30,18 @@ class ImporterOperatorProps:
         name="Path",
         maxlen=1024,
         subtype="FILE_PATH",
+        options={"HIDDEN"},
+    )
+
+    directory: StringProperty(
+        name="Directory",
+        maxlen=1024,
+        subtype="DIR_PATH",
+        options={"HIDDEN"},
+    )
+
+    files: CollectionProperty(
+        type=SelectedFile,
         options={"HIDDEN"},
     )
 
@@ -44,6 +63,17 @@ class ImporterOperator(Operator, ImporterOperatorProps):
     def get_target_fps(self, context: Context) -> float:
         scene = context.scene
         return scene.render.fps / scene.render.fps_base
+
+    def is_batch_import(self) -> bool:
+        """Check if this is a batch import (multiple files selected)"""
+        return len(self.files) > 0
+
+    def get_file_paths(self) -> List[str]:
+        """Get list of file paths to import"""
+        if self.is_batch_import():
+            return [os.path.join(self.directory, file.name) for file in self.files]
+        else:
+            return [self.filepath]
 
     def invoke(self, context: Context, event) -> Set[str]:
         context.window_manager.fileselect_add(self)
@@ -251,6 +281,7 @@ from .vtf import ImportVtf
 
 
 CLASSES = [
+    SelectedFile,
     PLUMBER_PT_importer_common,
     PLUMBER_PT_vmf_map_data,
     PLUMBER_PT_vmf_geometry,
