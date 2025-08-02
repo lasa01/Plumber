@@ -26,6 +26,7 @@ pub mod shaders {
     pub static TRANSPARENT: NodeType = NodeType {
         blender_id: "ShaderNodeBsdfTransparent",
         size: [140.0, 75.0],
+        input_sockets: &[Name("Color")],
         output_sockets: &[Position(0)],
         ..NodeType::default()
     };
