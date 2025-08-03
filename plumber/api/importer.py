@@ -35,6 +35,67 @@ class ImportJob:
         self.from_game = from_game
 
 
+def _map_api_to_rust_params(api_params: dict) -> dict:
+    """
+    Map API parameter names (with prefixes) to Rust parameter names (without prefixes).
+
+    The Python API uses prefixed names like 'material_import_materials', but the Rust
+    extraction functions expect unprefixed names like 'import_materials'.
+    """
+    mapping = {
+        # Material settings
+        "material_import_materials": "import_materials",
+        "material_simple_materials": "simple_materials",
+        "material_texture_format": "texture_format",
+        "material_texture_interpolation": "texture_interpolation",
+        "material_allow_culling": "allow_culling",
+        "material_editor_materials": "editor_materials",
+        # VMF/General settings
+        "vmf_import_lights": "import_lights",
+        "vmf_light_factor": "light_factor",
+        "vmf_sun_factor": "sun_factor",
+        "vmf_ambient_factor": "ambient_factor",
+        "vmf_import_sky_camera": "import_sky_camera",
+        "vmf_sky_equi_height": "sky_equi_height",
+        "vmf_scale": "scale",
+        "vmf_target_fps": "target_fps",
+        "vmf_remove_animations": "remove_animations",
+        "vmf_import_unknown_entities": "import_unknown_entities",
+        # VMF-specific settings
+        "vmf_import_brushes": "import_brushes",
+        "vmf_import_overlays": "import_overlays",
+        "vmf_epsilon": "epsilon",
+        "vmf_cut_threshold": "cut_threshold",
+        "vmf_merge_solids": "merge_solids",
+        "vmf_invisible_solids": "invisible_solids",
+        "vmf_import_props": "import_props",
+        "vmf_import_entities": "import_entities",
+        "vmf_import_sky": "import_sky",
+        # MDL-specific settings
+        "mdl_import_animations": "import_animations",
+        # Special filesystem settings (keep as-is)
+        "vmf_path": "vmf_path",
+        "map_data_path": "map_data_path",
+        "root_search": "root_search",
+        # Collection settings (keep as-is, handled separately)
+        "main_collection": "main_collection",
+        "vmf_brush_collection": "brush_collection",
+        "vmf_overlay_collection": "overlay_collection",
+        "vmf_prop_collection": "prop_collection",
+        "vmf_light_collection": "light_collection",
+        "vmf_entity_collection": "entity_collection",
+        # MDL-specific collection setting
+        "mdl_apply_armatures": "apply_armatures",
+    }
+
+    rust_params = {}
+    for api_key, value in api_params.items():
+        rust_key = mapping.get(api_key, api_key)
+        rust_params[rust_key] = value
+
+    return rust_params
+
+
 class ParallelImportBuilder:
     """
     Builder for creating custom parallel import processes.
@@ -264,12 +325,13 @@ class ParallelImportBuilder:
             callbacks = _create_asset_callbacks(context, **self._collection_settings)
             threads = _get_threads_suggestion(context)
 
-            # Create API importer with all settings
+            # Create API importer with all settings (mapped to Rust parameter names)
+            rust_settings = _map_api_to_rust_params(self._all_settings)
             api_importer = plumber.ApiImporter(
                 self._file_system._fs,
                 callbacks,
                 threads,
-                **self._all_settings,
+                **rust_settings,
             )
 
             # Add all jobs to the API importer (only path and from_game)
@@ -460,41 +522,49 @@ def import_vmf(
         callbacks = _create_asset_callbacks(context, **options)
         threads = _get_threads_suggestion(context)
 
+        # Collect all API parameters
+        api_params = {
+            # Material settings
+            "material_import_materials": material_import_materials,
+            "material_simple_materials": material_simple_materials,
+            "material_texture_format": material_texture_format,
+            "material_texture_interpolation": material_texture_interpolation,
+            "material_allow_culling": material_allow_culling,
+            "material_editor_materials": material_editor_materials,
+            # VMF settings
+            "vmf_import_lights": vmf_import_lights,
+            "vmf_light_factor": vmf_light_factor,
+            "vmf_sun_factor": vmf_sun_factor,
+            "vmf_ambient_factor": vmf_ambient_factor,
+            "vmf_import_sky_camera": vmf_import_sky_camera,
+            "vmf_sky_equi_height": vmf_sky_equi_height,
+            "vmf_import_unknown_entities": vmf_import_unknown_entities,
+            "vmf_import_brushes": vmf_import_brushes,
+            "vmf_import_overlays": vmf_import_overlays,
+            "vmf_epsilon": vmf_epsilon,
+            "vmf_cut_threshold": vmf_cut_threshold,
+            "vmf_merge_solids": vmf_merge_solids,
+            "vmf_invisible_solids": vmf_invisible_solids,
+            "vmf_import_props": vmf_import_props,
+            "vmf_import_entities": vmf_import_entities,
+            "vmf_import_sky": vmf_import_sky,
+            "vmf_scale": vmf_scale,
+            # MDL settings
+            "mdl_scale": mdl_scale,
+            "mdl_target_fps": mdl_target_fps,
+            "mdl_remove_animations": mdl_remove_animations,
+            "mdl_import_animations": mdl_import_animations,
+            "mdl_apply_armatures": mdl_apply_armatures,
+        }
+
+        # Map API parameter names to Rust parameter names
+        rust_params = _map_api_to_rust_params(api_params)
+
         api_importer = plumber.ApiImporter(
             file_system._fs,
             callbacks,
             threads,
-            # Material settings
-            material_import_materials=material_import_materials,
-            material_simple_materials=material_simple_materials,
-            material_texture_format=material_texture_format,
-            material_texture_interpolation=material_texture_interpolation,
-            material_allow_culling=material_allow_culling,
-            material_editor_materials=material_editor_materials,
-            # VMF settings
-            vmf_import_lights=vmf_import_lights,
-            vmf_light_factor=vmf_light_factor,
-            vmf_sun_factor=vmf_sun_factor,
-            vmf_ambient_factor=vmf_ambient_factor,
-            vmf_import_sky_camera=vmf_import_sky_camera,
-            vmf_sky_equi_height=vmf_sky_equi_height,
-            vmf_import_unknown_entities=vmf_import_unknown_entities,
-            vmf_import_brushes=vmf_import_brushes,
-            vmf_import_overlays=vmf_import_overlays,
-            vmf_epsilon=vmf_epsilon,
-            vmf_cut_threshold=vmf_cut_threshold,
-            vmf_merge_solids=vmf_merge_solids,
-            vmf_invisible_solids=vmf_invisible_solids,
-            vmf_import_props=vmf_import_props,
-            vmf_import_entities=vmf_import_entities,
-            vmf_import_sky=vmf_import_sky,
-            vmf_scale=vmf_scale,
-            # MDL settings
-            mdl_scale=mdl_scale,
-            mdl_target_fps=mdl_target_fps,
-            mdl_remove_animations=mdl_remove_animations,
-            mdl_import_animations=mdl_import_animations,
-            mdl_apply_armatures=mdl_apply_armatures,
+            **rust_params,
         )
 
         api_importer.add_vmf_job(path, from_game)
@@ -584,42 +654,50 @@ def import_mdl(
         callbacks = _create_asset_callbacks(context, **options)
         threads = _get_threads_suggestion(context)
 
+        # Collect all API parameters
+        api_params = {
+            # Material settings
+            "material_import_materials": material_import_materials,
+            "material_simple_materials": material_simple_materials,
+            "material_texture_format": material_texture_format,
+            "material_texture_interpolation": material_texture_interpolation,
+            "material_allow_culling": material_allow_culling,
+            "material_editor_materials": material_editor_materials,
+            # VMF settings
+            "vmf_import_lights": vmf_import_lights,
+            "vmf_light_factor": vmf_light_factor,
+            "vmf_sun_factor": vmf_sun_factor,
+            "vmf_ambient_factor": vmf_ambient_factor,
+            "vmf_import_sky_camera": vmf_import_sky_camera,
+            "vmf_sky_equi_height": vmf_sky_equi_height,
+            "vmf_import_unknown_entities": vmf_import_unknown_entities,
+            # MDL settings
+            "mdl_scale": mdl_scale,
+            "mdl_target_fps": mdl_target_fps,
+            "mdl_remove_animations": mdl_remove_animations,
+            "mdl_import_animations": mdl_import_animations,
+            "mdl_apply_armatures": mdl_apply_armatures,
+            # VMF settings (using defaults for model imports)
+            "vmf_import_brushes": True,
+            "vmf_import_overlays": True,
+            "vmf_epsilon": 0.01,
+            "vmf_cut_threshold": 0.1,
+            "vmf_merge_solids": "MERGE",
+            "vmf_invisible_solids": "SKIP",
+            "vmf_import_props": True,
+            "vmf_import_entities": True,
+            "vmf_import_sky": True,
+            "vmf_scale": 1.0,
+        }
+
+        # Map API parameter names to Rust parameter names
+        rust_params = _map_api_to_rust_params(api_params)
+
         api_importer = plumber.ApiImporter(
             file_system._fs,
             callbacks,
             threads,
-            # Material settings
-            material_import_materials=material_import_materials,
-            material_simple_materials=material_simple_materials,
-            material_texture_format=material_texture_format,
-            material_texture_interpolation=material_texture_interpolation,
-            material_allow_culling=material_allow_culling,
-            material_editor_materials=material_editor_materials,
-            # VMF settings
-            vmf_import_lights=vmf_import_lights,
-            vmf_light_factor=vmf_light_factor,
-            vmf_sun_factor=vmf_sun_factor,
-            vmf_ambient_factor=vmf_ambient_factor,
-            vmf_import_sky_camera=vmf_import_sky_camera,
-            vmf_sky_equi_height=vmf_sky_equi_height,
-            vmf_import_unknown_entities=vmf_import_unknown_entities,
-            # MDL settings
-            mdl_scale=mdl_scale,
-            mdl_target_fps=mdl_target_fps,
-            mdl_remove_animations=mdl_remove_animations,
-            mdl_import_animations=mdl_import_animations,
-            mdl_apply_armatures=mdl_apply_armatures,
-            # VMF settings (using defaults for model imports)
-            vmf_import_brushes=True,
-            vmf_import_overlays=True,
-            vmf_epsilon=0.01,
-            vmf_cut_threshold=0.1,
-            vmf_merge_solids="MERGE",
-            vmf_invisible_solids="SKIP",
-            vmf_import_props=True,
-            vmf_import_entities=True,
-            vmf_import_sky=True,
-            vmf_scale=1.0,
+            **rust_params,
         )
 
         api_importer.add_mdl_job(path, from_game)
@@ -671,41 +749,49 @@ def import_vmt(
         callbacks = _create_asset_callbacks(context)
         threads = _get_threads_suggestion(context)
 
+        # Collect all API parameters
+        api_params = {
+            # Material settings
+            "material_import_materials": True,
+            "material_simple_materials": material_simple_materials,
+            "material_texture_format": material_texture_format,
+            "material_texture_interpolation": material_texture_interpolation,
+            "material_allow_culling": material_allow_culling,
+            "material_editor_materials": material_editor_materials,
+            # VMF settings (using defaults)
+            "vmf_import_lights": True,
+            "vmf_light_factor": 1.0,
+            "vmf_sun_factor": 1.0,
+            "vmf_ambient_factor": 1.0,
+            "vmf_import_sky_camera": True,
+            "vmf_sky_equi_height": 1024,
+            "vmf_import_unknown_entities": False,
+            "vmf_import_brushes": True,
+            "vmf_import_overlays": True,
+            "vmf_epsilon": 0.01,
+            "vmf_cut_threshold": 0.1,
+            "vmf_merge_solids": "MERGE",
+            "vmf_invisible_solids": "SKIP",
+            "vmf_import_props": True,
+            "vmf_import_entities": True,
+            "vmf_import_sky": True,
+            "vmf_scale": 1.0,
+            # MDL settings (using defaults)
+            "mdl_scale": 1.0,
+            "mdl_target_fps": 30.0,
+            "mdl_remove_animations": False,
+            "mdl_import_animations": True,
+            "mdl_apply_armatures": False,
+        }
+
+        # Map API parameter names to Rust parameter names
+        rust_params = _map_api_to_rust_params(api_params)
+
         api_importer = plumber.ApiImporter(
             file_system._fs,
             callbacks,
             threads,
-            # Material settings
-            material_import_materials=True,
-            material_simple_materials=material_simple_materials,
-            material_texture_format=material_texture_format,
-            material_texture_interpolation=material_texture_interpolation,
-            material_allow_culling=material_allow_culling,
-            material_editor_materials=material_editor_materials,
-            # VMF settings (using defaults)
-            vmf_import_lights=True,
-            vmf_light_factor=1.0,
-            vmf_sun_factor=1.0,
-            vmf_ambient_factor=1.0,
-            vmf_import_sky_camera=True,
-            vmf_sky_equi_height=1024,
-            vmf_import_unknown_entities=False,
-            vmf_import_brushes=True,
-            vmf_import_overlays=True,
-            vmf_epsilon=0.01,
-            vmf_cut_threshold=0.1,
-            vmf_merge_solids="MERGE",
-            vmf_invisible_solids="SKIP",
-            vmf_import_props=True,
-            vmf_import_entities=True,
-            vmf_import_sky=True,
-            vmf_scale=1.0,
-            # MDL settings (using defaults)
-            mdl_scale=1.0,
-            mdl_target_fps=30.0,
-            mdl_remove_animations=False,
-            mdl_import_animations=True,
-            mdl_apply_armatures=False,
+            **rust_params,
         )
 
         api_importer.add_vmt_job(path, from_game)
@@ -751,41 +837,49 @@ def import_vtf(
         callbacks = _create_asset_callbacks(context)
         threads = _get_threads_suggestion(context)
 
+        # Collect all API parameters
+        api_params = {
+            # Material settings
+            "material_import_materials": True,
+            "material_simple_materials": False,
+            "material_texture_format": material_texture_format,
+            "material_texture_interpolation": material_texture_interpolation,
+            "material_allow_culling": False,
+            "material_editor_materials": False,
+            # VMF settings (using defaults)
+            "vmf_import_lights": True,
+            "vmf_light_factor": 1.0,
+            "vmf_sun_factor": 1.0,
+            "vmf_ambient_factor": 1.0,
+            "vmf_import_sky_camera": True,
+            "vmf_sky_equi_height": 1024,
+            "vmf_import_unknown_entities": False,
+            "vmf_import_brushes": True,
+            "vmf_import_overlays": True,
+            "vmf_epsilon": 0.01,
+            "vmf_cut_threshold": 0.1,
+            "vmf_merge_solids": "MERGE",
+            "vmf_invisible_solids": "SKIP",
+            "vmf_import_props": True,
+            "vmf_import_entities": True,
+            "vmf_import_sky": True,
+            "vmf_scale": 1.0,
+            # MDL settings (using defaults)
+            "mdl_scale": 1.0,
+            "mdl_target_fps": 30.0,
+            "mdl_remove_animations": False,
+            "mdl_import_animations": True,
+            "mdl_apply_armatures": False,
+        }
+
+        # Map API parameter names to Rust parameter names
+        rust_params = _map_api_to_rust_params(api_params)
+
         api_importer = plumber.ApiImporter(
             file_system._fs,
             callbacks,
             threads,
-            # Material settings
-            material_import_materials=True,
-            material_simple_materials=False,
-            material_texture_format=material_texture_format,
-            material_texture_interpolation=material_texture_interpolation,
-            material_allow_culling=False,
-            material_editor_materials=False,
-            # VMF settings (using defaults)
-            vmf_import_lights=True,
-            vmf_light_factor=1.0,
-            vmf_sun_factor=1.0,
-            vmf_ambient_factor=1.0,
-            vmf_import_sky_camera=True,
-            vmf_sky_equi_height=1024,
-            vmf_import_unknown_entities=False,
-            vmf_import_brushes=True,
-            vmf_import_overlays=True,
-            vmf_epsilon=0.01,
-            vmf_cut_threshold=0.1,
-            vmf_merge_solids="MERGE",
-            vmf_invisible_solids="SKIP",
-            vmf_import_props=True,
-            vmf_import_entities=True,
-            vmf_import_sky=True,
-            vmf_scale=1.0,
-            # MDL settings (using defaults)
-            mdl_scale=1.0,
-            mdl_target_fps=30.0,
-            mdl_remove_animations=False,
-            mdl_import_animations=True,
-            mdl_apply_armatures=False,
+            **rust_params,
         )
 
         api_importer.add_vtf_job(path, from_game)

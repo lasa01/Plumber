@@ -26,33 +26,6 @@ use crate::{
     importer::PyImporter,
 };
 
-/// Helper function to strip prefixes from kwargs and create new `PyDict` with unprefixed keys
-fn strip_prefixes_from_kwargs(
-    py: Python,
-    kwargs: Option<&PyDict>,
-    prefixes: &[&str],
-) -> PyResult<Option<PyObject>> {
-    if let Some(kwargs) = kwargs {
-        let new_dict = PyDict::new(py);
-
-        for (key, value) in kwargs {
-            let key_str: &str = key.extract()?;
-
-            // Try to strip each prefix
-            let stripped_key = prefixes
-                .iter()
-                .find_map(|prefix| key_str.strip_prefix(&format!("{prefix}_")))
-                .unwrap_or(key_str);
-
-            new_dict.set_item(stripped_key, value)?;
-        }
-
-        Ok(Some(new_dict.into()))
-    } else {
-        Ok(None)
-    }
-}
-
 /// Unified asset config that can process mixed asset types
 #[derive(Debug, Clone, Copy)]
 pub struct UnifiedAssetConfig {
@@ -165,18 +138,11 @@ impl PyApiImporter {
             start.elapsed().as_secs_f32()
         );
 
-        // Strip prefixes from kwargs and extract settings using regular extraction methods
-        let prefixes = ["material", "vmf", "mdl"];
-        let stripped_kwargs = strip_prefixes_from_kwargs(py, kwargs, &prefixes)?;
-        let stripped_kwargs_dict = stripped_kwargs
-            .as_ref()
-            .map(|obj| obj.as_ref(py).downcast::<PyDict>())
-            .transpose()?;
-
-        let settings = PyImporter::extract_importer_wide_settings(stripped_kwargs_dict)?;
-        PyImporter::handle_special_fs_settings(stripped_kwargs_dict, &mut opened)?;
-        let vmf_settings = PyImporter::extract_vmf_settings(stripped_kwargs_dict)?;
-        let mdl_import_animations = PyImporter::extract_mdl_settings(stripped_kwargs_dict)?;
+        // Extract settings using regular extraction methods with unprefixed parameter names
+        let settings = PyImporter::extract_importer_wide_settings(kwargs)?;
+        PyImporter::handle_special_fs_settings(kwargs, &mut opened)?;
+        let vmf_settings = PyImporter::extract_vmf_settings(kwargs)?;
+        let mdl_import_animations = PyImporter::extract_mdl_settings(kwargs)?;
 
         let material_config = MaterialConfig {
             settings: settings.material,
