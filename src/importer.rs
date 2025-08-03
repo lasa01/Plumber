@@ -280,14 +280,12 @@ impl PyImporter {
                     "import_unknown_entities" => {
                         settings.import_unknown_entities = value.extract()?;
                     }
-                    // Known special filesystem settings - ignore here
-                    "vmf_path" | "map_data_path" | "root_search" => {}
-                    // Known VMF-specific settings - ignore here
-                    "import_brushes" | "import_overlays" | "epsilon" | "cut_threshold"
-                    | "merge_solids" | "invisible_solids" | "import_props" | "import_entities"
-                    | "import_sky" => {}
-                    // Known MDL-specific settings - ignore here
-                    "import_animations" => {}
+                    // Known special filesystem settings, VMF-specific settings, and MDL-specific settings - ignore here
+                    "vmf_path" | "map_data_path" | "root_search"
+                    | "import_brushes" | "import_overlays" | "epsilon" | "cut_threshold"
+                    | "merge_solids" | "invisible_solids" | "import_props" | "import_entities" 
+                    | "import_sky"
+                    | "import_animations" => {}
                     _ => unrecognized_keys.push(key_str),
                 }
             }
@@ -421,7 +419,7 @@ impl PyImporter {
                     "scale" => {
                         scale = value.extract()?;
                     }
-                    // Known importer-wide settings - ignore here
+                    // Known importer-wide settings, MDL-specific settings, and special filesystem settings - ignore here
                     "import_materials"
                     | "simple_materials"
                     | "allow_culling"
@@ -436,11 +434,9 @@ impl PyImporter {
                     | "sky_equi_height"
                     | "target_fps"
                     | "remove_animations"
-                    | "import_unknown_entities" => {}
-                    // Known special filesystem settings - ignore here
-                    "vmf_path" | "map_data_path" | "root_search" => {}
-                    // Known MDL-specific settings - ignore here
-                    "import_animations" => {}
+                    | "import_unknown_entities"
+                    | "import_animations"
+                    | "vmf_path" | "map_data_path" | "root_search" => {}
                     _ => unrecognized_keys.push(key_str),
                 }
             }
@@ -481,7 +477,7 @@ impl PyImporter {
                 let key_str: &str = key.extract()?;
                 match key_str {
                     "import_animations" => import_animations = value.extract()?,
-                    // Known importer-wide settings - ignore here
+                    // Known importer-wide settings, special filesystem settings, and VMF-specific settings - ignore here
                     "import_materials"
                     | "simple_materials"
                     | "allow_culling"
@@ -497,11 +493,9 @@ impl PyImporter {
                     | "scale"
                     | "target_fps"
                     | "remove_animations"
-                    | "import_unknown_entities" => {}
-                    // Known special filesystem settings - ignore here
-                    "vmf_path" | "map_data_path" | "root_search" => {}
-                    // Known VMF-specific settings - ignore here
-                    "import_brushes" | "import_overlays" | "epsilon" | "cut_threshold"
+                    | "import_unknown_entities"
+                    | "vmf_path" | "map_data_path" | "root_search"
+                    | "import_brushes" | "import_overlays" | "epsilon" | "cut_threshold"
                     | "merge_solids" | "invisible_solids" | "import_props" | "import_entities"
                     | "import_sky" => {}
                     _ => unrecognized_keys.push(key_str),

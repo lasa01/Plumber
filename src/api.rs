@@ -116,7 +116,7 @@ impl PyApiImporter {
     #[new]
     #[args(file_system, callback_obj, threads_suggestion, kwargs = "**")]
     fn new(
-        py: Python,
+        _py: Python,
         file_system: &PyFileSystem,
         callback_obj: PyObject,
         threads_suggestion: usize,

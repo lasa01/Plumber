@@ -75,16 +75,16 @@ def _map_api_to_rust_params(api_params: dict) -> dict:
         "mdl_import_animations": "import_animations",
         # Special filesystem settings (keep as-is)
         "vmf_path": "vmf_path",
-        "map_data_path": "map_data_path",
+        "asset_search_path": "map_data_path",
         "root_search": "root_search",
-        # Collection settings (keep as-is, handled separately)
+        # AssetCallbacks settings (keep as-is, handled separately)
         "main_collection": "main_collection",
         "vmf_brush_collection": "brush_collection",
         "vmf_overlay_collection": "overlay_collection",
         "vmf_prop_collection": "prop_collection",
         "vmf_light_collection": "light_collection",
         "vmf_entity_collection": "entity_collection",
-        # MDL-specific collection setting
+        # MDL-specific AssetCallbacks setting
         "mdl_apply_armatures": "apply_armatures",
     }
 
@@ -134,18 +134,20 @@ class ParallelImportBuilder:
         vmf_import_entities: bool = True,
         vmf_import_sky: bool = True,
         vmf_scale: float = 1.0,
+        # Asset search settings
+        asset_search_path: Optional[str] = None,
+        # AssetCallbacks settings
         vmf_brush_collection=None,
         vmf_overlay_collection=None,
         vmf_prop_collection=None,
         vmf_light_collection=None,
         vmf_entity_collection=None,
         # MDL settings
-        mdl_scale: float = 1.0,
         mdl_target_fps: float = 30.0,
         mdl_remove_animations: bool = False,
         mdl_import_animations: bool = True,
         mdl_apply_armatures: bool = False,
-        # Collection settings
+        # AssetCallbacks settings
         main_collection=None,
     ):
         """
@@ -180,6 +182,10 @@ class ParallelImportBuilder:
             vmf_import_entities: Import entities
             vmf_import_sky: Import skybox
             vmf_scale: VMF-specific scale factor
+            
+            # Asset search settings
+            asset_search_path: Additional search path for assets
+            
             vmf_brush_collection: Collection for brushes (VMF imports)
             vmf_overlay_collection: Collection for overlays (VMF imports)
             vmf_prop_collection: Collection for props (VMF imports)
@@ -187,13 +193,12 @@ class ParallelImportBuilder:
             vmf_entity_collection: Collection for entities (VMF imports)
 
             # MDL settings
-            mdl_scale: Global scale factor for models
             mdl_target_fps: Target FPS for animations
             mdl_remove_animations: Remove animations from imported models
             mdl_import_animations: Import model animations
             mdl_apply_armatures: Apply armatures to models
 
-            # Collection settings
+            # AssetCallbacks settings
             main_collection: Main collection for imports
         """
         self._file_system = file_system
@@ -226,15 +231,16 @@ class ParallelImportBuilder:
             "vmf_import_entities": vmf_import_entities,
             "vmf_import_sky": vmf_import_sky,
             "vmf_scale": vmf_scale,
+            # Asset search settings
+            "asset_search_path": asset_search_path,
             # MDL settings (using API prefixed names)
-            "mdl_scale": mdl_scale,
             "mdl_target_fps": mdl_target_fps,
             "mdl_remove_animations": mdl_remove_animations,
             "mdl_import_animations": mdl_import_animations,
             "mdl_apply_armatures": mdl_apply_armatures,
         }
 
-        # Store collection settings
+        # Store AssetCallbacks settings
         self._collection_settings = {
             "main_collection": main_collection,
             "brush_collection": vmf_brush_collection,
@@ -368,7 +374,7 @@ class ParallelImportBuilder:
 def _create_asset_callbacks(context, **options) -> Any:
     from ..asset import AssetCallbacks
 
-    # Extract collection options - default to main collection if not specified
+    # Extract AssetCallbacks options - default to main collection if not specified
     main_collection = options.get("main_collection")
     if main_collection is None:
         main_collection = context.scene.collection
@@ -448,13 +454,14 @@ def import_vmf(
     vmf_import_entities: bool = True,
     vmf_import_sky: bool = True,
     vmf_scale: float = 1.0,
+    # Asset search settings
+    asset_search_path: Optional[str] = None,
     # MDL settings
-    mdl_scale: float = 1.0,
     mdl_target_fps: float = 30.0,
     mdl_remove_animations: bool = False,
     mdl_import_animations: bool = True,
     mdl_apply_armatures: bool = False,
-    # Collection options
+    # AssetCallbacks options
     **options,
 ) -> None:
     """
@@ -492,15 +499,17 @@ def import_vmf(
         vmf_import_entities: Import entities
         vmf_import_sky: Import skybox
         vmf_scale: VMF-specific scale factor
+        
+        # Asset search settings
+        asset_search_path: Additional search path for assets
 
         # MDL settings
-        mdl_scale: Global scale factor for models
         mdl_target_fps: Target FPS for animations
         mdl_remove_animations: Remove animations from imported models
         mdl_import_animations: Import model animations
         mdl_apply_armatures: Apply armatures to models
 
-        # Collection options
+        # AssetCallbacks options
         main_collection: Main collection for imports
         vmf_brush_collection: Collection for brushes (VMF imports)
         vmf_overlay_collection: Collection for overlays (VMF imports)
@@ -549,8 +558,9 @@ def import_vmf(
             "vmf_import_entities": vmf_import_entities,
             "vmf_import_sky": vmf_import_sky,
             "vmf_scale": vmf_scale,
+            # Asset search settings
+            "asset_search_path": asset_search_path,
             # MDL settings
-            "mdl_scale": mdl_scale,
             "mdl_target_fps": mdl_target_fps,
             "mdl_remove_animations": mdl_remove_animations,
             "mdl_import_animations": mdl_import_animations,
@@ -594,13 +604,14 @@ def import_mdl(
     vmf_import_sky_camera: bool = True,
     vmf_sky_equi_height: int = 1024,
     vmf_import_unknown_entities: bool = False,
+    # Asset search settings
+    asset_search_path: Optional[str] = None,
     # MDL settings
-    mdl_scale: float = 1.0,
     mdl_target_fps: float = 30.0,
     mdl_remove_animations: bool = False,
     mdl_import_animations: bool = True,
     mdl_apply_armatures: bool = False,
-    # Collection options
+    # AssetCallbacks options
     **options,
 ) -> None:
     """
@@ -628,15 +639,17 @@ def import_mdl(
         vmf_import_sky_camera: Import sky camera
         vmf_sky_equi_height: Sky equirectangular texture height
         vmf_import_unknown_entities: Import unknown entities as empties
+        
+        # Asset search settings
+        asset_search_path: Additional search path for assets
 
         # MDL settings
-        mdl_scale: Global scale factor for models
         mdl_target_fps: Target FPS for animations
         mdl_remove_animations: Remove animations from imported models
         mdl_import_animations: Import model animations
         mdl_apply_armatures: Apply armatures to models
 
-        # Collection options
+        # AssetCallbacks options
         main_collection: Main collection for imports
         prop_collection: Collection for models
 
@@ -671,8 +684,9 @@ def import_mdl(
             "vmf_import_sky_camera": vmf_import_sky_camera,
             "vmf_sky_equi_height": vmf_sky_equi_height,
             "vmf_import_unknown_entities": vmf_import_unknown_entities,
+            # Asset search settings
+            "asset_search_path": asset_search_path,
             # MDL settings
-            "mdl_scale": mdl_scale,
             "mdl_target_fps": mdl_target_fps,
             "mdl_remove_animations": mdl_remove_animations,
             "mdl_import_animations": mdl_import_animations,
@@ -718,6 +732,8 @@ def import_vmt(
     material_texture_interpolation: str = "Linear",
     material_allow_culling: bool = False,
     material_editor_materials: bool = False,
+    # Asset search settings
+    asset_search_path: Optional[str] = None,
 ) -> None:
     """
     Import a VMT (Valve Material Type) file.
@@ -734,6 +750,9 @@ def import_vmt(
         material_texture_interpolation: Texture interpolation ("Linear", "Closest", "Cubic", "Smart")
         material_allow_culling: Enable backface culling
         material_editor_materials: Import editor materials instead of invisible ones
+        
+        # Asset search settings
+        asset_search_path: Additional search path for assets
 
     Raises:
         AssetImportError: If import fails
@@ -776,8 +795,9 @@ def import_vmt(
             "vmf_import_entities": True,
             "vmf_import_sky": True,
             "vmf_scale": 1.0,
+            # Asset search settings
+            "asset_search_path": asset_search_path,
             # MDL settings (using defaults)
-            "mdl_scale": 1.0,
             "mdl_target_fps": 30.0,
             "mdl_remove_animations": False,
             "mdl_import_animations": True,
@@ -809,6 +829,8 @@ def import_vtf(
     # Material settings
     material_texture_format: str = "Png",
     material_texture_interpolation: str = "Linear",
+    # Asset search settings
+    asset_search_path: Optional[str] = None,
 ) -> None:
     """
     Import a VTF (Valve Texture Format) file.
@@ -822,6 +844,9 @@ def import_vtf(
         # Material settings
         material_texture_format: Texture format ("Png", "Tga")
         material_texture_interpolation: Texture interpolation ("Linear", "Closest", "Cubic", "Smart")
+        
+        # Asset search settings
+        asset_search_path: Additional search path for assets
 
     Raises:
         AssetImportError: If import fails
@@ -864,8 +889,9 @@ def import_vtf(
             "vmf_import_entities": True,
             "vmf_import_sky": True,
             "vmf_scale": 1.0,
+            # Asset search settings
+            "asset_search_path": asset_search_path,
             # MDL settings (using defaults)
-            "mdl_scale": 1.0,
             "mdl_target_fps": 30.0,
             "mdl_remove_animations": False,
             "mdl_import_animations": True,

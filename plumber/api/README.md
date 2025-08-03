@@ -127,7 +127,6 @@ builder = ParallelImportBuilder(
     material_texture_format="Png",
     # MDL settings
     mdl_import_animations=True,
-    mdl_scale=0.01,
 )
 
 builder.add_mdl("models/player1.mdl") \
@@ -196,7 +195,6 @@ def find_and_import_models():
             material_simple_materials=False,
             # MDL settings
             mdl_import_animations=True,
-            mdl_scale=0.01,
         )
         
         # Add all models to import queue
