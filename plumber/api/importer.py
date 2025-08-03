@@ -45,25 +45,21 @@ class ParallelImportBuilder:
     def __init__(
         self,
         file_system: GameFileSystem,
-        # General settings
-        import_materials: bool = True,
-        import_lights: bool = True,
-        light_factor: float = 1.0,
-        sun_factor: float = 1.0,
-        ambient_factor: float = 1.0,
-        import_sky_camera: bool = True,
-        sky_equi_height: int = 1024,
-        scale: float = 1.0,
-        target_fps: float = 30.0,
-        remove_animations: bool = False,
-        import_unknown_entities: bool = False,
-        # Material options (applied to all imports in this builder)
-        simple_materials: bool = False,
-        texture_format: str = "Png",
-        texture_interpolation: str = "Linear",
-        allow_culling: bool = False,
-        editor_materials: bool = False,
-        # VMF-specific settings
+        # Material settings
+        material_import_materials: bool = True,
+        material_simple_materials: bool = False,
+        material_texture_format: str = "Png",
+        material_texture_interpolation: str = "Linear",
+        material_allow_culling: bool = False,
+        material_editor_materials: bool = False,
+        # VMF settings
+        vmf_import_lights: bool = True,
+        vmf_light_factor: float = 1.0,
+        vmf_sun_factor: float = 1.0,
+        vmf_ambient_factor: float = 1.0,
+        vmf_import_sky_camera: bool = True,
+        vmf_sky_equi_height: int = 1024,
+        vmf_import_unknown_entities: bool = False,
         vmf_import_brushes: bool = True,
         vmf_import_overlays: bool = True,
         vmf_epsilon: float = 0.01,
@@ -74,16 +70,19 @@ class ParallelImportBuilder:
         vmf_import_entities: bool = True,
         vmf_import_sky: bool = True,
         vmf_scale: float = 1.0,
-        # MDL-specific settings
+        vmf_brush_collection=None,
+        vmf_overlay_collection=None,
+        vmf_prop_collection=None,
+        vmf_light_collection=None,
+        vmf_entity_collection=None,
+        # MDL settings
+        mdl_scale: float = 1.0,
+        mdl_target_fps: float = 30.0,
+        mdl_remove_animations: bool = False,
         mdl_import_animations: bool = True,
-        # Collection options (applied to all imports)
+        mdl_apply_armatures: bool = False,
+        # Collection settings
         main_collection=None,
-        brush_collection=None,
-        overlay_collection=None,
-        prop_collection=None,
-        light_collection=None,
-        entity_collection=None,
-        apply_armatures: bool = False,
     ):
         """
         Initialize the builder with all import settings.
@@ -91,27 +90,22 @@ class ParallelImportBuilder:
         Args:
             file_system: GameFileSystem to use for imports
 
-            # General settings
-            import_materials: Import materials
-            import_lights: Import lighting
-            light_factor: Light brightness multiplier
-            sun_factor: Sunlight brightness multiplier
-            ambient_factor: Ambient light brightness multiplier
-            import_sky_camera: Import sky camera
-            sky_equi_height: Sky equirectangular texture height
-            scale: Global scale factor
-            target_fps: Target FPS for animations
-            remove_animations: Remove animations from imported models
-            import_unknown_entities: Import unknown entities as empties
+            # Material settings
+            material_import_materials: Import materials
+            material_simple_materials: Import simple, exporter-friendly materials
+            material_texture_format: Texture format ("Png", "Tga")
+            material_texture_interpolation: Texture interpolation ("Linear", "Closest", "Cubic", "Smart")
+            material_allow_culling: Enable backface culling
+            material_editor_materials: Import editor materials instead of invisible ones
 
-            # Material options
-            simple_materials: Import simple, exporter-friendly materials
-            texture_format: Texture format ("Png", "Tga")
-            texture_interpolation: Texture interpolation ("Linear", "Closest", "Cubic", "Smart")
-            allow_culling: Enable backface culling
-            editor_materials: Import editor materials instead of invisible ones
-
-            # VMF-specific settings
+            # VMF settings
+            vmf_import_lights: Import lighting
+            vmf_light_factor: Light brightness multiplier
+            vmf_sun_factor: Sunlight brightness multiplier
+            vmf_ambient_factor: Ambient light brightness multiplier
+            vmf_import_sky_camera: Import sky camera
+            vmf_sky_equi_height: Sky equirectangular texture height
+            vmf_import_unknown_entities: Import unknown entities as empties
             vmf_import_brushes: Import brush geometry
             vmf_import_overlays: Import overlay geometry
             vmf_epsilon: Geometry epsilon for calculations
@@ -122,43 +116,42 @@ class ParallelImportBuilder:
             vmf_import_entities: Import entities
             vmf_import_sky: Import skybox
             vmf_scale: VMF-specific scale factor
+            vmf_brush_collection: Collection for brushes (VMF imports)
+            vmf_overlay_collection: Collection for overlays (VMF imports)
+            vmf_prop_collection: Collection for props (VMF imports)
+            vmf_light_collection: Collection for lights (VMF imports)
+            vmf_entity_collection: Collection for entities (VMF imports)
 
-            # MDL-specific settings
+            # MDL settings
+            mdl_scale: Global scale factor for models
+            mdl_target_fps: Target FPS for animations
+            mdl_remove_animations: Remove animations from imported models
             mdl_import_animations: Import model animations
+            mdl_apply_armatures: Apply armatures to models
 
-            # Collection options
+            # Collection settings
             main_collection: Main collection for imports
-            brush_collection: Collection for brushes
-            overlay_collection: Collection for overlays
-            prop_collection: Collection for props
-            light_collection: Collection for lights
-            entity_collection: Collection for entities
-            apply_armatures: Apply armatures to models
         """
         self._file_system = file_system
         self._jobs: List[ImportJob] = []
 
         # Store all settings to be used for all imports
         self._all_settings = {
-            # General settings
-            "import_materials": import_materials,
-            "import_lights": import_lights,
-            "light_factor": light_factor,
-            "sun_factor": sun_factor,
-            "ambient_factor": ambient_factor,
-            "import_sky_camera": import_sky_camera,
-            "sky_equi_height": sky_equi_height,
-            "scale": scale,
-            "target_fps": target_fps,
-            "remove_animations": remove_animations,
-            "import_unknown_entities": import_unknown_entities,
-            # Material settings
-            "simple_materials": simple_materials,
-            "texture_format": texture_format,
-            "texture_interpolation": texture_interpolation,
-            "allow_culling": allow_culling,
-            "editor_materials": editor_materials,
-            # VMF settings
+            # Material settings (convert to internal names)
+            "import_materials": material_import_materials,
+            "simple_materials": material_simple_materials,
+            "texture_format": material_texture_format,
+            "texture_interpolation": material_texture_interpolation,
+            "allow_culling": material_allow_culling,
+            "editor_materials": material_editor_materials,
+            # VMF settings (convert to internal names)
+            "import_lights": vmf_import_lights,
+            "light_factor": vmf_light_factor,
+            "sun_factor": vmf_sun_factor,
+            "ambient_factor": vmf_ambient_factor,
+            "import_sky_camera": vmf_import_sky_camera,
+            "sky_equi_height": vmf_sky_equi_height,
+            "import_unknown_entities": vmf_import_unknown_entities,
             "vmf_import_brushes": vmf_import_brushes,
             "vmf_import_overlays": vmf_import_overlays,
             "vmf_epsilon": vmf_epsilon,
@@ -169,19 +162,22 @@ class ParallelImportBuilder:
             "vmf_import_entities": vmf_import_entities,
             "vmf_import_sky": vmf_import_sky,
             "vmf_scale": vmf_scale,
-            # MDL settings
+            # MDL settings (convert to internal names)
+            "scale": mdl_scale,
+            "target_fps": mdl_target_fps,
+            "remove_animations": mdl_remove_animations,
             "mdl_import_animations": mdl_import_animations,
+            "apply_armatures": mdl_apply_armatures,
         }
 
         # Store collection settings
         self._collection_settings = {
             "main_collection": main_collection,
-            "brush_collection": brush_collection,
-            "overlay_collection": overlay_collection,
-            "prop_collection": prop_collection,
-            "light_collection": light_collection,
-            "entity_collection": entity_collection,
-            "apply_armatures": apply_armatures,
+            "brush_collection": vmf_brush_collection,
+            "overlay_collection": vmf_overlay_collection,
+            "prop_collection": vmf_prop_collection,
+            "light_collection": vmf_light_collection,
+            "entity_collection": vmf_entity_collection,
         }
 
     def add_vmf(self, path: str, from_game: bool = True) -> "ParallelImportBuilder":
@@ -362,19 +358,21 @@ def import_vmf(
     path: str,
     from_game: bool = True,
     context=None,
-    # General settings
-    import_materials: bool = True,
-    import_lights: bool = True,
-    light_factor: float = 1.0,
-    sun_factor: float = 1.0,
-    ambient_factor: float = 1.0,
-    import_sky_camera: bool = True,
-    sky_equi_height: int = 1024,
-    scale: float = 1.0,
-    target_fps: float = 30.0,
-    remove_animations: bool = False,
-    import_unknown_entities: bool = False,
-    # VMF-specific options
+    # Material settings
+    material_import_materials: bool = True,
+    material_simple_materials: bool = False,
+    material_texture_format: str = "Png",
+    material_texture_interpolation: str = "Linear",
+    material_allow_culling: bool = False,
+    material_editor_materials: bool = False,
+    # VMF settings
+    vmf_import_lights: bool = True,
+    vmf_light_factor: float = 1.0,
+    vmf_sun_factor: float = 1.0,
+    vmf_ambient_factor: float = 1.0,
+    vmf_import_sky_camera: bool = True,
+    vmf_sky_equi_height: int = 1024,
+    vmf_import_unknown_entities: bool = False,
     vmf_import_brushes: bool = True,
     vmf_import_overlays: bool = True,
     vmf_epsilon: float = 0.01,
@@ -385,12 +383,12 @@ def import_vmf(
     vmf_import_entities: bool = True,
     vmf_import_sky: bool = True,
     vmf_scale: float = 1.0,
-    # Material options
-    simple_materials: bool = False,
-    texture_format: str = "Png",
-    texture_interpolation: str = "Linear",
-    allow_culling: bool = False,
-    editor_materials: bool = False,
+    # MDL settings
+    mdl_scale: float = 1.0,
+    mdl_target_fps: float = 30.0,
+    mdl_remove_animations: bool = False,
+    mdl_import_animations: bool = True,
+    mdl_apply_armatures: bool = False,
     # Collection options
     **options,
 ) -> None:
@@ -403,20 +401,22 @@ def import_vmf(
         from_game: Whether to load from game file system or OS file system
         context: Blender context (uses bpy.context if None)
 
-        # General settings
-        import_materials: Import materials
-        import_lights: Import lighting
-        light_factor: Light brightness multiplier
-        sun_factor: Sunlight brightness multiplier
-        ambient_factor: Ambient light brightness multiplier
-        import_sky_camera: Import sky camera
-        sky_equi_height: Sky equirectangular texture height
-        scale: Global scale factor
-        target_fps: Target FPS for animations
-        remove_animations: Remove animations from imported models
-        import_unknown_entities: Import unknown entities as empties
+        # Material settings
+        material_import_materials: Import materials
+        material_simple_materials: Import simple, exporter-friendly materials
+        material_texture_format: Texture format ("Png", "Tga")
+        material_texture_interpolation: Texture interpolation ("Linear", "Closest", "Cubic", "Smart")
+        material_allow_culling: Enable backface culling
+        material_editor_materials: Import editor materials instead of invisible ones
 
-        # VMF-specific options
+        # VMF settings
+        vmf_import_lights: Import lighting
+        vmf_light_factor: Light brightness multiplier
+        vmf_sun_factor: Sunlight brightness multiplier
+        vmf_ambient_factor: Ambient light brightness multiplier
+        vmf_import_sky_camera: Import sky camera
+        vmf_sky_equi_height: Sky equirectangular texture height
+        vmf_import_unknown_entities: Import unknown entities as empties
         vmf_import_brushes: Import brush geometry
         vmf_import_overlays: Import overlay geometry
         vmf_epsilon: Geometry epsilon for calculations
@@ -428,21 +428,20 @@ def import_vmf(
         vmf_import_sky: Import skybox
         vmf_scale: VMF-specific scale factor
 
-        # Material options
-        simple_materials: Import simple, exporter-friendly materials
-        texture_format: Texture format ("Png", "Tga")
-        texture_interpolation: Texture interpolation ("Linear", "Closest", "Cubic", "Smart")
-        allow_culling: Enable backface culling
-        editor_materials: Import editor materials instead of invisible ones
+        # MDL settings
+        mdl_scale: Global scale factor for models
+        mdl_target_fps: Target FPS for animations
+        mdl_remove_animations: Remove animations from imported models
+        mdl_import_animations: Import model animations
+        mdl_apply_armatures: Apply armatures to models
 
         # Collection options
         main_collection: Main collection for imports
-        brush_collection: Collection for brushes
-        overlay_collection: Collection for overlays
-        prop_collection: Collection for props
-        light_collection: Collection for lights
-        entity_collection: Collection for entities
-        apply_armatures: Apply armatures to models
+        vmf_brush_collection: Collection for brushes (VMF imports)
+        vmf_overlay_collection: Collection for overlays (VMF imports)
+        vmf_prop_collection: Collection for props (VMF imports)
+        vmf_light_collection: Collection for lights (VMF imports)
+        vmf_entity_collection: Collection for entities (VMF imports)
 
     Raises:
         AssetImportError: If import fails
@@ -462,25 +461,21 @@ def import_vmf(
             file_system._fs,
             callbacks,
             threads,
-            # General settings
-            import_materials=import_materials,
-            import_lights=import_lights,
-            light_factor=light_factor,
-            sun_factor=sun_factor,
-            ambient_factor=ambient_factor,
-            import_sky_camera=import_sky_camera,
-            sky_equi_height=sky_equi_height,
-            scale=scale,
-            target_fps=target_fps,
-            remove_animations=remove_animations,
-            import_unknown_entities=import_unknown_entities,
             # Material settings
-            simple_materials=simple_materials,
-            texture_format=texture_format,
-            texture_interpolation=texture_interpolation,
-            allow_culling=allow_culling,
-            editor_materials=editor_materials,
+            material_import_materials=material_import_materials,
+            material_simple_materials=material_simple_materials,
+            material_texture_format=material_texture_format,
+            material_texture_interpolation=material_texture_interpolation,
+            material_allow_culling=material_allow_culling,
+            material_editor_materials=material_editor_materials,
             # VMF settings
+            vmf_import_lights=vmf_import_lights,
+            vmf_light_factor=vmf_light_factor,
+            vmf_sun_factor=vmf_sun_factor,
+            vmf_ambient_factor=vmf_ambient_factor,
+            vmf_import_sky_camera=vmf_import_sky_camera,
+            vmf_sky_equi_height=vmf_sky_equi_height,
+            vmf_import_unknown_entities=vmf_import_unknown_entities,
             vmf_import_brushes=vmf_import_brushes,
             vmf_import_overlays=vmf_import_overlays,
             vmf_epsilon=vmf_epsilon,
@@ -491,8 +486,12 @@ def import_vmf(
             vmf_import_entities=vmf_import_entities,
             vmf_import_sky=vmf_import_sky,
             vmf_scale=vmf_scale,
-            # MDL settings (using defaults)
-            mdl_import_animations=True,
+            # MDL settings
+            mdl_scale=mdl_scale,
+            mdl_target_fps=mdl_target_fps,
+            mdl_remove_animations=mdl_remove_animations,
+            mdl_import_animations=mdl_import_animations,
+            mdl_apply_armatures=mdl_apply_armatures,
         )
 
         api_importer.add_vmf_job(path, from_game)
@@ -507,26 +506,27 @@ def import_mdl(
     path: str,
     from_game: bool = True,
     context=None,
-    # General settings
-    import_materials: bool = True,
-    import_lights: bool = True,
-    light_factor: float = 1.0,
-    sun_factor: float = 1.0,
-    ambient_factor: float = 1.0,
-    import_sky_camera: bool = True,
-    sky_equi_height: int = 1024,
-    scale: float = 1.0,
-    target_fps: float = 30.0,
-    remove_animations: bool = False,
-    import_unknown_entities: bool = False,
-    # MDL-specific options
+    # Material settings
+    material_import_materials: bool = True,
+    material_simple_materials: bool = False,
+    material_texture_format: str = "Png",
+    material_texture_interpolation: str = "Linear",
+    material_allow_culling: bool = False,
+    material_editor_materials: bool = False,
+    # VMF settings (used for models that reference other assets)
+    vmf_import_lights: bool = True,
+    vmf_light_factor: float = 1.0,
+    vmf_sun_factor: float = 1.0,
+    vmf_ambient_factor: float = 1.0,
+    vmf_import_sky_camera: bool = True,
+    vmf_sky_equi_height: int = 1024,
+    vmf_import_unknown_entities: bool = False,
+    # MDL settings
+    mdl_scale: float = 1.0,
+    mdl_target_fps: float = 30.0,
+    mdl_remove_animations: bool = False,
     mdl_import_animations: bool = True,
-    # Material options
-    simple_materials: bool = False,
-    texture_format: str = "Png",
-    texture_interpolation: str = "Linear",
-    allow_culling: bool = False,
-    editor_materials: bool = False,
+    mdl_apply_armatures: bool = False,
     # Collection options
     **options,
 ) -> None:
@@ -539,33 +539,33 @@ def import_mdl(
         from_game: Whether to load from game file system or OS file system
         context: Blender context (uses bpy.context if None)
 
-        # General settings
-        import_materials: Import materials
-        import_lights: Import lighting
-        light_factor: Light brightness multiplier
-        sun_factor: Sunlight brightness multiplier
-        ambient_factor: Ambient light brightness multiplier
-        import_sky_camera: Import sky camera
-        sky_equi_height: Sky equirectangular texture height
-        scale: Global scale factor
-        target_fps: Target FPS for animations
-        remove_animations: Remove animations from imported models
-        import_unknown_entities: Import unknown entities as empties
+        # Material settings
+        material_import_materials: Import materials
+        material_simple_materials: Import simple, exporter-friendly materials
+        material_texture_format: Texture format ("Png", "Tga")
+        material_texture_interpolation: Texture interpolation ("Linear", "Closest", "Cubic", "Smart")
+        material_allow_culling: Enable backface culling
+        material_editor_materials: Import editor materials instead of invisible ones
 
-        # MDL-specific options
+        # VMF settings (used for models that reference other assets)
+        vmf_import_lights: Import lighting
+        vmf_light_factor: Light brightness multiplier
+        vmf_sun_factor: Sunlight brightness multiplier
+        vmf_ambient_factor: Ambient light brightness multiplier
+        vmf_import_sky_camera: Import sky camera
+        vmf_sky_equi_height: Sky equirectangular texture height
+        vmf_import_unknown_entities: Import unknown entities as empties
+
+        # MDL settings
+        mdl_scale: Global scale factor for models
+        mdl_target_fps: Target FPS for animations
+        mdl_remove_animations: Remove animations from imported models
         mdl_import_animations: Import model animations
-
-        # Material options
-        simple_materials: Import simple, exporter-friendly materials
-        texture_format: Texture format ("Png", "Tga")
-        texture_interpolation: Texture interpolation ("Linear", "Closest", "Cubic", "Smart")
-        allow_culling: Enable backface culling
-        editor_materials: Import editor materials instead of invisible ones
+        mdl_apply_armatures: Apply armatures to models
 
         # Collection options
         main_collection: Main collection for imports
         prop_collection: Collection for models
-        apply_armatures: Apply armatures to models
 
     Raises:
         AssetImportError: If import fails
@@ -585,27 +585,28 @@ def import_mdl(
             file_system._fs,
             callbacks,
             threads,
-            # General settings
-            import_materials=import_materials,
-            import_lights=import_lights,
-            light_factor=light_factor,
-            sun_factor=sun_factor,
-            ambient_factor=ambient_factor,
-            import_sky_camera=import_sky_camera,
-            sky_equi_height=sky_equi_height,
-            scale=scale,
-            target_fps=target_fps,
-            remove_animations=remove_animations,
-            import_unknown_entities=import_unknown_entities,
             # Material settings
-            simple_materials=simple_materials,
-            texture_format=texture_format,
-            texture_interpolation=texture_interpolation,
-            allow_culling=allow_culling,
-            editor_materials=editor_materials,
+            material_import_materials=material_import_materials,
+            material_simple_materials=material_simple_materials,
+            material_texture_format=material_texture_format,
+            material_texture_interpolation=material_texture_interpolation,
+            material_allow_culling=material_allow_culling,
+            material_editor_materials=material_editor_materials,
+            # VMF settings
+            vmf_import_lights=vmf_import_lights,
+            vmf_light_factor=vmf_light_factor,
+            vmf_sun_factor=vmf_sun_factor,
+            vmf_ambient_factor=vmf_ambient_factor,
+            vmf_import_sky_camera=vmf_import_sky_camera,
+            vmf_sky_equi_height=vmf_sky_equi_height,
+            vmf_import_unknown_entities=vmf_import_unknown_entities,
             # MDL settings
+            mdl_scale=mdl_scale,
+            mdl_target_fps=mdl_target_fps,
+            mdl_remove_animations=mdl_remove_animations,
             mdl_import_animations=mdl_import_animations,
-            # VMF settings (using defaults)
+            mdl_apply_armatures=mdl_apply_armatures,
+            # VMF settings (using defaults for model imports)
             vmf_import_brushes=True,
             vmf_import_overlays=True,
             vmf_epsilon=0.01,
@@ -630,12 +631,12 @@ def import_vmt(
     path: str,
     from_game: bool = True,
     context=None,
-    # Material options
-    simple_materials: bool = False,
-    texture_format: str = "Png",
-    texture_interpolation: str = "Linear",
-    allow_culling: bool = False,
-    editor_materials: bool = False,
+    # Material settings
+    material_simple_materials: bool = False,
+    material_texture_format: str = "Png",
+    material_texture_interpolation: str = "Linear",
+    material_allow_culling: bool = False,
+    material_editor_materials: bool = False,
 ) -> None:
     """
     Import a VMT (Valve Material Type) file.
@@ -646,12 +647,12 @@ def import_vmt(
         from_game: Whether to load from game file system or OS file system
         context: Blender context (uses bpy.context if None)
 
-        # Material options
-        simple_materials: Import simple, exporter-friendly materials
-        texture_format: Texture format ("Png", "Tga")
-        texture_interpolation: Texture interpolation ("Linear", "Closest", "Cubic", "Smart")
-        allow_culling: Enable backface culling
-        editor_materials: Import editor materials instead of invisible ones
+        # Material settings
+        material_simple_materials: Import simple, exporter-friendly materials
+        material_texture_format: Texture format ("Png", "Tga")
+        material_texture_interpolation: Texture interpolation ("Linear", "Closest", "Cubic", "Smart")
+        material_allow_culling: Enable backface culling
+        material_editor_materials: Import editor materials instead of invisible ones
 
     Raises:
         AssetImportError: If import fails
@@ -671,25 +672,21 @@ def import_vmt(
             file_system._fs,
             callbacks,
             threads,
-            # General settings (using defaults)
-            import_materials=True,
-            import_lights=True,
-            light_factor=1.0,
-            sun_factor=1.0,
-            ambient_factor=1.0,
-            import_sky_camera=True,
-            sky_equi_height=1024,
-            scale=1.0,
-            target_fps=30.0,
-            remove_animations=False,
-            import_unknown_entities=False,
             # Material settings
-            simple_materials=simple_materials,
-            texture_format=texture_format,
-            texture_interpolation=texture_interpolation,
-            allow_culling=allow_culling,
-            editor_materials=editor_materials,
+            material_import_materials=True,
+            material_simple_materials=material_simple_materials,
+            material_texture_format=material_texture_format,
+            material_texture_interpolation=material_texture_interpolation,
+            material_allow_culling=material_allow_culling,
+            material_editor_materials=material_editor_materials,
             # VMF settings (using defaults)
+            vmf_import_lights=True,
+            vmf_light_factor=1.0,
+            vmf_sun_factor=1.0,
+            vmf_ambient_factor=1.0,
+            vmf_import_sky_camera=True,
+            vmf_sky_equi_height=1024,
+            vmf_import_unknown_entities=False,
             vmf_import_brushes=True,
             vmf_import_overlays=True,
             vmf_epsilon=0.01,
@@ -701,7 +698,11 @@ def import_vmt(
             vmf_import_sky=True,
             vmf_scale=1.0,
             # MDL settings (using defaults)
+            mdl_scale=1.0,
+            mdl_target_fps=30.0,
+            mdl_remove_animations=False,
             mdl_import_animations=True,
+            mdl_apply_armatures=False,
         )
 
         api_importer.add_vmt_job(path, from_game)
@@ -716,9 +717,9 @@ def import_vtf(
     path: str,
     from_game: bool = True,
     context=None,
-    # Texture options
-    texture_format: str = "Png",
-    texture_interpolation: str = "Linear",
+    # Material settings
+    material_texture_format: str = "Png",
+    material_texture_interpolation: str = "Linear",
 ) -> None:
     """
     Import a VTF (Valve Texture Format) file.
@@ -729,9 +730,9 @@ def import_vtf(
         from_game: Whether to load from game file system or OS file system
         context: Blender context (uses bpy.context if None)
 
-        # Texture options
-        texture_format: Texture format ("Png", "Tga")
-        texture_interpolation: Texture interpolation ("Linear", "Closest", "Cubic", "Smart")
+        # Material settings
+        material_texture_format: Texture format ("Png", "Tga")
+        material_texture_interpolation: Texture interpolation ("Linear", "Closest", "Cubic", "Smart")
 
     Raises:
         AssetImportError: If import fails
@@ -751,25 +752,21 @@ def import_vtf(
             file_system._fs,
             callbacks,
             threads,
-            # General settings (using defaults)
-            import_materials=True,
-            import_lights=True,
-            light_factor=1.0,
-            sun_factor=1.0,
-            ambient_factor=1.0,
-            import_sky_camera=True,
-            sky_equi_height=1024,
-            scale=1.0,
-            target_fps=30.0,
-            remove_animations=False,
-            import_unknown_entities=False,
-            # Material settings (using defaults except for texture settings)
-            simple_materials=False,
-            texture_format=texture_format,
-            texture_interpolation=texture_interpolation,
-            allow_culling=False,
-            editor_materials=False,
+            # Material settings
+            material_import_materials=True,
+            material_simple_materials=False,
+            material_texture_format=material_texture_format,
+            material_texture_interpolation=material_texture_interpolation,
+            material_allow_culling=False,
+            material_editor_materials=False,
             # VMF settings (using defaults)
+            vmf_import_lights=True,
+            vmf_light_factor=1.0,
+            vmf_sun_factor=1.0,
+            vmf_ambient_factor=1.0,
+            vmf_import_sky_camera=True,
+            vmf_sky_equi_height=1024,
+            vmf_import_unknown_entities=False,
             vmf_import_brushes=True,
             vmf_import_overlays=True,
             vmf_epsilon=0.01,
@@ -781,7 +778,11 @@ def import_vtf(
             vmf_import_sky=True,
             vmf_scale=1.0,
             # MDL settings (using defaults)
+            mdl_scale=1.0,
+            mdl_target_fps=30.0,
+            mdl_remove_animations=False,
             mdl_import_animations=True,
+            mdl_apply_armatures=False,
         )
 
         api_importer.add_vtf_job(path, from_game)

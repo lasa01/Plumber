@@ -182,30 +182,45 @@ impl PyApiImporter {
                 }
 
                 match key.extract()? {
-                    // General settings
-                    "import_materials" => settings.material.import_materials = value.extract()?,
-                    "import_lights" => settings.import_lights = value.extract()?,
-                    "light_factor" => settings.light.light_factor = value.extract()?,
-                    "sun_factor" => settings.light.sun_factor = value.extract()?,
-                    "ambient_factor" => settings.light.ambient_factor = value.extract()?,
-                    "import_sky_camera" => settings.import_sky_camera = value.extract()?,
-                    "sky_equi_height" => settings.sky_equi_height = value.extract()?,
-                    "scale" => settings.scale = value.extract()?,
-                    "target_fps" => settings.target_fps = value.extract()?,
-                    "remove_animations" => settings.remove_animations = value.extract()?,
-                    "simple_materials" => settings.material.simple_materials = value.extract()?,
-                    "allow_culling" => settings.material.allow_culling = value.extract()?,
-                    "editor_materials" => settings.material.editor_materials = value.extract()?,
-                    "texture_format" => {
+                    // Material settings
+                    "material_import_materials" => {
+                        settings.material.import_materials = value.extract()?
+                    }
+                    "material_simple_materials" => {
+                        settings.material.simple_materials = value.extract()?
+                    }
+                    "material_allow_culling" => {
+                        settings.material.allow_culling = value.extract()?
+                    }
+                    "material_editor_materials" => {
+                        settings.material.editor_materials = value.extract()?
+                    }
+                    "material_texture_format" => {
                         settings.material.texture_format =
                             TextureFormat::from_str(value.extract()?)?;
                     }
-                    "texture_interpolation" => {
+                    "material_texture_interpolation" => {
                         settings.material.texture_interpolation =
                             TextureInterpolation::from_str(value.extract()?)?;
                     }
-                    "import_unknown_entities" => {
-                        settings.import_unknown_entities = value.extract()?;
+                    // VMF settings
+                    "vmf_import_lights" => settings.import_lights = value.extract()?,
+                    "vmf_light_factor" => settings.light.light_factor = value.extract()?,
+                    "vmf_sun_factor" => settings.light.sun_factor = value.extract()?,
+                    "vmf_ambient_factor" => settings.light.ambient_factor = value.extract()?,
+                    "vmf_import_sky_camera" => settings.import_sky_camera = value.extract()?,
+                    "vmf_sky_equi_height" => settings.sky_equi_height = value.extract()?,
+                    "vmf_import_unknown_entities" => {
+                        settings.import_unknown_entities = value.extract()?
+                    }
+                    // MDL settings
+                    "mdl_scale" => settings.scale = value.extract()?,
+                    "mdl_target_fps" => settings.target_fps = value.extract()?,
+                    "mdl_remove_animations" => settings.remove_animations = value.extract()?,
+                    "mdl_apply_armatures" => {
+                        // apply_armatures is not stored in HandlerSettings, 
+                        // it might be handled elsewhere in the model import process
+                        // For now, we'll ignore this parameter
                     }
                     // VMF-specific settings
                     "vmf_import_brushes" => vmf_import_brushes = value.extract()?,
