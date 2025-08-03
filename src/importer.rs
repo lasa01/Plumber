@@ -303,62 +303,6 @@ impl PyImporter {
         Ok(settings)
     }
 
-    /// Extract importer-wide settings with API prefixed parameter names
-    pub fn extract_api_importer_wide_settings(
-        kwargs: Option<&PyDict>,
-    ) -> PyResult<HandlerSettings> {
-        let mut settings = HandlerSettings::default();
-
-        if let Some(kwargs) = kwargs {
-            for (key, value) in kwargs {
-                if value.is_none() {
-                    continue;
-                }
-
-                match key.extract()? {
-                    // Material settings (API prefixed parameter names)
-                    "material_import_materials" => {
-                        settings.material.import_materials = value.extract()?;
-                    }
-                    "material_simple_materials" => {
-                        settings.material.simple_materials = value.extract()?;
-                    }
-                    "material_allow_culling" => {
-                        settings.material.allow_culling = value.extract()?;
-                    }
-                    "material_editor_materials" => {
-                        settings.material.editor_materials = value.extract()?;
-                    }
-                    "material_texture_format" => {
-                        settings.material.texture_format =
-                            TextureFormat::from_str(value.extract()?)?;
-                    }
-                    "material_texture_interpolation" => {
-                        settings.material.texture_interpolation =
-                            TextureInterpolation::from_str(value.extract()?)?;
-                    }
-                    // VMF general settings (API prefixed parameter names)
-                    "vmf_import_lights" => settings.import_lights = value.extract()?,
-                    "vmf_light_factor" => settings.light.light_factor = value.extract()?,
-                    "vmf_sun_factor" => settings.light.sun_factor = value.extract()?,
-                    "vmf_ambient_factor" => settings.light.ambient_factor = value.extract()?,
-                    "vmf_import_sky_camera" => settings.import_sky_camera = value.extract()?,
-                    "vmf_sky_equi_height" => settings.sky_equi_height = value.extract()?,
-                    "vmf_import_unknown_entities" => {
-                        settings.import_unknown_entities = value.extract()?;
-                    }
-                    // MDL general settings (API prefixed parameter names)
-                    "mdl_scale" => settings.scale = value.extract()?,
-                    "mdl_target_fps" => settings.target_fps = value.extract()?,
-                    "mdl_remove_animations" => settings.remove_animations = value.extract()?,
-                    _ => {} // Ignore unrecognized parameters for this extraction
-                }
-            }
-        }
-
-        Ok(settings)
-    }
-
     /// Handle special filesystem settings (`vmf_path`, `map_data_path`, `root_search`)
     pub fn handle_special_fs_settings(
         kwargs: Option<&PyDict>,
@@ -523,67 +467,6 @@ impl PyImporter {
         })
     }
 
-    /// Extract VMF-specific settings with API prefixed parameter names
-    pub fn extract_api_vmf_settings(kwargs: Option<&PyDict>) -> PyResult<VmfSettings> {
-        let mut import_brushes = true;
-        let mut import_overlays = true;
-        let mut epsilon = 0.01;
-        let mut cut_threshold = 0.1;
-        let mut merge_solids = MergeSolids::Merge;
-        let mut invisible_solids = InvisibleSolids::Skip;
-        let mut import_props = true;
-        let mut import_other_entities = true;
-        let mut import_skybox = true;
-        let mut scale = 1.0;
-
-        if let Some(kwargs) = kwargs {
-            for (key, value) in kwargs {
-                if value.is_none() {
-                    continue;
-                }
-
-                match key.extract()? {
-                    "vmf_import_brushes" => import_brushes = value.extract()?,
-                    "vmf_import_overlays" => import_overlays = value.extract()?,
-                    "vmf_epsilon" => epsilon = value.extract()?,
-                    "vmf_cut_threshold" => cut_threshold = value.extract()?,
-                    "vmf_merge_solids" => match value.extract()? {
-                        "MERGE" => merge_solids = MergeSolids::Merge,
-                        "SEPARATE" => merge_solids = MergeSolids::Separate,
-                        _ => return Err(PyTypeError::new_err("unexpected vmf_merge_solids value")),
-                    },
-                    "vmf_invisible_solids" => match value.extract()? {
-                        "IMPORT" => invisible_solids = InvisibleSolids::Import,
-                        "SKIP" => invisible_solids = InvisibleSolids::Skip,
-                        _ => {
-                            return Err(PyTypeError::new_err(
-                                "unexpected vmf_invisible_solids value",
-                            ))
-                        }
-                    },
-                    "vmf_import_props" => import_props = value.extract()?,
-                    "vmf_import_entities" => import_other_entities = value.extract()?,
-                    "vmf_import_sky" => import_skybox = value.extract()?,
-                    "vmf_scale" => scale = value.extract()?,
-                    _ => {} // Ignore unrecognized parameters for this extraction
-                }
-            }
-        }
-
-        Ok(VmfSettings {
-            import_brushes,
-            import_overlays,
-            epsilon,
-            cut_threshold,
-            merge_solids,
-            invisible_solids,
-            import_props,
-            import_other_entities,
-            import_skybox,
-            scale,
-        })
-    }
-
     /// Extract MDL-specific settings with old parameter names
     pub fn extract_mdl_settings(kwargs: Option<&PyDict>) -> PyResult<bool> {
         let mut import_animations = true;
@@ -631,26 +514,6 @@ impl PyImporter {
                 "unexpected MDL kwargs: {}",
                 unrecognized_keys.join(", ")
             )));
-        }
-
-        Ok(import_animations)
-    }
-
-    /// Extract MDL-specific settings with API prefixed parameter names
-    pub fn extract_api_mdl_settings(kwargs: Option<&PyDict>) -> PyResult<bool> {
-        let mut import_animations = true;
-
-        if let Some(kwargs) = kwargs {
-            for (key, value) in kwargs {
-                if value.is_none() {
-                    continue;
-                }
-
-                match key.extract()? {
-                    "mdl_import_animations" => import_animations = value.extract()?,
-                    _ => {} // Ignore unrecognized parameters for this extraction
-                }
-            }
         }
 
         Ok(import_animations)
