@@ -21,9 +21,7 @@ class AssetType(Enum):
 class ImportJob:
     """Represents a single import job for parallel processing."""
 
-    def __init__(
-        self, asset_type: AssetType, path: str, from_game: bool = True, **options
-    ):
+    def __init__(self, asset_type: AssetType, path: str, from_game: bool = True):
         """
         Initialize an import job.
 
@@ -31,12 +29,10 @@ class ImportJob:
             asset_type: Type of asset to import
             path: Path to the asset file
             from_game: Whether to load from game file system or OS file system
-            **options: Additional import options specific to asset type
         """
         self.asset_type = asset_type
         self.path = path
         self.from_game = from_game
-        self.options = options
 
 
 class ParallelImportBuilder:
@@ -49,68 +45,171 @@ class ParallelImportBuilder:
     def __init__(
         self,
         file_system: GameFileSystem,
+        # General settings
+        import_materials: bool = True,
+        import_lights: bool = True,
+        light_factor: float = 1.0,
+        sun_factor: float = 1.0,
+        ambient_factor: float = 1.0,
+        import_sky_camera: bool = True,
+        sky_equi_height: int = 1024,
+        scale: float = 1.0,
+        target_fps: float = 30.0,
+        remove_animations: bool = False,
+        import_unknown_entities: bool = False,
         # Material options (applied to all imports in this builder)
         simple_materials: bool = False,
         texture_format: str = "Png",
         texture_interpolation: str = "Linear",
         allow_culling: bool = False,
         editor_materials: bool = False,
+        # VMF-specific settings
+        vmf_import_brushes: bool = True,
+        vmf_import_overlays: bool = True,
+        vmf_epsilon: float = 0.01,
+        vmf_cut_threshold: float = 0.1,
+        vmf_merge_solids: str = "MERGE",
+        vmf_invisible_solids: str = "SKIP",
+        vmf_import_props: bool = True,
+        vmf_import_entities: bool = True,
+        vmf_import_sky: bool = True,
+        vmf_scale: float = 1.0,
+        # MDL-specific settings
+        mdl_import_animations: bool = True,
+        # Collection options (applied to all imports)
+        main_collection=None,
+        brush_collection=None,
+        overlay_collection=None,
+        prop_collection=None,
+        light_collection=None,
+        entity_collection=None,
+        apply_armatures: bool = False,
     ):
         """
-        Initialize the builder.
+        Initialize the builder with all import settings.
 
         Args:
             file_system: GameFileSystem to use for imports
+
+            # General settings
+            import_materials: Import materials
+            import_lights: Import lighting
+            light_factor: Light brightness multiplier
+            sun_factor: Sunlight brightness multiplier
+            ambient_factor: Ambient light brightness multiplier
+            import_sky_camera: Import sky camera
+            sky_equi_height: Sky equirectangular texture height
+            scale: Global scale factor
+            target_fps: Target FPS for animations
+            remove_animations: Remove animations from imported models
+            import_unknown_entities: Import unknown entities as empties
+
+            # Material options
             simple_materials: Import simple, exporter-friendly materials
             texture_format: Texture format ("Png", "Tga")
             texture_interpolation: Texture interpolation ("Linear", "Closest", "Cubic", "Smart")
             allow_culling: Enable backface culling
             editor_materials: Import editor materials instead of invisible ones
+
+            # VMF-specific settings
+            vmf_import_brushes: Import brush geometry
+            vmf_import_overlays: Import overlay geometry
+            vmf_epsilon: Geometry epsilon for calculations
+            vmf_cut_threshold: Cut threshold for geometry
+            vmf_merge_solids: How to merge solids ("MERGE", "SEPARATE")
+            vmf_invisible_solids: How to handle invisible solids ("IMPORT", "SKIP")
+            vmf_import_props: Import props
+            vmf_import_entities: Import entities
+            vmf_import_sky: Import skybox
+            vmf_scale: VMF-specific scale factor
+
+            # MDL-specific settings
+            mdl_import_animations: Import model animations
+
+            # Collection options
+            main_collection: Main collection for imports
+            brush_collection: Collection for brushes
+            overlay_collection: Collection for overlays
+            prop_collection: Collection for props
+            light_collection: Collection for lights
+            entity_collection: Collection for entities
+            apply_armatures: Apply armatures to models
         """
         self._file_system = file_system
         self._jobs: List[ImportJob] = []
 
-        # Store material settings to be used for all imports
-        self._material_settings = {
+        # Store all settings to be used for all imports
+        self._all_settings = {
+            # General settings
+            "import_materials": import_materials,
+            "import_lights": import_lights,
+            "light_factor": light_factor,
+            "sun_factor": sun_factor,
+            "ambient_factor": ambient_factor,
+            "import_sky_camera": import_sky_camera,
+            "sky_equi_height": sky_equi_height,
+            "scale": scale,
+            "target_fps": target_fps,
+            "remove_animations": remove_animations,
+            "import_unknown_entities": import_unknown_entities,
+            # Material settings
             "simple_materials": simple_materials,
             "texture_format": texture_format,
             "texture_interpolation": texture_interpolation,
             "allow_culling": allow_culling,
             "editor_materials": editor_materials,
+            # VMF settings
+            "vmf_import_brushes": vmf_import_brushes,
+            "vmf_import_overlays": vmf_import_overlays,
+            "vmf_epsilon": vmf_epsilon,
+            "vmf_cut_threshold": vmf_cut_threshold,
+            "vmf_merge_solids": vmf_merge_solids,
+            "vmf_invisible_solids": vmf_invisible_solids,
+            "vmf_import_props": vmf_import_props,
+            "vmf_import_entities": vmf_import_entities,
+            "vmf_import_sky": vmf_import_sky,
+            "vmf_scale": vmf_scale,
+            # MDL settings
+            "mdl_import_animations": mdl_import_animations,
         }
 
-    def add_vmf(
-        self, path: str, from_game: bool = True, **options
-    ) -> "ParallelImportBuilder":
+        # Store collection settings
+        self._collection_settings = {
+            "main_collection": main_collection,
+            "brush_collection": brush_collection,
+            "overlay_collection": overlay_collection,
+            "prop_collection": prop_collection,
+            "light_collection": light_collection,
+            "entity_collection": entity_collection,
+            "apply_armatures": apply_armatures,
+        }
+
+    def add_vmf(self, path: str, from_game: bool = True) -> "ParallelImportBuilder":
         """
         Add a VMF import job.
 
         Args:
             path: Path to VMF file
             from_game: Whether to load from game file system
-            **options: VMF import options (see import_vmf for details)
 
         Returns:
             Self for method chaining
         """
-        self._jobs.append(ImportJob(AssetType.VMF, path, from_game, **options))
+        self._jobs.append(ImportJob(AssetType.VMF, path, from_game))
         return self
 
-    def add_mdl(
-        self, path: str, from_game: bool = True, **options
-    ) -> "ParallelImportBuilder":
+    def add_mdl(self, path: str, from_game: bool = True) -> "ParallelImportBuilder":
         """
         Add an MDL import job.
 
         Args:
             path: Path to MDL file
             from_game: Whether to load from game file system
-            **options: MDL import options (see import_mdl for details)
 
         Returns:
             Self for method chaining
         """
-        self._jobs.append(ImportJob(AssetType.MDL, path, from_game, **options))
+        self._jobs.append(ImportJob(AssetType.MDL, path, from_game))
         return self
 
     def add_vmt(self, path: str, from_game: bool = True) -> "ParallelImportBuilder":
@@ -163,39 +262,23 @@ class ParallelImportBuilder:
             # Use the new Rust API importer for better performance
             import plumber
 
-            callbacks = _create_asset_callbacks(context)
+            callbacks = _create_asset_callbacks(context, **self._collection_settings)
             threads = _get_threads_suggestion(context)
 
-            # Create API importer with material settings
+            # Create API importer with all settings
             api_importer = plumber.ApiImporter(
                 self._file_system._fs,
                 callbacks,
                 threads,
-                **self._material_settings,
+                **self._all_settings,
             )
 
-            # Add all jobs to the API importer
+            # Add all jobs to the API importer (only path and from_game)
             for job in self._jobs:
                 if job.asset_type == AssetType.VMF:
-                    # VMF jobs don't pass material options since they're already in the importer
-                    non_material_options = {
-                        k: v
-                        for k, v in job.options.items()
-                        if k not in self._material_settings
-                    }
-                    api_importer.add_vmf_job(
-                        job.path, job.from_game, **non_material_options
-                    )
+                    api_importer.add_vmf_job(job.path, job.from_game)
                 elif job.asset_type == AssetType.MDL:
-                    # MDL jobs don't pass material options since they're already in the importer
-                    non_material_options = {
-                        k: v
-                        for k, v in job.options.items()
-                        if k not in self._material_settings
-                    }
-                    api_importer.add_mdl_job(
-                        job.path, job.from_game, **non_material_options
-                    )
+                    api_importer.add_mdl_job(job.path, job.from_game)
                 elif job.asset_type == AssetType.VMT:
                     api_importer.add_vmt_job(job.path, job.from_game)
                 elif job.asset_type == AssetType.VTF:
@@ -279,17 +362,29 @@ def import_vmf(
     path: str,
     from_game: bool = True,
     context=None,
-    # VMF-specific options
-    map_data_path: str = "",
-    import_brushes: bool = True,
-    import_overlays: bool = True,
-    import_props: bool = True,
-    import_lights: bool = True,
-    import_sky_camera: bool = True,
+    # General settings
     import_materials: bool = True,
-    merge_solids: str = "PER_ENTITY",
-    invisible_solids: str = "IMPORT_VISIBLE",
-    optimize_props: bool = True,
+    import_lights: bool = True,
+    light_factor: float = 1.0,
+    sun_factor: float = 1.0,
+    ambient_factor: float = 1.0,
+    import_sky_camera: bool = True,
+    sky_equi_height: int = 1024,
+    scale: float = 1.0,
+    target_fps: float = 30.0,
+    remove_animations: bool = False,
+    import_unknown_entities: bool = False,
+    # VMF-specific options
+    vmf_import_brushes: bool = True,
+    vmf_import_overlays: bool = True,
+    vmf_epsilon: float = 0.01,
+    vmf_cut_threshold: float = 0.1,
+    vmf_merge_solids: str = "MERGE",
+    vmf_invisible_solids: str = "SKIP",
+    vmf_import_props: bool = True,
+    vmf_import_entities: bool = True,
+    vmf_import_sky: bool = True,
+    vmf_scale: float = 1.0,
     # Material options
     simple_materials: bool = False,
     texture_format: str = "Png",
@@ -308,19 +403,32 @@ def import_vmf(
         from_game: Whether to load from game file system or OS file system
         context: Blender context (uses bpy.context if None)
 
-        # VMF-specific options
-        map_data_path: Path to embedded files (empty for auto-detect)
-        import_brushes: Import brush geometry
-        import_overlays: Import overlay geometry
-        import_props: Import props
-        import_lights: Import lighting
-        import_sky_camera: Import sky camera
+        # General settings
         import_materials: Import materials
-        merge_solids: How to merge brush solids ("PER_ENTITY", "PER_MATERIAL", "NONE")
-        invisible_solids: How to handle invisible solids ("IMPORT_VISIBLE", "IMPORT_ALL", "IMPORT_INVISIBLE")
-        optimize_props: Optimize prop instances
+        import_lights: Import lighting
+        light_factor: Light brightness multiplier
+        sun_factor: Sunlight brightness multiplier
+        ambient_factor: Ambient light brightness multiplier
+        import_sky_camera: Import sky camera
+        sky_equi_height: Sky equirectangular texture height
+        scale: Global scale factor
+        target_fps: Target FPS for animations
+        remove_animations: Remove animations from imported models
+        import_unknown_entities: Import unknown entities as empties
 
-        # Material options (when import_materials=True)
+        # VMF-specific options
+        vmf_import_brushes: Import brush geometry
+        vmf_import_overlays: Import overlay geometry
+        vmf_epsilon: Geometry epsilon for calculations
+        vmf_cut_threshold: Cut threshold for geometry
+        vmf_merge_solids: How to merge solids ("MERGE", "SEPARATE")
+        vmf_invisible_solids: How to handle invisible solids ("IMPORT", "SKIP")
+        vmf_import_props: Import props
+        vmf_import_entities: Import entities
+        vmf_import_sky: Import skybox
+        vmf_scale: VMF-specific scale factor
+
+        # Material options
         simple_materials: Import simple, exporter-friendly materials
         texture_format: Texture format ("Png", "Tga")
         texture_interpolation: Texture interpolation ("Linear", "Closest", "Cubic", "Smart")
@@ -354,28 +462,40 @@ def import_vmf(
             file_system._fs,
             callbacks,
             threads,
+            # General settings
+            import_materials=import_materials,
+            import_lights=import_lights,
+            light_factor=light_factor,
+            sun_factor=sun_factor,
+            ambient_factor=ambient_factor,
+            import_sky_camera=import_sky_camera,
+            sky_equi_height=sky_equi_height,
+            scale=scale,
+            target_fps=target_fps,
+            remove_animations=remove_animations,
+            import_unknown_entities=import_unknown_entities,
+            # Material settings
             simple_materials=simple_materials,
             texture_format=texture_format,
             texture_interpolation=texture_interpolation,
             allow_culling=allow_culling,
             editor_materials=editor_materials,
+            # VMF settings
+            vmf_import_brushes=vmf_import_brushes,
+            vmf_import_overlays=vmf_import_overlays,
+            vmf_epsilon=vmf_epsilon,
+            vmf_cut_threshold=vmf_cut_threshold,
+            vmf_merge_solids=vmf_merge_solids,
+            vmf_invisible_solids=vmf_invisible_solids,
+            vmf_import_props=vmf_import_props,
+            vmf_import_entities=vmf_import_entities,
+            vmf_import_sky=vmf_import_sky,
+            vmf_scale=vmf_scale,
+            # MDL settings (using defaults)
+            mdl_import_animations=True,
         )
 
-        api_importer.add_vmf_job(
-            path,
-            from_game,
-            map_data_path=map_data_path,
-            import_brushes=import_brushes,
-            import_overlays=import_overlays,
-            import_props=import_props,
-            import_lights=import_lights,
-            import_sky_camera=import_sky_camera,
-            import_materials=import_materials,
-            merge_solids=merge_solids,
-            invisible_solids=invisible_solids,
-            optimize_props=optimize_props,
-        )
-
+        api_importer.add_vmf_job(path, from_game)
         api_importer.execute_jobs()
 
     except Exception as e:
@@ -387,9 +507,20 @@ def import_mdl(
     path: str,
     from_game: bool = True,
     context=None,
-    # MDL-specific options
-    import_animations: bool = True,
+    # General settings
     import_materials: bool = True,
+    import_lights: bool = True,
+    light_factor: float = 1.0,
+    sun_factor: float = 1.0,
+    ambient_factor: float = 1.0,
+    import_sky_camera: bool = True,
+    sky_equi_height: int = 1024,
+    scale: float = 1.0,
+    target_fps: float = 30.0,
+    remove_animations: bool = False,
+    import_unknown_entities: bool = False,
+    # MDL-specific options
+    mdl_import_animations: bool = True,
     # Material options
     simple_materials: bool = False,
     texture_format: str = "Png",
@@ -408,11 +539,23 @@ def import_mdl(
         from_game: Whether to load from game file system or OS file system
         context: Blender context (uses bpy.context if None)
 
-        # MDL-specific options
-        import_animations: Import model animations
+        # General settings
         import_materials: Import materials
+        import_lights: Import lighting
+        light_factor: Light brightness multiplier
+        sun_factor: Sunlight brightness multiplier
+        ambient_factor: Ambient light brightness multiplier
+        import_sky_camera: Import sky camera
+        sky_equi_height: Sky equirectangular texture height
+        scale: Global scale factor
+        target_fps: Target FPS for animations
+        remove_animations: Remove animations from imported models
+        import_unknown_entities: Import unknown entities as empties
 
-        # Material options (when import_materials=True)
+        # MDL-specific options
+        mdl_import_animations: Import model animations
+
+        # Material options
         simple_materials: Import simple, exporter-friendly materials
         texture_format: Texture format ("Png", "Tga")
         texture_interpolation: Texture interpolation ("Linear", "Closest", "Cubic", "Smart")
@@ -442,20 +585,40 @@ def import_mdl(
             file_system._fs,
             callbacks,
             threads,
+            # General settings
+            import_materials=import_materials,
+            import_lights=import_lights,
+            light_factor=light_factor,
+            sun_factor=sun_factor,
+            ambient_factor=ambient_factor,
+            import_sky_camera=import_sky_camera,
+            sky_equi_height=sky_equi_height,
+            scale=scale,
+            target_fps=target_fps,
+            remove_animations=remove_animations,
+            import_unknown_entities=import_unknown_entities,
+            # Material settings
             simple_materials=simple_materials,
             texture_format=texture_format,
             texture_interpolation=texture_interpolation,
             allow_culling=allow_culling,
             editor_materials=editor_materials,
+            # MDL settings
+            mdl_import_animations=mdl_import_animations,
+            # VMF settings (using defaults)
+            vmf_import_brushes=True,
+            vmf_import_overlays=True,
+            vmf_epsilon=0.01,
+            vmf_cut_threshold=0.1,
+            vmf_merge_solids="MERGE",
+            vmf_invisible_solids="SKIP",
+            vmf_import_props=True,
+            vmf_import_entities=True,
+            vmf_import_sky=True,
+            vmf_scale=1.0,
         )
 
-        api_importer.add_mdl_job(
-            path,
-            from_game,
-            import_animations=import_animations,
-            import_materials=import_materials,
-        )
-
+        api_importer.add_mdl_job(path, from_game)
         api_importer.execute_jobs()
 
     except Exception as e:
@@ -508,15 +671,40 @@ def import_vmt(
             file_system._fs,
             callbacks,
             threads,
+            # General settings (using defaults)
+            import_materials=True,
+            import_lights=True,
+            light_factor=1.0,
+            sun_factor=1.0,
+            ambient_factor=1.0,
+            import_sky_camera=True,
+            sky_equi_height=1024,
+            scale=1.0,
+            target_fps=30.0,
+            remove_animations=False,
+            import_unknown_entities=False,
+            # Material settings
             simple_materials=simple_materials,
             texture_format=texture_format,
             texture_interpolation=texture_interpolation,
             allow_culling=allow_culling,
             editor_materials=editor_materials,
+            # VMF settings (using defaults)
+            vmf_import_brushes=True,
+            vmf_import_overlays=True,
+            vmf_epsilon=0.01,
+            vmf_cut_threshold=0.1,
+            vmf_merge_solids="MERGE",
+            vmf_invisible_solids="SKIP",
+            vmf_import_props=True,
+            vmf_import_entities=True,
+            vmf_import_sky=True,
+            vmf_scale=1.0,
+            # MDL settings (using defaults)
+            mdl_import_animations=True,
         )
 
         api_importer.add_vmt_job(path, from_game)
-
         api_importer.execute_jobs()
 
     except Exception as e:
@@ -563,12 +751,40 @@ def import_vtf(
             file_system._fs,
             callbacks,
             threads,
+            # General settings (using defaults)
+            import_materials=True,
+            import_lights=True,
+            light_factor=1.0,
+            sun_factor=1.0,
+            ambient_factor=1.0,
+            import_sky_camera=True,
+            sky_equi_height=1024,
+            scale=1.0,
+            target_fps=30.0,
+            remove_animations=False,
+            import_unknown_entities=False,
+            # Material settings (using defaults except for texture settings)
+            simple_materials=False,
             texture_format=texture_format,
             texture_interpolation=texture_interpolation,
+            allow_culling=False,
+            editor_materials=False,
+            # VMF settings (using defaults)
+            vmf_import_brushes=True,
+            vmf_import_overlays=True,
+            vmf_epsilon=0.01,
+            vmf_cut_threshold=0.1,
+            vmf_merge_solids="MERGE",
+            vmf_invisible_solids="SKIP",
+            vmf_import_props=True,
+            vmf_import_entities=True,
+            vmf_import_sky=True,
+            vmf_scale=1.0,
+            # MDL settings (using defaults)
+            mdl_import_animations=True,
         )
 
         api_importer.add_vtf_job(path, from_game)
-
         api_importer.execute_jobs()
 
     except Exception as e:

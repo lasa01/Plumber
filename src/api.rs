@@ -117,6 +117,19 @@ pub struct PyApiImporter {
     receiver: Receiver<Message>,
     jobs: Vec<AssetImportJob>,
     callback_obj: PyObject,
+    // VMF-specific settings
+    vmf_import_brushes: bool,
+    vmf_import_overlays: bool,
+    vmf_epsilon: f32,
+    vmf_cut_threshold: f32,
+    vmf_merge_solids: MergeSolids,
+    vmf_invisible_solids: InvisibleSolids,
+    vmf_import_props: bool,
+    vmf_import_entities: bool,
+    vmf_import_sky: bool,
+    vmf_scale: f32,
+    // MDL-specific settings
+    mdl_import_animations: bool,
 }
 
 #[pymethods]
@@ -147,6 +160,21 @@ impl PyApiImporter {
 
         let mut settings = HandlerSettings::default();
 
+        // VMF default settings
+        let mut vmf_import_brushes = true;
+        let mut vmf_import_overlays = true;
+        let mut vmf_epsilon = 0.01;
+        let mut vmf_cut_threshold = 0.1;
+        let mut vmf_merge_solids = MergeSolids::Merge;
+        let mut vmf_invisible_solids = InvisibleSolids::Skip;
+        let mut vmf_import_props = true;
+        let mut vmf_import_entities = true;
+        let mut vmf_import_sky = true;
+        let mut vmf_scale = 1.0;
+
+        // MDL default settings
+        let mut mdl_import_animations = true;
+
         if let Some(kwargs) = kwargs {
             for (key, value) in kwargs {
                 if value.is_none() {
@@ -154,6 +182,7 @@ impl PyApiImporter {
                 }
 
                 match key.extract()? {
+                    // General settings
                     "import_materials" => settings.material.import_materials = value.extract()?,
                     "import_lights" => settings.import_lights = value.extract()?,
                     "light_factor" => settings.light.light_factor = value.extract()?,
@@ -178,6 +207,31 @@ impl PyApiImporter {
                     "import_unknown_entities" => {
                         settings.import_unknown_entities = value.extract()?;
                     }
+                    // VMF-specific settings
+                    "vmf_import_brushes" => vmf_import_brushes = value.extract()?,
+                    "vmf_import_overlays" => vmf_import_overlays = value.extract()?,
+                    "vmf_epsilon" => vmf_epsilon = value.extract()?,
+                    "vmf_cut_threshold" => vmf_cut_threshold = value.extract()?,
+                    "vmf_merge_solids" => match value.extract()? {
+                        "MERGE" => vmf_merge_solids = MergeSolids::Merge,
+                        "SEPARATE" => vmf_merge_solids = MergeSolids::Separate,
+                        _ => return Err(PyTypeError::new_err("unexpected vmf_merge_solids value")),
+                    },
+                    "vmf_invisible_solids" => match value.extract()? {
+                        "IMPORT" => vmf_invisible_solids = InvisibleSolids::Import,
+                        "SKIP" => vmf_invisible_solids = InvisibleSolids::Skip,
+                        _ => {
+                            return Err(PyTypeError::new_err(
+                                "unexpected vmf_invisible_solids value",
+                            ))
+                        }
+                    },
+                    "vmf_import_props" => vmf_import_props = value.extract()?,
+                    "vmf_import_entities" => vmf_import_entities = value.extract()?,
+                    "vmf_import_sky" => vmf_import_sky = value.extract()?,
+                    "vmf_scale" => vmf_scale = value.extract()?,
+                    // MDL-specific settings
+                    "mdl_import_animations" => mdl_import_animations = value.extract()?,
                     _ => return Err(PyTypeError::new_err("unexpected kwarg")),
                 }
             }
@@ -201,63 +255,35 @@ impl PyApiImporter {
             receiver,
             jobs: Vec::new(),
             callback_obj,
+            vmf_import_brushes,
+            vmf_import_overlays,
+            vmf_epsilon,
+            vmf_cut_threshold,
+            vmf_merge_solids,
+            vmf_invisible_solids,
+            vmf_import_props,
+            vmf_import_entities,
+            vmf_import_sky,
+            vmf_scale,
+            mdl_import_animations,
         })
     }
 
-    #[args(path, from_game, kwargs = "**")]
-    fn add_vmf_job(
-        &mut self,
-        path: &str,
-        from_game: bool,
-        kwargs: Option<&PyDict>,
-    ) -> PyResult<()> {
-        let mut import_brushes = true;
+    fn add_vmf_job(&mut self, path: &str, from_game: bool) -> PyResult<()> {
         let mut geometry_settings = GeometrySettings::default();
+        geometry_settings.epsilon(self.vmf_epsilon);
+        geometry_settings.cut_threshold(self.vmf_cut_threshold);
+        geometry_settings.merge_solids(self.vmf_merge_solids);
+        geometry_settings.invisible_solids(self.vmf_invisible_solids);
+
         let mut settings = VmfConfig::new(self.material_config);
+        settings.import_overlays = self.vmf_import_overlays;
+        settings.import_props = self.vmf_import_props;
+        settings.import_other_entities = self.vmf_import_entities;
+        settings.import_skybox = self.vmf_import_sky;
+        settings.scale = self.vmf_scale;
 
-        if let Some(kwargs) = kwargs {
-            for (key, value) in kwargs {
-                match key.extract()? {
-                    "import_brushes" => {
-                        import_brushes = value.extract()?;
-                    }
-                    "import_overlays" => {
-                        settings.import_overlays = value.extract()?;
-                    }
-                    "epsilon" => {
-                        geometry_settings.epsilon(value.extract()?);
-                    }
-                    "cut_threshold" => {
-                        geometry_settings.cut_threshold(value.extract()?);
-                    }
-                    "merge_solids" => match value.extract()? {
-                        "MERGE" => geometry_settings.merge_solids(MergeSolids::Merge),
-                        "SEPARATE" => geometry_settings.merge_solids(MergeSolids::Separate),
-                        _ => return Err(PyTypeError::new_err("unexpected kwarg value")),
-                    },
-                    "invisible_solids" => match value.extract()? {
-                        "IMPORT" => geometry_settings.invisible_solids(InvisibleSolids::Import),
-                        "SKIP" => geometry_settings.invisible_solids(InvisibleSolids::Skip),
-                        _ => return Err(PyTypeError::new_err("unexpected kwarg value")),
-                    },
-                    "import_props" => {
-                        settings.import_props = value.extract()?;
-                    }
-                    "import_entities" => {
-                        settings.import_other_entities = value.extract()?;
-                    }
-                    "import_sky" => {
-                        settings.import_skybox = value.extract()?;
-                    }
-                    "scale" => {
-                        settings.scale = value.extract()?;
-                    }
-                    _ => return Err(PyTypeError::new_err("unexpected kwarg")),
-                }
-            }
-        }
-
-        settings.brushes = if import_brushes {
+        settings.brushes = if self.vmf_import_brushes {
             BrushSetting::Import(geometry_settings)
         } else {
             BrushSetting::Skip
@@ -277,14 +303,9 @@ impl PyApiImporter {
         Ok(())
     }
 
-    #[args(path, from_game, kwargs = "**")]
-    fn add_mdl_job(
-        &mut self,
-        path: &str,
-        from_game: bool,
-        kwargs: Option<&PyDict>,
-    ) -> PyResult<()> {
-        let settings = self.mdl_settings(kwargs)?;
+    fn add_mdl_job(&mut self, path: &str, from_game: bool) -> PyResult<()> {
+        let mut settings = MdlConfig::new(self.material_config);
+        settings.import_animations = self.mdl_import_animations;
 
         let path = if from_game {
             GamePathBuf::from(path).into()
@@ -402,20 +423,5 @@ impl PyApiImporter {
                 error!("Asset importing errored: {}", err);
             }
         }
-    }
-
-    fn mdl_settings(&self, kwargs: Option<&PyDict>) -> PyResult<MdlConfig<MaterialConfig>> {
-        let mut settings = MdlConfig::new(self.material_config);
-
-        if let Some(kwargs) = kwargs {
-            for (key, value) in kwargs {
-                match key.extract()? {
-                    "import_animations" => settings.import_animations = value.extract()?,
-                    _ => return Err(PyTypeError::new_err("unexpected kwarg")),
-                }
-            }
-        }
-
-        Ok(settings)
     }
 }
