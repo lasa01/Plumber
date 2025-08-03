@@ -28,25 +28,6 @@ use crate::{
     filesystem::PyFileSystem,
 };
 
-/// Enum representing different types of asset import jobs for unified processing
-#[derive(Debug, Clone)]
-pub enum UnifiedAssetJob {
-    Vtf {
-        path: PathBuf,
-    },
-    Vmt {
-        path: PathBuf,
-    },
-    Mdl {
-        path: PathBuf,
-        config: MdlConfig<MaterialConfig>,
-    },
-    Vmf {
-        path: PathBuf,
-        config: VmfConfig<MaterialConfig>,
-    },
-}
-
 /// Unified asset config that can process mixed asset types
 #[derive(Debug, Clone, Copy)]
 pub struct UnifiedAssetConfig {
@@ -54,7 +35,7 @@ pub struct UnifiedAssetConfig {
 }
 
 impl AssetConfig<BlenderAssetHandler> for UnifiedAssetConfig {
-    type Input<'a> = UnifiedAssetJob;
+    type Input<'a> = AssetImportJob;
     type Output<'a> = ();
     type Error<'a> = NoError;
 
@@ -64,16 +45,16 @@ impl AssetConfig<BlenderAssetHandler> for UnifiedAssetConfig {
         context: &mut Context<BlenderAssetHandler>,
     ) -> Result<Self::Output<'a>, Self::Error<'a>> {
         match input {
-            UnifiedAssetJob::Vtf { path } => {
+            AssetImportJob::Vtf { path } => {
                 context.queue(VtfConfig, path);
             }
-            UnifiedAssetJob::Vmt { path } => {
+            AssetImportJob::Vmt { path } => {
                 context.queue(self.material_config, path);
             }
-            UnifiedAssetJob::Mdl { path, config } => {
+            AssetImportJob::Mdl { path, config } => {
                 context.queue(config, path);
             }
-            UnifiedAssetJob::Vmf { path, config } => {
+            AssetImportJob::Vmf { path, config } => {
                 // VMF files need special handling - read and parse first
                 if let Ok(bytes) = context.fs().read(&path) {
                     if let Ok(vmf) = Vmf::from_bytes(&bytes) {
@@ -217,11 +198,7 @@ impl PyApiImporter {
                     "mdl_scale" => settings.scale = value.extract()?,
                     "mdl_target_fps" => settings.target_fps = value.extract()?,
                     "mdl_remove_animations" => settings.remove_animations = value.extract()?,
-                    "mdl_apply_armatures" => {
-                        // apply_armatures is not stored in HandlerSettings, 
-                        // it might be handled elsewhere in the model import process
-                        // For now, we'll ignore this parameter
-                    }
+                    // mdl_apply_armatures is handled at Python level in AssetCallbacks, not in Rust
                     // VMF-specific settings
                     "vmf_import_brushes" => vmf_import_brushes = value.extract()?,
                     "vmf_import_overlays" => vmf_import_overlays = value.extract()?,
@@ -369,24 +346,13 @@ impl PyApiImporter {
         let start = Instant::now();
         info!("executing {} import jobs in parallel...", self.jobs.len());
 
-        // Convert jobs to unified format
-        let unified_jobs: Vec<UnifiedAssetJob> = self
-            .jobs
-            .drain(..)
-            .map(|job| match job {
-                AssetImportJob::Vtf { path } => UnifiedAssetJob::Vtf { path },
-                AssetImportJob::Vmt { path } => UnifiedAssetJob::Vmt { path },
-                AssetImportJob::Mdl { path, config } => UnifiedAssetJob::Mdl { path, config },
-                AssetImportJob::Vmf { path, config } => UnifiedAssetJob::Vmf { path, config },
-            })
-            .collect();
-
         // Use single process_each call with unified config
         let unified_config = UnifiedAssetConfig {
             material_config: self.material_config,
         };
 
-        executor.process_each(unified_config, unified_jobs, || self.process_assets(py));
+        let jobs: Vec<AssetImportJob> = self.jobs.drain(..).collect();
+        executor.process_each(unified_config, jobs, || self.process_assets(py));
 
         info!("jobs executed in {:.2} s", start.elapsed().as_secs_f32());
         Ok(())

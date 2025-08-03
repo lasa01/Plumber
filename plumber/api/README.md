@@ -119,10 +119,19 @@ batch_import(fs, assets)
 from plumber.api import ParallelImportBuilder
 
 # Build a custom parallel import process
-builder = ParallelImportBuilder(fs)
+builder = ParallelImportBuilder(
+    fs,
+    # Material settings
+    material_import_materials=True,
+    material_simple_materials=False,
+    material_texture_format="Png",
+    # MDL settings
+    mdl_import_animations=True,
+    mdl_scale=0.01,
+)
 
-builder.add_mdl("models/player1.mdl", import_animations=True) \
-       .add_mdl("models/player2.mdl", import_animations=True) \
+builder.add_mdl("models/player1.mdl") \
+       .add_mdl("models/player2.mdl") \
        .add_vmt("materials/concrete.vmt") \
        .add_vtf("materials/concrete.vtf")
 
@@ -144,10 +153,10 @@ from plumber.api import (
 import re
 
 def find_and_import_models():
-    \"\"\"
+    """
     Find a Source game, browse for model files matching a pattern, 
     and import them all in parallel.
-    \"\"\"
+    """
     try:
         # Find Counter-Strike game
         games = Games.find_by_pattern("counter-strike")
@@ -180,16 +189,19 @@ def find_and_import_models():
             return
             
         # Create parallel import process
-        builder = ParallelImportBuilder(fs)
+        builder = ParallelImportBuilder(
+            fs,
+            # Material settings
+            material_import_materials=True,
+            material_simple_materials=False,
+            # MDL settings
+            mdl_import_animations=True,
+            mdl_scale=0.01,
+        )
         
         # Add all models to import queue
         for model_path in models:
-            builder.add_mdl(
-                model_path, 
-                import_animations=True,
-                import_materials=True,
-                simple_materials=False
-            )
+            builder.add_mdl(model_path)
         
         # Execute parallel import
         print(f"Starting parallel import of {builder.job_count} models...")
@@ -238,8 +250,8 @@ if __name__ == "__main__":
 
 ### Parallel Import
 
-- `ParallelImportBuilder(fs)` - Create builder
-- `builder.add_vmf/mdl/vmt/vtf(path, **options)` - Add import jobs
+- `ParallelImportBuilder(fs, **all_import_options)` - Create builder with all settings
+- `builder.add_vmf/mdl/vmt/vtf(path, from_game=True)` - Add import jobs (path only)
 - `builder.execute()` - Execute all jobs in parallel
 - `builder.clear()` - Clear all jobs
 - `builder.job_count` - Number of queued jobs

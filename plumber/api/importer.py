@@ -39,7 +39,10 @@ class ParallelImportBuilder:
     """
     Builder for creating custom parallel import processes.
 
-    Allows mixing different asset types for parallel import using the Rust-side executor.
+    Ensures that each asset is imported only once during the process, even if there are
+    dependencies between assets (e.g., a material depends on a texture) or if duplicate
+    imports are requested. This deduplication happens automatically across all queued
+    import jobs.
     """
 
     def __init__(
