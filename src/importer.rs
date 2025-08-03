@@ -318,16 +318,16 @@ impl PyImporter {
                 match key.extract()? {
                     // Material settings (API prefixed parameter names)
                     "material_import_materials" => {
-                        settings.material.import_materials = value.extract()?
+                        settings.material.import_materials = value.extract()?;
                     }
                     "material_simple_materials" => {
-                        settings.material.simple_materials = value.extract()?
+                        settings.material.simple_materials = value.extract()?;
                     }
                     "material_allow_culling" => {
-                        settings.material.allow_culling = value.extract()?
+                        settings.material.allow_culling = value.extract()?;
                     }
                     "material_editor_materials" => {
-                        settings.material.editor_materials = value.extract()?
+                        settings.material.editor_materials = value.extract()?;
                     }
                     "material_texture_format" => {
                         settings.material.texture_format =
@@ -345,7 +345,7 @@ impl PyImporter {
                     "vmf_import_sky_camera" => settings.import_sky_camera = value.extract()?,
                     "vmf_sky_equi_height" => settings.sky_equi_height = value.extract()?,
                     "vmf_import_unknown_entities" => {
-                        settings.import_unknown_entities = value.extract()?
+                        settings.import_unknown_entities = value.extract()?;
                     }
                     // MDL general settings (API prefixed parameter names)
                     "mdl_scale" => settings.scale = value.extract()?,
@@ -359,7 +359,7 @@ impl PyImporter {
         Ok(settings)
     }
 
-    /// Handle special filesystem settings (vmf_path, map_data_path, root_search)
+    /// Handle special filesystem settings (`vmf_path`, `map_data_path`, `root_search`)
     pub fn handle_special_fs_settings(
         kwargs: Option<&PyDict>,
         opened: &mut OpenFileSystem,
