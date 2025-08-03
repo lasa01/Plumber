@@ -279,13 +279,8 @@ impl PyImporter {
                     "import_unknown_entities" => {
                         settings.import_unknown_entities = value.extract()?;
                     }
-                    // Known special filesystem settings, VMF-specific settings, and MDL-specific settings - ignore here
-                    "vmf_path" | "map_data_path" | "root_search" | "import_brushes"
-                    | "import_overlays" | "epsilon" | "cut_threshold" | "merge_solids"
-                    | "invisible_solids" | "import_props" | "import_entities" | "import_sky"
-                    | "import_animations" => {}
                     _ => {
-                        check_unknown_keys(&[key_str])?;
+                        check_unknown_keys(key_str)?;
                     }
                 }
             }
@@ -411,28 +406,8 @@ impl PyImporter {
                     "scale" => {
                         scale = value.extract()?;
                     }
-                    // Known importer-wide settings, MDL-specific settings, and special filesystem settings - ignore here
-                    "import_materials"
-                    | "simple_materials"
-                    | "allow_culling"
-                    | "editor_materials"
-                    | "texture_format"
-                    | "texture_interpolation"
-                    | "import_lights"
-                    | "light_factor"
-                    | "sun_factor"
-                    | "ambient_factor"
-                    | "import_sky_camera"
-                    | "sky_equi_height"
-                    | "target_fps"
-                    | "remove_animations"
-                    | "import_unknown_entities"
-                    | "import_animations"
-                    | "vmf_path"
-                    | "map_data_path"
-                    | "root_search" => {}
                     _ => {
-                        check_unknown_keys(&[key_str])?;
+                        check_unknown_keys(key_str)?;
                     }
                 }
             }
@@ -465,37 +440,8 @@ impl PyImporter {
                 let key_str: &str = key.extract()?;
                 match key_str {
                     "import_animations" => import_animations = value.extract()?,
-                    // Known importer-wide settings, special filesystem settings, and VMF-specific settings - ignore here
-                    "import_materials"
-                    | "simple_materials"
-                    | "allow_culling"
-                    | "editor_materials"
-                    | "texture_format"
-                    | "texture_interpolation"
-                    | "import_lights"
-                    | "light_factor"
-                    | "sun_factor"
-                    | "ambient_factor"
-                    | "import_sky_camera"
-                    | "sky_equi_height"
-                    | "scale"
-                    | "target_fps"
-                    | "remove_animations"
-                    | "import_unknown_entities"
-                    | "vmf_path"
-                    | "map_data_path"
-                    | "root_search"
-                    | "import_brushes"
-                    | "import_overlays"
-                    | "epsilon"
-                    | "cut_threshold"
-                    | "merge_solids"
-                    | "invisible_solids"
-                    | "import_props"
-                    | "import_entities"
-                    | "import_sky" => {}
                     _ => {
-                        check_unknown_keys(&[key_str])?;
+                        check_unknown_keys(key_str)?;
                     }
                 }
             }
@@ -600,12 +546,29 @@ pub fn process_assets_with_callback(
     }
 }
 
-/// Helper function to check for unknown keys and return an error if any are found
-pub fn check_unknown_keys(unrecognized_keys: &[&str]) -> PyResult<()> {
-    if !unrecognized_keys.is_empty() {
+/// Helper function to check if a key is unknown and return an error if it is
+pub fn check_unknown_keys(key: &str) -> PyResult<()> {
+    // All known keys across all parameter extraction functions
+    const KNOWN_KEYS: &[&str] = &[
+        // Material settings
+        "import_materials", "simple_materials", "allow_culling", "editor_materials",
+        "texture_format", "texture_interpolation",
+        // General settings
+        "import_lights", "light_factor", "sun_factor", "ambient_factor", 
+        "import_sky_camera", "sky_equi_height", "scale", "target_fps",
+        "remove_animations", "import_unknown_entities",
+        // VMF settings
+        "import_brushes", "import_overlays", "epsilon", "cut_threshold",
+        "merge_solids", "invisible_solids", "import_props", "import_entities", "import_sky",
+        // MDL settings
+        "import_animations",
+        // Special filesystem settings
+        "vmf_path", "map_data_path", "root_search",
+    ];
+
+    if !KNOWN_KEYS.contains(&key) {
         return Err(pyo3::exceptions::PyTypeError::new_err(format!(
-            "unexpected kwargs: {}",
-            unrecognized_keys.join(", ")
+            "unexpected kwarg: {key}"
         )));
     }
     Ok(())
