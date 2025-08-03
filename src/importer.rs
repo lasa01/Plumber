@@ -244,7 +244,6 @@ impl PyImporter {
     /// Extract importer-wide settings (material + general settings)
     pub fn extract_importer_wide_settings(kwargs: Option<&PyDict>) -> PyResult<HandlerSettings> {
         let mut settings = HandlerSettings::default();
-        let mut unrecognized_keys = Vec::new();
 
         if let Some(kwargs) = kwargs {
             for (key, value) in kwargs {
@@ -281,21 +280,15 @@ impl PyImporter {
                         settings.import_unknown_entities = value.extract()?;
                     }
                     // Known special filesystem settings, VMF-specific settings, and MDL-specific settings - ignore here
-                    "vmf_path" | "map_data_path" | "root_search"
-                    | "import_brushes" | "import_overlays" | "epsilon" | "cut_threshold"
-                    | "merge_solids" | "invisible_solids" | "import_props" | "import_entities" 
-                    | "import_sky"
+                    "vmf_path" | "map_data_path" | "root_search" | "import_brushes"
+                    | "import_overlays" | "epsilon" | "cut_threshold" | "merge_solids"
+                    | "invisible_solids" | "import_props" | "import_entities" | "import_sky"
                     | "import_animations" => {}
-                    _ => unrecognized_keys.push(key_str),
+                    _ => {
+                        check_unknown_keys(&[key_str])?;
+                    }
                 }
             }
-        }
-
-        if !unrecognized_keys.is_empty() {
-            return Err(PyTypeError::new_err(format!(
-                "unexpected kwargs: {}",
-                unrecognized_keys.join(", ")
-            )));
         }
 
         Ok(settings)
@@ -375,7 +368,6 @@ impl PyImporter {
         let mut import_other_entities = true;
         let mut import_skybox = true;
         let mut scale = 1.0;
-        let mut unrecognized_keys = Vec::new();
 
         if let Some(kwargs) = kwargs {
             for (key, value) in kwargs {
@@ -436,17 +428,14 @@ impl PyImporter {
                     | "remove_animations"
                     | "import_unknown_entities"
                     | "import_animations"
-                    | "vmf_path" | "map_data_path" | "root_search" => {}
-                    _ => unrecognized_keys.push(key_str),
+                    | "vmf_path"
+                    | "map_data_path"
+                    | "root_search" => {}
+                    _ => {
+                        check_unknown_keys(&[key_str])?;
+                    }
                 }
             }
-        }
-
-        if !unrecognized_keys.is_empty() {
-            return Err(PyTypeError::new_err(format!(
-                "unexpected VMF kwargs: {}",
-                unrecognized_keys.join(", ")
-            )));
         }
 
         Ok(VmfSettings {
@@ -466,7 +455,6 @@ impl PyImporter {
     /// Extract MDL-specific settings with old parameter names
     pub fn extract_mdl_settings(kwargs: Option<&PyDict>) -> PyResult<bool> {
         let mut import_animations = true;
-        let mut unrecognized_keys = Vec::new();
 
         if let Some(kwargs) = kwargs {
             for (key, value) in kwargs {
@@ -494,58 +482,30 @@ impl PyImporter {
                     | "target_fps"
                     | "remove_animations"
                     | "import_unknown_entities"
-                    | "vmf_path" | "map_data_path" | "root_search"
-                    | "import_brushes" | "import_overlays" | "epsilon" | "cut_threshold"
-                    | "merge_solids" | "invisible_solids" | "import_props" | "import_entities"
+                    | "vmf_path"
+                    | "map_data_path"
+                    | "root_search"
+                    | "import_brushes"
+                    | "import_overlays"
+                    | "epsilon"
+                    | "cut_threshold"
+                    | "merge_solids"
+                    | "invisible_solids"
+                    | "import_props"
+                    | "import_entities"
                     | "import_sky" => {}
-                    _ => unrecognized_keys.push(key_str),
+                    _ => {
+                        check_unknown_keys(&[key_str])?;
+                    }
                 }
             }
-        }
-
-        if !unrecognized_keys.is_empty() {
-            return Err(PyTypeError::new_err(format!(
-                "unexpected MDL kwargs: {}",
-                unrecognized_keys.join(", ")
-            )));
         }
 
         Ok(import_animations)
     }
 
     fn process_assets(&self, py: Python) {
-        let callback_ref = self.callback_obj.as_ref(py);
-
-        for asset in &self.receiver {
-            let kind = asset.kind();
-            let id = asset.id();
-
-            let _asset_span = debug_span!("asset", kind, %id).entered();
-
-            let result = match asset {
-                Message::Material(material) => callback_ref.call_method1("material", (material,)),
-                Message::Texture(texture) => callback_ref.call_method1("texture", (texture,)),
-                Message::Model(model) => callback_ref.call_method1("model", (model,)),
-                Message::Brush(brush) => callback_ref.call_method1("brush", (brush,)),
-                Message::Overlay(overlay) => callback_ref.call_method1("overlay", (overlay,)),
-                Message::Prop(prop) => callback_ref.call_method1("prop", (prop,)),
-                Message::Light(light) => callback_ref.call_method1("light", (light,)),
-                Message::SpotLight(light) => callback_ref.call_method1("spot_light", (light,)),
-                Message::EnvLight(light) => callback_ref.call_method1("env_light", (light,)),
-                Message::SkyCamera(sky_camera) => {
-                    callback_ref.call_method1("sky_camera", (sky_camera,))
-                }
-                Message::SkyEqui(sky_equi) => callback_ref.call_method1("sky_equi", (sky_equi,)),
-                Message::UnknownEntity(entity) => {
-                    callback_ref.call_method1("unknown_entity", (entity,))
-                }
-            };
-
-            if let Err(err) = result {
-                err.print(py);
-                error!("Asset importing errored: {}", err);
-            }
-        }
+        process_assets_with_callback(py, self.callback_obj.as_ref(py), &self.receiver);
     }
 
     fn mdl_settings(&self, kwargs: Option<&PyDict>) -> PyResult<MdlConfig<MaterialConfig>> {
@@ -600,6 +560,55 @@ fn detect_embedded_files_path(file_path_string: &str, opened: &mut OpenFileSyste
             opened.add_open_search_path(OpenSearchPath::Directory(map_data_path));
         }
     }
+}
+
+/// Shared function to process assets with a callback
+pub fn process_assets_with_callback(
+    py: Python,
+    callback_ref: &PyAny,
+    receiver: &Receiver<Message>,
+) {
+    for asset in receiver {
+        let kind = asset.kind();
+        let id = asset.id();
+
+        let _asset_span = debug_span!("asset", kind, %id).entered();
+
+        let result = match asset {
+            Message::Material(material) => callback_ref.call_method1("material", (material,)),
+            Message::Texture(texture) => callback_ref.call_method1("texture", (texture,)),
+            Message::Model(model) => callback_ref.call_method1("model", (model,)),
+            Message::Brush(brush) => callback_ref.call_method1("brush", (brush,)),
+            Message::Overlay(overlay) => callback_ref.call_method1("overlay", (overlay,)),
+            Message::Prop(prop) => callback_ref.call_method1("prop", (prop,)),
+            Message::Light(light) => callback_ref.call_method1("light", (light,)),
+            Message::SpotLight(light) => callback_ref.call_method1("spot_light", (light,)),
+            Message::EnvLight(light) => callback_ref.call_method1("env_light", (light,)),
+            Message::SkyCamera(sky_camera) => {
+                callback_ref.call_method1("sky_camera", (sky_camera,))
+            }
+            Message::SkyEqui(sky_equi) => callback_ref.call_method1("sky_equi", (sky_equi,)),
+            Message::UnknownEntity(entity) => {
+                callback_ref.call_method1("unknown_entity", (entity,))
+            }
+        };
+
+        if let Err(err) = result {
+            err.print(py);
+            error!("Asset importing errored: {}", err);
+        }
+    }
+}
+
+/// Helper function to check for unknown keys and return an error if any are found
+pub fn check_unknown_keys(unrecognized_keys: &[&str]) -> PyResult<()> {
+    if !unrecognized_keys.is_empty() {
+        return Err(pyo3::exceptions::PyTypeError::new_err(format!(
+            "unexpected kwargs: {}",
+            unrecognized_keys.join(", ")
+        )));
+    }
+    Ok(())
 }
 
 fn detect_local_search_path<'a>(asset_path: &'a str, target_path: &str) -> Option<&'a StdPath> {

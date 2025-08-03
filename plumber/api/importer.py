@@ -77,7 +77,7 @@ def _map_api_to_rust_params(api_params: dict) -> dict:
         "vmf_path": "vmf_path",
         "asset_search_path": "map_data_path",
         "root_search": "root_search",
-        # AssetCallbacks settings (keep as-is, handled separately)
+        # Collection settings
         "main_collection": "main_collection",
         "vmf_brush_collection": "brush_collection",
         "vmf_overlay_collection": "overlay_collection",
@@ -134,20 +134,20 @@ class ParallelImportBuilder:
         vmf_import_entities: bool = True,
         vmf_import_sky: bool = True,
         vmf_scale: float = 1.0,
-        # Asset search settings
-        asset_search_path: Optional[str] = None,
-        # AssetCallbacks settings
+        # VMF collections
         vmf_brush_collection=None,
         vmf_overlay_collection=None,
         vmf_prop_collection=None,
         vmf_light_collection=None,
         vmf_entity_collection=None,
+        # Asset search settings
+        asset_search_path: Optional[str] = None,
         # MDL settings
         mdl_target_fps: float = 30.0,
         mdl_remove_animations: bool = False,
         mdl_import_animations: bool = True,
         mdl_apply_armatures: bool = False,
-        # AssetCallbacks settings
+        # General collections
         main_collection=None,
     ):
         """
@@ -182,15 +182,18 @@ class ParallelImportBuilder:
             vmf_import_entities: Import entities
             vmf_import_sky: Import skybox
             vmf_scale: VMF-specific scale factor
-            
+
             # Asset search settings
             asset_search_path: Additional search path for assets
-            
+
             vmf_brush_collection: Collection for brushes (VMF imports)
             vmf_overlay_collection: Collection for overlays (VMF imports)
             vmf_prop_collection: Collection for props (VMF imports)
             vmf_light_collection: Collection for lights (VMF imports)
             vmf_entity_collection: Collection for entities (VMF imports)
+
+            # Asset search settings
+            asset_search_path: Additional search directories for assets
 
             # MDL settings
             mdl_target_fps: Target FPS for animations
@@ -198,7 +201,7 @@ class ParallelImportBuilder:
             mdl_import_animations: Import model animations
             mdl_apply_armatures: Apply armatures to models
 
-            # AssetCallbacks settings
+            # General collections
             main_collection: Main collection for imports
         """
         self._file_system = file_system
@@ -461,7 +464,7 @@ def import_vmf(
     mdl_remove_animations: bool = False,
     mdl_import_animations: bool = True,
     mdl_apply_armatures: bool = False,
-    # AssetCallbacks options
+    # Collection options
     **options,
 ) -> None:
     """
@@ -499,7 +502,7 @@ def import_vmf(
         vmf_import_entities: Import entities
         vmf_import_sky: Import skybox
         vmf_scale: VMF-specific scale factor
-        
+
         # Asset search settings
         asset_search_path: Additional search path for assets
 
@@ -509,7 +512,7 @@ def import_vmf(
         mdl_import_animations: Import model animations
         mdl_apply_armatures: Apply armatures to models
 
-        # AssetCallbacks options
+        # Collection options
         main_collection: Main collection for imports
         vmf_brush_collection: Collection for brushes (VMF imports)
         vmf_overlay_collection: Collection for overlays (VMF imports)
@@ -611,7 +614,7 @@ def import_mdl(
     mdl_remove_animations: bool = False,
     mdl_import_animations: bool = True,
     mdl_apply_armatures: bool = False,
-    # AssetCallbacks options
+    # Collection options
     **options,
 ) -> None:
     """
@@ -639,7 +642,7 @@ def import_mdl(
         vmf_import_sky_camera: Import sky camera
         vmf_sky_equi_height: Sky equirectangular texture height
         vmf_import_unknown_entities: Import unknown entities as empties
-        
+
         # Asset search settings
         asset_search_path: Additional search path for assets
 
@@ -649,9 +652,8 @@ def import_mdl(
         mdl_import_animations: Import model animations
         mdl_apply_armatures: Apply armatures to models
 
-        # AssetCallbacks options
+        # Collection options
         main_collection: Main collection for imports
-        prop_collection: Collection for models
 
     Raises:
         AssetImportError: If import fails
@@ -750,7 +752,7 @@ def import_vmt(
         material_texture_interpolation: Texture interpolation ("Linear", "Closest", "Cubic", "Smart")
         material_allow_culling: Enable backface culling
         material_editor_materials: Import editor materials instead of invisible ones
-        
+
         # Asset search settings
         asset_search_path: Additional search path for assets
 
@@ -844,7 +846,7 @@ def import_vtf(
         # Material settings
         material_texture_format: Texture format ("Png", "Tga")
         material_texture_interpolation: Texture interpolation ("Linear", "Closest", "Cubic", "Smart")
-        
+
         # Asset search settings
         asset_search_path: Additional search path for assets
 

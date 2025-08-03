@@ -6,7 +6,7 @@ use pyo3::{
     prelude::*,
     types::PyDict,
 };
-use tracing::{debug_span, error, info};
+use tracing::{error, info};
 
 use plumber_core::{
     asset_core::{AssetConfig, Context, Executor, NoError},
@@ -23,7 +23,7 @@ use plumber_core::{
 use crate::{
     asset::{material::MaterialConfig, BlenderAssetHandler, Message},
     filesystem::PyFileSystem,
-    importer::PyImporter,
+    importer::{process_assets_with_callback, PyImporter},
 };
 
 /// Unified asset config that can process mixed asset types
@@ -176,7 +176,7 @@ impl PyApiImporter {
         })
     }
 
-    fn add_vmf_job(&mut self, path: &str, from_game: bool) -> PyResult<()> {
+    fn add_vmf_job(&mut self, path: &str, from_game: bool) {
         let mut geometry_settings = GeometrySettings::default();
         geometry_settings.epsilon(self.vmf_epsilon);
         geometry_settings.cut_threshold(self.vmf_cut_threshold);
@@ -206,11 +206,9 @@ impl PyApiImporter {
             path,
             config: settings,
         });
-
-        Ok(())
     }
 
-    fn add_mdl_job(&mut self, path: &str, from_game: bool) -> PyResult<()> {
+    fn add_mdl_job(&mut self, path: &str, from_game: bool) {
         let mut settings = MdlConfig::new(self.material_config);
         settings.import_animations = self.mdl_import_animations;
 
@@ -224,11 +222,9 @@ impl PyApiImporter {
             path,
             config: settings,
         });
-
-        Ok(())
     }
 
-    fn add_vmt_job(&mut self, path: &str, from_game: bool) -> PyResult<()> {
+    fn add_vmt_job(&mut self, path: &str, from_game: bool) {
         let path = if from_game {
             GamePathBuf::from(path).into()
         } else {
@@ -236,11 +232,9 @@ impl PyApiImporter {
         };
 
         self.jobs.push(AssetImportJob::Vmt { path });
-
-        Ok(())
     }
 
-    fn add_vtf_job(&mut self, path: &str, from_game: bool) -> PyResult<()> {
+    fn add_vtf_job(&mut self, path: &str, from_game: bool) {
         let path = if from_game {
             GamePathBuf::from(path).into()
         } else {
@@ -248,8 +242,6 @@ impl PyApiImporter {
         };
 
         self.jobs.push(AssetImportJob::Vtf { path });
-
-        Ok(())
     }
 
     fn execute_jobs(&mut self, py: Python) -> PyResult<()> {
@@ -287,37 +279,6 @@ impl PyApiImporter {
     }
 
     fn process_assets(&self, py: Python) {
-        let callback_ref = self.callback_obj.as_ref(py);
-
-        for asset in &self.receiver {
-            let kind = asset.kind();
-            let id = asset.id();
-
-            let _asset_span = debug_span!("asset", kind, %id).entered();
-
-            let result = match asset {
-                Message::Material(material) => callback_ref.call_method1("material", (material,)),
-                Message::Texture(texture) => callback_ref.call_method1("texture", (texture,)),
-                Message::Model(model) => callback_ref.call_method1("model", (model,)),
-                Message::Brush(brush) => callback_ref.call_method1("brush", (brush,)),
-                Message::Overlay(overlay) => callback_ref.call_method1("overlay", (overlay,)),
-                Message::Prop(prop) => callback_ref.call_method1("prop", (prop,)),
-                Message::Light(light) => callback_ref.call_method1("light", (light,)),
-                Message::SpotLight(light) => callback_ref.call_method1("spot_light", (light,)),
-                Message::EnvLight(light) => callback_ref.call_method1("env_light", (light,)),
-                Message::SkyCamera(sky_camera) => {
-                    callback_ref.call_method1("sky_camera", (sky_camera,))
-                }
-                Message::SkyEqui(sky_equi) => callback_ref.call_method1("sky_equi", (sky_equi,)),
-                Message::UnknownEntity(entity) => {
-                    callback_ref.call_method1("unknown_entity", (entity,))
-                }
-            };
-
-            if let Err(err) = result {
-                err.print(py);
-                error!("Asset importing errored: {}", err);
-            }
-        }
+        process_assets_with_callback(py, self.callback_obj.as_ref(py), &self.receiver);
     }
 }
