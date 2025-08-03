@@ -1,8 +1,8 @@
-use std::{path::PathBuf as StdPathBuf, str::FromStr, time::Instant};
+use std::{path::PathBuf as StdPathBuf, time::Instant};
 
 use crossbeam_channel::Receiver;
 use pyo3::{
-    exceptions::{PyIOError, PyRuntimeError, PyTypeError},
+    exceptions::{PyIOError, PyRuntimeError},
     prelude::*,
     types::PyDict,
 };
@@ -21,11 +21,9 @@ use plumber_core::{
 };
 
 use crate::{
-    asset::{
-        material::{MaterialConfig, TextureFormat, TextureInterpolation},
-        BlenderAssetHandler, HandlerSettings, Message,
-    },
+    asset::{material::MaterialConfig, BlenderAssetHandler, Message},
     filesystem::PyFileSystem,
+    importer::PyImporter,
 };
 
 /// Unified asset config that can process mixed asset types
@@ -139,95 +137,10 @@ impl PyApiImporter {
             start.elapsed().as_secs_f32()
         );
 
-        let mut settings = HandlerSettings::default();
-
-        // VMF default settings
-        let mut vmf_import_brushes = true;
-        let mut vmf_import_overlays = true;
-        let mut vmf_epsilon = 0.01;
-        let mut vmf_cut_threshold = 0.1;
-        let mut vmf_merge_solids = MergeSolids::Merge;
-        let mut vmf_invisible_solids = InvisibleSolids::Skip;
-        let mut vmf_import_props = true;
-        let mut vmf_import_entities = true;
-        let mut vmf_import_sky = true;
-        let mut vmf_scale = 1.0;
-
-        // MDL default settings
-        let mut mdl_import_animations = true;
-
-        if let Some(kwargs) = kwargs {
-            for (key, value) in kwargs {
-                if value.is_none() {
-                    continue;
-                }
-
-                match key.extract()? {
-                    // Material settings
-                    "material_import_materials" => {
-                        settings.material.import_materials = value.extract()?
-                    }
-                    "material_simple_materials" => {
-                        settings.material.simple_materials = value.extract()?
-                    }
-                    "material_allow_culling" => {
-                        settings.material.allow_culling = value.extract()?
-                    }
-                    "material_editor_materials" => {
-                        settings.material.editor_materials = value.extract()?
-                    }
-                    "material_texture_format" => {
-                        settings.material.texture_format =
-                            TextureFormat::from_str(value.extract()?)?;
-                    }
-                    "material_texture_interpolation" => {
-                        settings.material.texture_interpolation =
-                            TextureInterpolation::from_str(value.extract()?)?;
-                    }
-                    // VMF settings
-                    "vmf_import_lights" => settings.import_lights = value.extract()?,
-                    "vmf_light_factor" => settings.light.light_factor = value.extract()?,
-                    "vmf_sun_factor" => settings.light.sun_factor = value.extract()?,
-                    "vmf_ambient_factor" => settings.light.ambient_factor = value.extract()?,
-                    "vmf_import_sky_camera" => settings.import_sky_camera = value.extract()?,
-                    "vmf_sky_equi_height" => settings.sky_equi_height = value.extract()?,
-                    "vmf_import_unknown_entities" => {
-                        settings.import_unknown_entities = value.extract()?
-                    }
-                    // MDL settings
-                    "mdl_scale" => settings.scale = value.extract()?,
-                    "mdl_target_fps" => settings.target_fps = value.extract()?,
-                    "mdl_remove_animations" => settings.remove_animations = value.extract()?,
-                    // mdl_apply_armatures is handled at Python level in AssetCallbacks, not in Rust
-                    // VMF-specific settings
-                    "vmf_import_brushes" => vmf_import_brushes = value.extract()?,
-                    "vmf_import_overlays" => vmf_import_overlays = value.extract()?,
-                    "vmf_epsilon" => vmf_epsilon = value.extract()?,
-                    "vmf_cut_threshold" => vmf_cut_threshold = value.extract()?,
-                    "vmf_merge_solids" => match value.extract()? {
-                        "MERGE" => vmf_merge_solids = MergeSolids::Merge,
-                        "SEPARATE" => vmf_merge_solids = MergeSolids::Separate,
-                        _ => return Err(PyTypeError::new_err("unexpected vmf_merge_solids value")),
-                    },
-                    "vmf_invisible_solids" => match value.extract()? {
-                        "IMPORT" => vmf_invisible_solids = InvisibleSolids::Import,
-                        "SKIP" => vmf_invisible_solids = InvisibleSolids::Skip,
-                        _ => {
-                            return Err(PyTypeError::new_err(
-                                "unexpected vmf_invisible_solids value",
-                            ))
-                        }
-                    },
-                    "vmf_import_props" => vmf_import_props = value.extract()?,
-                    "vmf_import_entities" => vmf_import_entities = value.extract()?,
-                    "vmf_import_sky" => vmf_import_sky = value.extract()?,
-                    "vmf_scale" => vmf_scale = value.extract()?,
-                    // MDL-specific settings
-                    "mdl_import_animations" => mdl_import_animations = value.extract()?,
-                    _ => return Err(PyTypeError::new_err("unexpected kwarg")),
-                }
-            }
-        }
+        // Extract all settings using the shared extraction methods
+        let settings = PyImporter::extract_api_importer_wide_settings(kwargs)?;
+        let vmf_settings = PyImporter::extract_api_vmf_settings(kwargs)?;
+        let mdl_import_animations = PyImporter::extract_api_mdl_settings(kwargs)?;
 
         let material_config = MaterialConfig {
             settings: settings.material,
@@ -247,16 +160,16 @@ impl PyApiImporter {
             receiver,
             jobs: Vec::new(),
             callback_obj,
-            vmf_import_brushes,
-            vmf_import_overlays,
-            vmf_epsilon,
-            vmf_cut_threshold,
-            vmf_merge_solids,
-            vmf_invisible_solids,
-            vmf_import_props,
-            vmf_import_entities,
-            vmf_import_sky,
-            vmf_scale,
+            vmf_import_brushes: vmf_settings.import_brushes,
+            vmf_import_overlays: vmf_settings.import_overlays,
+            vmf_epsilon: vmf_settings.epsilon,
+            vmf_cut_threshold: vmf_settings.cut_threshold,
+            vmf_merge_solids: vmf_settings.merge_solids,
+            vmf_invisible_solids: vmf_settings.invisible_solids,
+            vmf_import_props: vmf_settings.import_props,
+            vmf_import_entities: vmf_settings.import_other_entities,
+            vmf_import_sky: vmf_settings.import_skybox,
+            vmf_scale: vmf_settings.scale,
             mdl_import_animations,
         })
     }

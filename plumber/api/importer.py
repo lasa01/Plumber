@@ -140,21 +140,21 @@ class ParallelImportBuilder:
 
         # Store all settings to be used for all imports
         self._all_settings = {
-            # Material settings (convert to internal names)
-            "import_materials": material_import_materials,
-            "simple_materials": material_simple_materials,
-            "texture_format": material_texture_format,
-            "texture_interpolation": material_texture_interpolation,
-            "allow_culling": material_allow_culling,
-            "editor_materials": material_editor_materials,
-            # VMF settings (convert to internal names)
-            "import_lights": vmf_import_lights,
-            "light_factor": vmf_light_factor,
-            "sun_factor": vmf_sun_factor,
-            "ambient_factor": vmf_ambient_factor,
-            "import_sky_camera": vmf_import_sky_camera,
-            "sky_equi_height": vmf_sky_equi_height,
-            "import_unknown_entities": vmf_import_unknown_entities,
+            # Material settings (using API prefixed names)
+            "material_import_materials": material_import_materials,
+            "material_simple_materials": material_simple_materials,
+            "material_texture_format": material_texture_format,
+            "material_texture_interpolation": material_texture_interpolation,
+            "material_allow_culling": material_allow_culling,
+            "material_editor_materials": material_editor_materials,
+            # VMF settings (using API prefixed names)
+            "vmf_import_lights": vmf_import_lights,
+            "vmf_light_factor": vmf_light_factor,
+            "vmf_sun_factor": vmf_sun_factor,
+            "vmf_ambient_factor": vmf_ambient_factor,
+            "vmf_import_sky_camera": vmf_import_sky_camera,
+            "vmf_sky_equi_height": vmf_sky_equi_height,
+            "vmf_import_unknown_entities": vmf_import_unknown_entities,
             "vmf_import_brushes": vmf_import_brushes,
             "vmf_import_overlays": vmf_import_overlays,
             "vmf_epsilon": vmf_epsilon,
@@ -165,12 +165,12 @@ class ParallelImportBuilder:
             "vmf_import_entities": vmf_import_entities,
             "vmf_import_sky": vmf_import_sky,
             "vmf_scale": vmf_scale,
-            # MDL settings (convert to internal names)
-            "scale": mdl_scale,
-            "target_fps": mdl_target_fps,
-            "remove_animations": mdl_remove_animations,
+            # MDL settings (using API prefixed names)
+            "mdl_scale": mdl_scale,
+            "mdl_target_fps": mdl_target_fps,
+            "mdl_remove_animations": mdl_remove_animations,
             "mdl_import_animations": mdl_import_animations,
-            "apply_armatures": mdl_apply_armatures,
+            "mdl_apply_armatures": mdl_apply_armatures,
         }
 
         # Store collection settings

@@ -32,6 +32,20 @@ use crate::{
     filesystem::PyFileSystem,
 };
 
+/// Helper struct for VMF-specific settings
+pub struct VmfSettings {
+    pub import_brushes: bool,
+    pub import_overlays: bool,
+    pub epsilon: f32,
+    pub cut_threshold: f32,
+    pub merge_solids: MergeSolids,
+    pub invisible_solids: InvisibleSolids,
+    pub import_props: bool,
+    pub import_other_entities: bool,
+    pub import_skybox: bool,
+    pub scale: f32,
+}
+
 #[pyclass(module = "plumber", name = "Importer")]
 pub struct PyImporter {
     material_config: MaterialConfig,
@@ -66,85 +80,9 @@ impl PyImporter {
             start.elapsed().as_secs_f32()
         );
 
-        let mut settings = HandlerSettings::default();
-
-        if let Some(kwargs) = kwargs {
-            for (key, value) in kwargs {
-                if value.is_none() {
-                    continue;
-                }
-
-                match key.extract()? {
-                    "import_materials" => settings.material.import_materials = value.extract()?,
-                    "import_lights" => settings.import_lights = value.extract()?,
-                    "light_factor" => settings.light.light_factor = value.extract()?,
-                    "sun_factor" => settings.light.sun_factor = value.extract()?,
-                    "ambient_factor" => settings.light.ambient_factor = value.extract()?,
-                    "import_sky_camera" => settings.import_sky_camera = value.extract()?,
-                    "sky_equi_height" => settings.sky_equi_height = value.extract()?,
-                    "scale" => settings.scale = value.extract()?,
-                    "target_fps" => settings.target_fps = value.extract()?,
-                    "remove_animations" => settings.remove_animations = value.extract()?,
-                    "simple_materials" => settings.material.simple_materials = value.extract()?,
-                    "allow_culling" => settings.material.allow_culling = value.extract()?,
-                    "editor_materials" => settings.material.editor_materials = value.extract()?,
-                    "texture_format" => {
-                        settings.material.texture_format =
-                            TextureFormat::from_str(value.extract()?)?;
-                    }
-                    "texture_interpolation" => {
-                        settings.material.texture_interpolation =
-                            TextureInterpolation::from_str(value.extract()?)?;
-                    }
-                    "import_unknown_entities" => {
-                        settings.import_unknown_entities = value.extract()?;
-                    }
-                    "vmf_path" => {
-                        // Map data path is detected here since when opening a vmf
-                        // from game files, it needs to be determined after
-                        // opening the filesystem to know where the vmf file actually is.
-                        // On the other hand, it needs to be done before passing the file system
-                        // to the importer.
-
-                        let file_path_string: &str = value.extract()?;
-                        detect_embedded_files_path(file_path_string, &mut opened);
-                    }
-                    "map_data_path" => {
-                        let map_data_path: &str = value.extract()?;
-                        let map_data_path = StdPathBuf::from(map_data_path);
-
-                        info!(
-                            "using specified vmf embedded files path `{}`",
-                            map_data_path.display()
-                        );
-
-                        opened.add_open_search_path(OpenSearchPath::Directory(map_data_path));
-                    }
-                    "root_search" => {
-                        // If an asset was imported from the os file system, tries to detect
-                        // if the directory structure matches a typical Source game asset directory structure
-                        // to use the root of the directory structure as an additional search path.
-
-                        let (asset_path, target_path): (&str, &str) = value.extract()?;
-
-                        if let Some(search_path) = detect_local_search_path(asset_path, target_path)
-                        {
-                            info!(
-                                "detected local asset searh path `{}`",
-                                search_path.display()
-                            );
-
-                            opened.add_open_search_path(OpenSearchPath::Directory(
-                                search_path.to_path_buf(),
-                            ));
-                        } else {
-                            debug!("local asset search path not found");
-                        }
-                    }
-                    _ => return Err(PyTypeError::new_err("unexpected kwarg")),
-                }
-            }
-        }
+        // Extract settings using the new extraction methods
+        let settings = Self::extract_importer_wide_settings(kwargs)?;
+        Self::handle_special_fs_settings(kwargs, &mut opened)?;
 
         let material_config = MaterialConfig {
             settings: settings.material,
@@ -176,58 +114,27 @@ impl PyImporter {
     ) -> PyResult<()> {
         let executor = self.consume()?;
 
-        let mut import_brushes = true;
-        let mut geometry_settings = GeometrySettings::default();
+        // Extract VMF settings using the new extraction method
+        let vmf_settings = Self::extract_vmf_settings(kwargs)?;
 
         let mut settings = VmfConfig::new(self.material_config);
+        settings.import_overlays = vmf_settings.import_overlays;
+        settings.import_props = vmf_settings.import_props;
+        settings.import_other_entities = vmf_settings.import_other_entities;
+        settings.import_skybox = vmf_settings.import_skybox;
+        settings.scale = vmf_settings.scale;
 
-        if let Some(kwargs) = kwargs {
-            for (key, value) in kwargs {
-                match key.extract()? {
-                    "import_brushes" => {
-                        import_brushes = value.extract()?;
-                    }
-                    "import_overlays" => {
-                        settings.import_overlays = value.extract()?;
-                    }
-                    "epsilon" => {
-                        geometry_settings.epsilon(value.extract()?);
-                    }
-                    "cut_threshold" => {
-                        geometry_settings.cut_threshold(value.extract()?);
-                    }
-                    "merge_solids" => match value.extract()? {
-                        "MERGE" => geometry_settings.merge_solids(MergeSolids::Merge),
-                        "SEPARATE" => geometry_settings.merge_solids(MergeSolids::Separate),
-                        _ => return Err(PyTypeError::new_err("unexpected kwarg value")),
-                    },
-                    "invisible_solids" => match value.extract()? {
-                        "IMPORT" => geometry_settings.invisible_solids(InvisibleSolids::Import),
-                        "SKIP" => geometry_settings.invisible_solids(InvisibleSolids::Skip),
-                        _ => return Err(PyTypeError::new_err("unexpected kwarg value")),
-                    },
-                    "import_props" => {
-                        settings.import_props = value.extract()?;
-                    }
-                    "import_entities" => {
-                        settings.import_other_entities = value.extract()?;
-                    }
-                    "import_sky" => {
-                        settings.import_skybox = value.extract()?;
-                    }
-                    "scale" => {
-                        settings.scale = value.extract()?;
-                    }
-                    _ => return Err(PyTypeError::new_err("unexpected kwarg")),
-                }
+        let mut geometry_settings = GeometrySettings::default();
+        geometry_settings.epsilon(vmf_settings.epsilon);
+        geometry_settings.cut_threshold(vmf_settings.cut_threshold);
+        geometry_settings.merge_solids(vmf_settings.merge_solids);
+        geometry_settings.invisible_solids(vmf_settings.invisible_solids);
 
-                settings.brushes = if import_brushes {
-                    BrushSetting::Import(geometry_settings)
-                } else {
-                    BrushSetting::Skip
-                };
-            }
-        }
+        settings.brushes = if vmf_settings.import_brushes {
+            BrushSetting::Import(geometry_settings)
+        } else {
+            BrushSetting::Skip
+        };
 
         let start = Instant::now();
         info!("importing vmf `{}`...", path);
@@ -334,6 +241,421 @@ impl PyImporter {
             .ok_or_else(|| PyRuntimeError::new_err("Importer already consumed"))
     }
 
+    /// Extract importer-wide settings (material + general settings)
+    pub fn extract_importer_wide_settings(kwargs: Option<&PyDict>) -> PyResult<HandlerSettings> {
+        let mut settings = HandlerSettings::default();
+        let mut unrecognized_keys = Vec::new();
+
+        if let Some(kwargs) = kwargs {
+            for (key, value) in kwargs {
+                if value.is_none() {
+                    continue;
+                }
+
+                let key_str: &str = key.extract()?;
+                match key_str {
+                    // Material settings (old parameter names for PyImporter compatibility)
+                    "import_materials" => settings.material.import_materials = value.extract()?,
+                    "simple_materials" => settings.material.simple_materials = value.extract()?,
+                    "allow_culling" => settings.material.allow_culling = value.extract()?,
+                    "editor_materials" => settings.material.editor_materials = value.extract()?,
+                    "texture_format" => {
+                        settings.material.texture_format =
+                            TextureFormat::from_str(value.extract()?)?;
+                    }
+                    "texture_interpolation" => {
+                        settings.material.texture_interpolation =
+                            TextureInterpolation::from_str(value.extract()?)?;
+                    }
+                    // General settings (old parameter names for PyImporter compatibility)
+                    "import_lights" => settings.import_lights = value.extract()?,
+                    "light_factor" => settings.light.light_factor = value.extract()?,
+                    "sun_factor" => settings.light.sun_factor = value.extract()?,
+                    "ambient_factor" => settings.light.ambient_factor = value.extract()?,
+                    "import_sky_camera" => settings.import_sky_camera = value.extract()?,
+                    "sky_equi_height" => settings.sky_equi_height = value.extract()?,
+                    "scale" => settings.scale = value.extract()?,
+                    "target_fps" => settings.target_fps = value.extract()?,
+                    "remove_animations" => settings.remove_animations = value.extract()?,
+                    "import_unknown_entities" => {
+                        settings.import_unknown_entities = value.extract()?;
+                    }
+                    // Known special filesystem settings - ignore here
+                    "vmf_path" | "map_data_path" | "root_search" => {}
+                    // Known VMF-specific settings - ignore here
+                    "import_brushes" | "import_overlays" | "epsilon" | "cut_threshold"
+                    | "merge_solids" | "invisible_solids" | "import_props" | "import_entities"
+                    | "import_sky" => {}
+                    // Known MDL-specific settings - ignore here
+                    "import_animations" => {}
+                    _ => unrecognized_keys.push(key_str),
+                }
+            }
+        }
+
+        if !unrecognized_keys.is_empty() {
+            return Err(PyTypeError::new_err(format!(
+                "unexpected kwargs: {}",
+                unrecognized_keys.join(", ")
+            )));
+        }
+
+        Ok(settings)
+    }
+
+    /// Extract importer-wide settings with API prefixed parameter names
+    pub fn extract_api_importer_wide_settings(
+        kwargs: Option<&PyDict>,
+    ) -> PyResult<HandlerSettings> {
+        let mut settings = HandlerSettings::default();
+
+        if let Some(kwargs) = kwargs {
+            for (key, value) in kwargs {
+                if value.is_none() {
+                    continue;
+                }
+
+                match key.extract()? {
+                    // Material settings (API prefixed parameter names)
+                    "material_import_materials" => {
+                        settings.material.import_materials = value.extract()?
+                    }
+                    "material_simple_materials" => {
+                        settings.material.simple_materials = value.extract()?
+                    }
+                    "material_allow_culling" => {
+                        settings.material.allow_culling = value.extract()?
+                    }
+                    "material_editor_materials" => {
+                        settings.material.editor_materials = value.extract()?
+                    }
+                    "material_texture_format" => {
+                        settings.material.texture_format =
+                            TextureFormat::from_str(value.extract()?)?;
+                    }
+                    "material_texture_interpolation" => {
+                        settings.material.texture_interpolation =
+                            TextureInterpolation::from_str(value.extract()?)?;
+                    }
+                    // VMF general settings (API prefixed parameter names)
+                    "vmf_import_lights" => settings.import_lights = value.extract()?,
+                    "vmf_light_factor" => settings.light.light_factor = value.extract()?,
+                    "vmf_sun_factor" => settings.light.sun_factor = value.extract()?,
+                    "vmf_ambient_factor" => settings.light.ambient_factor = value.extract()?,
+                    "vmf_import_sky_camera" => settings.import_sky_camera = value.extract()?,
+                    "vmf_sky_equi_height" => settings.sky_equi_height = value.extract()?,
+                    "vmf_import_unknown_entities" => {
+                        settings.import_unknown_entities = value.extract()?
+                    }
+                    // MDL general settings (API prefixed parameter names)
+                    "mdl_scale" => settings.scale = value.extract()?,
+                    "mdl_target_fps" => settings.target_fps = value.extract()?,
+                    "mdl_remove_animations" => settings.remove_animations = value.extract()?,
+                    _ => {} // Ignore unrecognized parameters for this extraction
+                }
+            }
+        }
+
+        Ok(settings)
+    }
+
+    /// Handle special filesystem settings (vmf_path, map_data_path, root_search)
+    pub fn handle_special_fs_settings(
+        kwargs: Option<&PyDict>,
+        opened: &mut OpenFileSystem,
+    ) -> PyResult<()> {
+        if let Some(kwargs) = kwargs {
+            for (key, value) in kwargs {
+                if value.is_none() {
+                    continue;
+                }
+
+                match key.extract()? {
+                    "vmf_path" => {
+                        // Map data path is detected here since when opening a vmf
+                        // from game files, it needs to be determined after
+                        // opening the filesystem to know where the vmf file actually is.
+                        // On the other hand, it needs to be done before passing the file system
+                        // to the importer.
+
+                        let file_path_string: &str = value.extract()?;
+                        detect_embedded_files_path(file_path_string, opened);
+                    }
+                    "map_data_path" => {
+                        let map_data_path: &str = value.extract()?;
+                        let map_data_path = StdPathBuf::from(map_data_path);
+
+                        info!(
+                            "using specified vmf embedded files path `{}`",
+                            map_data_path.display()
+                        );
+
+                        opened.add_open_search_path(OpenSearchPath::Directory(map_data_path));
+                    }
+                    "root_search" => {
+                        // If an asset was imported from the os file system, tries to detect
+                        // if the directory structure matches a typical Source game asset directory structure
+                        // to use the root of the directory structure as an additional search path.
+
+                        let (asset_path, target_path): (&str, &str) = value.extract()?;
+
+                        if let Some(search_path) = detect_local_search_path(asset_path, target_path)
+                        {
+                            info!(
+                                "detected local asset searh path `{}`",
+                                search_path.display()
+                            );
+
+                            opened.add_open_search_path(OpenSearchPath::Directory(
+                                search_path.to_path_buf(),
+                            ));
+                        } else {
+                            debug!("local asset search path not found");
+                        }
+                    }
+                    _ => {} // Ignore unrecognized parameters for this extraction
+                }
+            }
+        }
+
+        Ok(())
+    }
+
+    /// Extract VMF-specific settings with old parameter names
+    pub fn extract_vmf_settings(kwargs: Option<&PyDict>) -> PyResult<VmfSettings> {
+        let mut import_brushes = true;
+        let mut import_overlays = true;
+        let mut epsilon = 0.01;
+        let mut cut_threshold = 0.1;
+        let mut merge_solids = MergeSolids::Merge;
+        let mut invisible_solids = InvisibleSolids::Skip;
+        let mut import_props = true;
+        let mut import_other_entities = true;
+        let mut import_skybox = true;
+        let mut scale = 1.0;
+        let mut unrecognized_keys = Vec::new();
+
+        if let Some(kwargs) = kwargs {
+            for (key, value) in kwargs {
+                if value.is_none() {
+                    continue;
+                }
+
+                let key_str: &str = key.extract()?;
+                match key_str {
+                    "import_brushes" => {
+                        import_brushes = value.extract()?;
+                    }
+                    "import_overlays" => {
+                        import_overlays = value.extract()?;
+                    }
+                    "epsilon" => {
+                        epsilon = value.extract()?;
+                    }
+                    "cut_threshold" => {
+                        cut_threshold = value.extract()?;
+                    }
+                    "merge_solids" => match value.extract()? {
+                        "MERGE" => merge_solids = MergeSolids::Merge,
+                        "SEPARATE" => merge_solids = MergeSolids::Separate,
+                        _ => return Err(PyTypeError::new_err("unexpected kwarg value")),
+                    },
+                    "invisible_solids" => match value.extract()? {
+                        "IMPORT" => invisible_solids = InvisibleSolids::Import,
+                        "SKIP" => invisible_solids = InvisibleSolids::Skip,
+                        _ => return Err(PyTypeError::new_err("unexpected kwarg value")),
+                    },
+                    "import_props" => {
+                        import_props = value.extract()?;
+                    }
+                    "import_entities" => {
+                        import_other_entities = value.extract()?;
+                    }
+                    "import_sky" => {
+                        import_skybox = value.extract()?;
+                    }
+                    "scale" => {
+                        scale = value.extract()?;
+                    }
+                    // Known importer-wide settings - ignore here
+                    "import_materials"
+                    | "simple_materials"
+                    | "allow_culling"
+                    | "editor_materials"
+                    | "texture_format"
+                    | "texture_interpolation"
+                    | "import_lights"
+                    | "light_factor"
+                    | "sun_factor"
+                    | "ambient_factor"
+                    | "import_sky_camera"
+                    | "sky_equi_height"
+                    | "target_fps"
+                    | "remove_animations"
+                    | "import_unknown_entities" => {}
+                    // Known special filesystem settings - ignore here
+                    "vmf_path" | "map_data_path" | "root_search" => {}
+                    // Known MDL-specific settings - ignore here
+                    "import_animations" => {}
+                    _ => unrecognized_keys.push(key_str),
+                }
+            }
+        }
+
+        if !unrecognized_keys.is_empty() {
+            return Err(PyTypeError::new_err(format!(
+                "unexpected VMF kwargs: {}",
+                unrecognized_keys.join(", ")
+            )));
+        }
+
+        Ok(VmfSettings {
+            import_brushes,
+            import_overlays,
+            epsilon,
+            cut_threshold,
+            merge_solids,
+            invisible_solids,
+            import_props,
+            import_other_entities,
+            import_skybox,
+            scale,
+        })
+    }
+
+    /// Extract VMF-specific settings with API prefixed parameter names
+    pub fn extract_api_vmf_settings(kwargs: Option<&PyDict>) -> PyResult<VmfSettings> {
+        let mut import_brushes = true;
+        let mut import_overlays = true;
+        let mut epsilon = 0.01;
+        let mut cut_threshold = 0.1;
+        let mut merge_solids = MergeSolids::Merge;
+        let mut invisible_solids = InvisibleSolids::Skip;
+        let mut import_props = true;
+        let mut import_other_entities = true;
+        let mut import_skybox = true;
+        let mut scale = 1.0;
+
+        if let Some(kwargs) = kwargs {
+            for (key, value) in kwargs {
+                if value.is_none() {
+                    continue;
+                }
+
+                match key.extract()? {
+                    "vmf_import_brushes" => import_brushes = value.extract()?,
+                    "vmf_import_overlays" => import_overlays = value.extract()?,
+                    "vmf_epsilon" => epsilon = value.extract()?,
+                    "vmf_cut_threshold" => cut_threshold = value.extract()?,
+                    "vmf_merge_solids" => match value.extract()? {
+                        "MERGE" => merge_solids = MergeSolids::Merge,
+                        "SEPARATE" => merge_solids = MergeSolids::Separate,
+                        _ => return Err(PyTypeError::new_err("unexpected vmf_merge_solids value")),
+                    },
+                    "vmf_invisible_solids" => match value.extract()? {
+                        "IMPORT" => invisible_solids = InvisibleSolids::Import,
+                        "SKIP" => invisible_solids = InvisibleSolids::Skip,
+                        _ => {
+                            return Err(PyTypeError::new_err(
+                                "unexpected vmf_invisible_solids value",
+                            ))
+                        }
+                    },
+                    "vmf_import_props" => import_props = value.extract()?,
+                    "vmf_import_entities" => import_other_entities = value.extract()?,
+                    "vmf_import_sky" => import_skybox = value.extract()?,
+                    "vmf_scale" => scale = value.extract()?,
+                    _ => {} // Ignore unrecognized parameters for this extraction
+                }
+            }
+        }
+
+        Ok(VmfSettings {
+            import_brushes,
+            import_overlays,
+            epsilon,
+            cut_threshold,
+            merge_solids,
+            invisible_solids,
+            import_props,
+            import_other_entities,
+            import_skybox,
+            scale,
+        })
+    }
+
+    /// Extract MDL-specific settings with old parameter names
+    pub fn extract_mdl_settings(kwargs: Option<&PyDict>) -> PyResult<bool> {
+        let mut import_animations = true;
+        let mut unrecognized_keys = Vec::new();
+
+        if let Some(kwargs) = kwargs {
+            for (key, value) in kwargs {
+                if value.is_none() {
+                    continue;
+                }
+
+                let key_str: &str = key.extract()?;
+                match key_str {
+                    "import_animations" => import_animations = value.extract()?,
+                    // Known importer-wide settings - ignore here
+                    "import_materials"
+                    | "simple_materials"
+                    | "allow_culling"
+                    | "editor_materials"
+                    | "texture_format"
+                    | "texture_interpolation"
+                    | "import_lights"
+                    | "light_factor"
+                    | "sun_factor"
+                    | "ambient_factor"
+                    | "import_sky_camera"
+                    | "sky_equi_height"
+                    | "scale"
+                    | "target_fps"
+                    | "remove_animations"
+                    | "import_unknown_entities" => {}
+                    // Known special filesystem settings - ignore here
+                    "vmf_path" | "map_data_path" | "root_search" => {}
+                    // Known VMF-specific settings - ignore here
+                    "import_brushes" | "import_overlays" | "epsilon" | "cut_threshold"
+                    | "merge_solids" | "invisible_solids" | "import_props" | "import_entities"
+                    | "import_sky" => {}
+                    _ => unrecognized_keys.push(key_str),
+                }
+            }
+        }
+
+        if !unrecognized_keys.is_empty() {
+            return Err(PyTypeError::new_err(format!(
+                "unexpected MDL kwargs: {}",
+                unrecognized_keys.join(", ")
+            )));
+        }
+
+        Ok(import_animations)
+    }
+
+    /// Extract MDL-specific settings with API prefixed parameter names
+    pub fn extract_api_mdl_settings(kwargs: Option<&PyDict>) -> PyResult<bool> {
+        let mut import_animations = true;
+
+        if let Some(kwargs) = kwargs {
+            for (key, value) in kwargs {
+                if value.is_none() {
+                    continue;
+                }
+
+                match key.extract()? {
+                    "mdl_import_animations" => import_animations = value.extract()?,
+                    _ => {} // Ignore unrecognized parameters for this extraction
+                }
+            }
+        }
+
+        Ok(import_animations)
+    }
+
     fn process_assets(&self, py: Python) {
         let callback_ref = self.callback_obj.as_ref(py);
 
@@ -372,14 +694,9 @@ impl PyImporter {
     fn mdl_settings(&self, kwargs: Option<&PyDict>) -> PyResult<MdlConfig<MaterialConfig>> {
         let mut settings = MdlConfig::new(self.material_config);
 
-        if let Some(kwargs) = kwargs {
-            for (key, value) in kwargs {
-                match key.extract()? {
-                    "import_animations" => settings.import_animations = value.extract()?,
-                    _ => return Err(PyTypeError::new_err("unexpected kwarg")),
-                }
-            }
-        }
+        // Extract MDL settings using the new extraction method
+        let import_animations = Self::extract_mdl_settings(kwargs)?;
+        settings.import_animations = import_animations;
 
         Ok(settings)
     }
