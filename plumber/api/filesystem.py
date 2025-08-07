@@ -19,7 +19,7 @@ class FileBrowserEntry:
         Args:
             name: Name of the file/directory
             path: Full path in the game file system
-            kind: Type of entry ('file' or 'directory')
+            kind: Type of entry ('FILE' or 'DIR')
         """
         self._name = name
         self._path = path
@@ -37,18 +37,18 @@ class FileBrowserEntry:
 
     @property
     def kind(self) -> str:
-        """Get the entry type ('file' or 'directory')."""
+        """Get the entry type ('FILE' or 'DIR')."""
         return self._kind
 
     @property
     def is_file(self) -> bool:
         """Check if this entry is a file."""
-        return self._kind == "file"
+        return self._kind == "FILE"
 
     @property
     def is_directory(self) -> bool:
         """Check if this entry is a directory."""
-        return self._kind == "directory"
+        return self._kind == "DIR"
 
     def __repr__(self) -> str:
         return f"FileBrowserEntry(name='{self._name}', kind='{self._kind}')"
