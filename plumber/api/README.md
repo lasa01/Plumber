@@ -4,7 +4,9 @@ This module provides a clean Python API for accessing Plumber's Source engine im
 
 ## Overview
 
-The Plumber API allows you to:
+The Plumber API can be used directly from the Blender Python console in the Scripting tab, from custom Python scripts created in the Scripting tab, and from other Blender addons or extensions.
+
+With this API, you can:
 - Access game definitions from Plumber preferences
 - Create and browse game file systems
 - Import individual Source engine assets (VMF, MDL, VMT, VTF)
@@ -15,7 +17,7 @@ The Plumber API allows you to:
 ### Accessing Game Definitions
 
 ```python
-from plumber.api import Games, GameNotFoundError
+from bl_ext.user_default.plumber.api import Games, GameNotFoundError
 
 # Get all configured games
 games = Games.get_all()
@@ -36,7 +38,7 @@ source_games = Games.find_by_pattern("counter-strike")
 ### Working with Game File Systems
 
 ```python
-from plumber.api import GameFileSystem, FileSystemError
+from bl_ext.user_default.plumber.api import Games, GameFileSystem, FileSystemError
 
 # Create file system from a game definition
 cs_go = Games.find_by_name("Counter-Strike: Global Offensive")
@@ -45,7 +47,6 @@ fs = cs_go.get_file_system()
 # Or create a custom file system
 fs = GameFileSystem.from_search_paths("My Game", [
     ("DIR", "C:\\Program Files (x86)\\Steam\\steamapps\\common\\Counter-Strike Global Offensive\\csgo"),
-    ("VPK", "C:\\Program Files (x86)\\Steam\\steamapps\\common\\Counter-Strike Global Offensive\\csgo\\pak01_dir.vpk"),
 ])
 
 # Create empty file system for special cases
@@ -62,8 +63,8 @@ except FileSystemError as e:
 
 # Read files
 try:
-    vmf_content = fs.read_file_text("maps/de_dust2.vmf")
-    vtf_data = fs.read_file_bytes("materials/concrete/concrete.vtf")
+    vmt_content = fs.read_file_text("materials/concrete/concrete_floor_01.vmt")
+    vtf_data = fs.read_file_bytes("materials/concrete/concrete_floor_01.vtf")
 except FileSystemError as e:
     print(f"Failed to read file: {e}")
 ```
@@ -71,17 +72,19 @@ except FileSystemError as e:
 ### Importing Individual Assets
 
 ```python
-from plumber.api import import_vmf, import_mdl, import_vmt, import_vtf
+from bl_ext.user_default.plumber.api import import_vmf, import_mdl, import_vmt, import_vtf
 
 # Import a VMF map with custom settings
 import_vmf(
     fs, 
-    "maps/de_dust2.vmf",
+    "E:\Projects\Plumber\CSGO maps\de_dust2_d.vmf",
+    from_game=False, # This needs to be set to import from OS file system
+    asset_search_path="E:\Projects\Plumber\CSGO maps\de_dust2_d",
     vmf_import_brushes=True,
     vmf_import_props=True,
     material_import_materials=True,
     material_simple_materials=False,
-    material_texture_format="Png",
+    material_texture_format="Tga",
     # Collection options
     main_collection=None,  # Uses scene collection if None
     vmf_brush_collection=None,  # Uses main_collection if None
@@ -91,21 +94,21 @@ import_vmf(
 # Import a model
 import_mdl(
     fs,
-    "models/player/ct_urban.mdl", 
+    "models/player/ctm_fbi", 
     mdl_import_animations=True,
     material_import_materials=True,
     main_collection=None,  # Uses scene collection if None
 )
 
 # Import materials and textures
-import_vmt(fs, "materials/concrete/concrete.vmt")
-import_vtf(fs, "materials/concrete/concrete.vtf")
+import_vmt(fs, "materials/concrete/concrete_floor_01")
+import_vtf(fs, "materials/concrete/concrete_floor_01")
 ```
 
 ### Parallel Import Builder
 
 ```python
-from plumber.api import ParallelImportBuilder
+from bl_ext.user_default.plumber.api import ParallelImportBuilder
 
 # Build a custom parallel import process
 builder = ParallelImportBuilder(
@@ -123,15 +126,17 @@ builder = ParallelImportBuilder(
     main_collection=None,  # Uses scene collection if None
 )
 
-builder.add_mdl("models/player1.mdl") \
-       .add_mdl("models/player2.mdl") \
-       .add_vmt("materials/concrete.vmt") \
-       .add_vtf("materials/concrete.vtf")
+builder.add_mdl("models/player/ctm_fbi") \
+       .add_mdl("models/player/ctm_gign") \
+       .add_vmt("materials/concrete/concrete_floor_01") \
+       .add_vtf("materials/concrete/concrete_floor_02")
+
+job_count = builder.job_count
 
 # Execute all imports in parallel
 builder.execute()
 
-print(f"Executed {builder.job_count} import jobs")
+print(f"Executed {job_count} import jobs")
 ```
 
 ## Complete Example
@@ -139,7 +144,7 @@ print(f"Executed {builder.job_count} import jobs")
 Here's a comprehensive example that demonstrates finding a game, browsing for files, and performing parallel imports:
 
 ```python
-from plumber.api import (
+from bl_ext.user_default.plumber.api import (
     Games, GameFileSystem, ParallelImportBuilder, 
     GameNotFoundError, FileSystemError, AssetImportError
 )
@@ -213,6 +218,8 @@ if __name__ == "__main__":
 ```
 
 ## API Reference
+
+### For full parameter reference, see the .py files in this directory.
 
 ### Games and Game Definitions
 
