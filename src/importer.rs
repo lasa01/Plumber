@@ -33,6 +33,7 @@ use crate::{
 };
 
 /// Helper struct for VMF-specific settings
+#[allow(clippy::struct_excessive_bools)]
 pub struct VmfSettings {
     pub import_brushes: bool,
     pub import_overlays: bool,

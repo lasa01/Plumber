@@ -89,6 +89,7 @@ pub enum AssetImportJob {
 }
 
 /// Python wrapper for parallel import builder
+#[allow(clippy::struct_excessive_bools)]
 #[pyclass(module = "plumber", name = "ApiImporter")]
 pub struct PyApiImporter {
     material_config: MaterialConfig,
