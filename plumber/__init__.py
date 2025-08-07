@@ -1,8 +1,9 @@
 import platform
 import os
 
-is_windows = platform.system() == "Windows"
+from . import api
 
+is_windows = platform.system() == "Windows"
 
 def register():
     if is_windows:
@@ -46,3 +47,7 @@ def unregister():
             os.rename(ext_path, unloaded_ext_path)
         except OSError:
             pass
+
+__all__ = (
+    "api"
+)
