@@ -10,12 +10,12 @@
 ## Required before each commit
 - Run `black .` for Python code formatting.
 - Run `cargo fmt` for Rust code formatting.
-- Run `cargo clippy` for Rust code linting and fix all warnings or build errors. Dependency related warnings don't need to be fixed.
+- Run `cargo clippy` for Rust code linting and fix all warnings or build errors. Only dependency-related warnings (e.g., "multiple versions for dependency") can be ignored.
 
 ## Developer Workflows
 - **Before starting work on an issue**
   - The repository does not have a lot of activity, so new Rust clippy warnings may be introduced.
-  - Always run `cargo clippy` first for Rust code, and fix all the warnings with `cargo clippy --fix` in a separate commit before starting work on the issue. This must be included in the same pull request as the issue fix. Dependency related warnings don't need to be fixed.
+  - Always run `cargo clippy` first for Rust code, and fix all the warnings with `cargo clippy --fix` in a separate commit before starting work on the issue. This must be included in the same pull request as the issue fix. Only dependency-related warnings (e.g., "multiple versions for dependency") can be ignored.
 - **Testing**
   - You will be unable to test the Blender addon as an AI coding agent. Instead, let the pull request reviewer know that they will need to test the addon manually.
   - Run Rust unit tests with `cargo test`.
@@ -33,9 +33,19 @@
   - Make sure that code is written to work on all 3 platforms: Windows, macOS (x64 and arm64), and Linux.
   - Search the code for patterns related to the changes being made, and use similar ones or update them if necessary.
 
+## Code Quality Guidelines
+- **Avoid Code Duplication:** When implementing similar parameter extraction or processing logic across multiple functions/structs, extract shared functionality into reusable helper methods. Don't copy-paste similar parameter handling code.
+- **Consistent Naming Conventions:** Use consistent parameter naming schemes throughout the codebase. When working with the API layer, maintain the distinction between old parameter names (for backward compatibility) and API-prefixed parameter names where appropriate.
+- **Remove Unused Code:** Delete unused parameters, functions, enums, and imports rather than leaving them commented out or present but unused. Clean up as you go.
+- **Proper Error Handling:** Use specific error types and messages. Avoid generic "unexpected kwarg" errors - provide context about which parameters are valid.
+- **Simplify Complex Logic:** Avoid overly complex parameter stripping or transformation functions. If you find yourself writing complex utility functions, consider a cleaner architectural approach.
+- **Consolidate Validation Logic:** When handling parameter validation across multiple functions, create centralized validation helpers rather than duplicating lists of known parameters. Use const arrays for known parameter lists to maintain consistency.
+- **Enum Management:** Remove duplicate enum definitions and consolidate related types. Don't create separate enum types when existing ones can be reused or extended.
+
 ## Architecture & Data Flow
 - **Python <-> Rust:** Python code calls into Rust via a compiled extension (`plumber.pyd`), built with PyO3.
 - **Importers:** Each file type (`.vmf`, `.mdl`, `.vmt`, `.vtf`) has a dedicated importer operator in Python which handles the asset type specific user interface and interaction (see `plumber/importer/`), and a corresponding import function in Rust.
+- **API Layer:** The `plumber/api/` directory provides a programmatic interface for batch imports and custom workflows, separate from the interactive Blender operators.
 - **Asset Handling:** Import functions defined in Rust call into dependency code in "plumber_core" repository, which does the heavy lifting of most of the asset loading logic (except materials, see below). Finally, "plumber_core" provides us with assets in a general format, for which the Rust code calls a Python method on "AssetCallbacks" class, which then does the actual importing into Blender with the logic split by asset type (see `plumber/asset/` and `src/asset/`).
 - **Asset Import Tree:** Importing a map (e.g., a `.vmf` file) triggers the import of multiple asset types—such as props, solids, and entities. For example, importing a prop results in importing its model and associated materials, and each material may require importing one or more textures. The "plumber_core" backend manages this asset dependency tree: it ensures that assets are imported in dependency order (e.g., textures before materials, materials before models), prevents duplicate imports, and enables code reuse between different importers (e.g., material import logic is shared between VMF and MDL imports). This tree-based approach guarantees correct and efficient asset loading.
 - **Material Asset Loading:** Unlike other asset types with the loading logic mostly in "plumber_core", the Rust code here implements most of the material logic in `src/asset/material`, since materials are very Blender-specific. There is a framework in place for easily constructing node-based Blender materials with reusable node groups. `builder_base.rs` and `nodes.rs` contain the framework logic with automatic ordering, connecting and pretty-placement of nodes. `definitions.rs` defines the various material node types and their properties directly as they are in Blender API, and node groups that act as usable higher level components useful for the material logic. The actual Source-specific material building is implemented in `builder.rs`, with different logic paths for different material types including a large generic path handling most of the material types.
@@ -45,6 +55,11 @@
 - **File Structure:** Mirrors between Python and Rust for maintainability.
 - **Import Options:** Exposed via Blender UI, mapped to importer logic.
 - **Error Handling:** Most errors during import are non-fatal and are logged while the import process continues.
+- **Parameter Handling:** When working with complex parameter extraction logic (particularly in API layers like `plumber/api/`), follow these patterns:
+  - Create extraction helper methods to avoid duplicating parameter parsing logic across multiple functions
+  - Handle backward compatibility by supporting both old and new parameter names where needed
+  - Group related parameters logically (e.g., all material settings together)
+  - Validate parameter values and provide meaningful error messages
 
 ## Integration Points
 - **External:**
