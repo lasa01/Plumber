@@ -2,7 +2,7 @@
 Asset import functionality for individual and batch imports.
 """
 
-from typing import Any, Dict, List, Optional, Union, Callable
+from typing import Any, List, Optional
 from enum import Enum
 
 from .exceptions import AssetImportError
@@ -58,8 +58,6 @@ def _map_api_to_rust_params(api_params: dict) -> dict:
         "vmf_import_sky_camera": "import_sky_camera",
         "vmf_sky_equi_height": "sky_equi_height",
         "vmf_scale": "scale",
-        "vmf_target_fps": "target_fps",
-        "vmf_remove_animations": "remove_animations",
         "vmf_import_unknown_entities": "import_unknown_entities",
         # VMF-specific settings
         "vmf_import_brushes": "import_brushes",
@@ -73,19 +71,12 @@ def _map_api_to_rust_params(api_params: dict) -> dict:
         "vmf_import_sky": "import_sky",
         # MDL-specific settings
         "mdl_import_animations": "import_animations",
+        "mdl_target_fps": "target_fps",
+        "mdl_remove_animations": "remove_animations",
         # Special filesystem settings (keep as-is)
         "vmf_path": "vmf_path",
         "asset_search_path": "map_data_path",
         "root_search": "root_search",
-        # Collection settings
-        "main_collection": "main_collection",
-        "vmf_brush_collection": "brush_collection",
-        "vmf_overlay_collection": "overlay_collection",
-        "vmf_prop_collection": "prop_collection",
-        "vmf_light_collection": "light_collection",
-        "vmf_entity_collection": "entity_collection",
-        # MDL-specific AssetCallbacks setting
-        "mdl_apply_armatures": "apply_armatures",
     }
 
     rust_params = {}
@@ -103,7 +94,7 @@ class ParallelImportBuilder:
     Ensures that each asset is imported only once during the process, even if there are
     dependencies between assets (e.g., a material depends on a texture) or if duplicate
     imports are requested. This deduplication happens automatically across all queued
-    import jobs.
+    import jobs, except VMF imports.
     """
 
     def __init__(
@@ -209,14 +200,14 @@ class ParallelImportBuilder:
 
         # Store all settings to be used for all imports
         self._all_settings = {
-            # Material settings (using API prefixed names)
+            # Material settings
             "material_import_materials": material_import_materials,
             "material_simple_materials": material_simple_materials,
             "material_texture_format": material_texture_format,
             "material_texture_interpolation": material_texture_interpolation,
             "material_allow_culling": material_allow_culling,
             "material_editor_materials": material_editor_materials,
-            # VMF settings (using API prefixed names)
+            # VMF settings
             "vmf_import_lights": vmf_import_lights,
             "vmf_light_factor": vmf_light_factor,
             "vmf_sun_factor": vmf_sun_factor,
@@ -236,21 +227,21 @@ class ParallelImportBuilder:
             "vmf_scale": vmf_scale,
             # Asset search settings
             "asset_search_path": asset_search_path,
-            # MDL settings (using API prefixed names)
+            # MDL settings
             "mdl_target_fps": mdl_target_fps,
             "mdl_remove_animations": mdl_remove_animations,
             "mdl_import_animations": mdl_import_animations,
-            "mdl_apply_armatures": mdl_apply_armatures,
         }
 
         # Store AssetCallbacks settings
-        self._collection_settings = {
+        self._asset_callbacks_settings = {
             "main_collection": main_collection,
             "brush_collection": vmf_brush_collection,
             "overlay_collection": vmf_overlay_collection,
             "prop_collection": vmf_prop_collection,
             "light_collection": vmf_light_collection,
             "entity_collection": vmf_entity_collection,
+            "apply_armatures": mdl_apply_armatures,
         }
 
     def add_vmf(self, path: str, from_game: bool = True) -> "ParallelImportBuilder":
@@ -328,10 +319,11 @@ class ParallelImportBuilder:
             context = bpy.context
 
         try:
-            # Use the new Rust API importer for better performance
-            import plumber
+            from .. import plumber
 
-            callbacks = _create_asset_callbacks(context, **self._collection_settings)
+            callbacks = _create_asset_callbacks(
+                context, **self._asset_callbacks_settings
+            )
             threads = _get_threads_suggestion(context)
 
             # Create API importer with all settings (mapped to Rust parameter names)
@@ -343,7 +335,7 @@ class ParallelImportBuilder:
                 **rust_settings,
             )
 
-            # Add all jobs to the API importer (only path and from_game)
+            # Add all jobs to the API importer
             for job in self._jobs:
                 if job.asset_type == AssetType.VMF:
                     api_importer.add_vmf_job(job.path, job.from_game)
@@ -529,9 +521,11 @@ def import_vmf(
         context = bpy.context
 
     try:
-        import plumber
+        from .. import plumber
 
-        callbacks = _create_asset_callbacks(context, **options)
+        callbacks = _create_asset_callbacks(
+            context, **{**options, "apply_armatures": mdl_apply_armatures}
+        )
         threads = _get_threads_suggestion(context)
 
         # Collect all API parameters
@@ -567,7 +561,6 @@ def import_vmf(
             "mdl_target_fps": mdl_target_fps,
             "mdl_remove_animations": mdl_remove_animations,
             "mdl_import_animations": mdl_import_animations,
-            "mdl_apply_armatures": mdl_apply_armatures,
         }
 
         # Map API parameter names to Rust parameter names
@@ -599,14 +592,6 @@ def import_mdl(
     material_texture_interpolation: str = "Linear",
     material_allow_culling: bool = False,
     material_editor_materials: bool = False,
-    # VMF settings (used for models that reference other assets)
-    vmf_import_lights: bool = True,
-    vmf_light_factor: float = 1.0,
-    vmf_sun_factor: float = 1.0,
-    vmf_ambient_factor: float = 1.0,
-    vmf_import_sky_camera: bool = True,
-    vmf_sky_equi_height: int = 1024,
-    vmf_import_unknown_entities: bool = False,
     # Asset search settings
     asset_search_path: Optional[str] = None,
     # MDL settings
@@ -615,7 +600,7 @@ def import_mdl(
     mdl_import_animations: bool = True,
     mdl_apply_armatures: bool = False,
     # Collection options
-    **options,
+    main_collection=None,
 ) -> None:
     """
     Import an MDL (Source Model) file.
@@ -633,15 +618,6 @@ def import_mdl(
         material_texture_interpolation: Texture interpolation ("Linear", "Closest", "Cubic", "Smart")
         material_allow_culling: Enable backface culling
         material_editor_materials: Import editor materials instead of invisible ones
-
-        # VMF settings (used for models that reference other assets)
-        vmf_import_lights: Import lighting
-        vmf_light_factor: Light brightness multiplier
-        vmf_sun_factor: Sunlight brightness multiplier
-        vmf_ambient_factor: Ambient light brightness multiplier
-        vmf_import_sky_camera: Import sky camera
-        vmf_sky_equi_height: Sky equirectangular texture height
-        vmf_import_unknown_entities: Import unknown entities as empties
 
         # Asset search settings
         asset_search_path: Additional search path for assets
@@ -664,9 +640,15 @@ def import_mdl(
         context = bpy.context
 
     try:
-        import plumber
+        from .. import plumber
 
-        callbacks = _create_asset_callbacks(context, **options)
+        # Note: MDL imports use main_collection which gets routed to prop_collection in AssetCallbacks
+        # (prop_collection defaults to main_collection, so the model ends up in the specified collection)
+        callbacks = _create_asset_callbacks(
+            context,
+            main_collection=main_collection,
+            apply_armatures=mdl_apply_armatures,
+        )
         threads = _get_threads_suggestion(context)
 
         # Collect all API parameters
@@ -678,32 +660,12 @@ def import_mdl(
             "material_texture_interpolation": material_texture_interpolation,
             "material_allow_culling": material_allow_culling,
             "material_editor_materials": material_editor_materials,
-            # VMF settings
-            "vmf_import_lights": vmf_import_lights,
-            "vmf_light_factor": vmf_light_factor,
-            "vmf_sun_factor": vmf_sun_factor,
-            "vmf_ambient_factor": vmf_ambient_factor,
-            "vmf_import_sky_camera": vmf_import_sky_camera,
-            "vmf_sky_equi_height": vmf_sky_equi_height,
-            "vmf_import_unknown_entities": vmf_import_unknown_entities,
             # Asset search settings
             "asset_search_path": asset_search_path,
             # MDL settings
             "mdl_target_fps": mdl_target_fps,
             "mdl_remove_animations": mdl_remove_animations,
             "mdl_import_animations": mdl_import_animations,
-            "mdl_apply_armatures": mdl_apply_armatures,
-            # VMF settings (using defaults for model imports)
-            "vmf_import_brushes": True,
-            "vmf_import_overlays": True,
-            "vmf_epsilon": 0.01,
-            "vmf_cut_threshold": 0.1,
-            "vmf_merge_solids": "MERGE",
-            "vmf_invisible_solids": "SKIP",
-            "vmf_import_props": True,
-            "vmf_import_entities": True,
-            "vmf_import_sky": True,
-            "vmf_scale": 1.0,
         }
 
         # Map API parameter names to Rust parameter names
@@ -765,7 +727,7 @@ def import_vmt(
         context = bpy.context
 
     try:
-        import plumber
+        from .. import plumber
 
         callbacks = _create_asset_callbacks(context)
         threads = _get_threads_suggestion(context)
@@ -779,31 +741,8 @@ def import_vmt(
             "material_texture_interpolation": material_texture_interpolation,
             "material_allow_culling": material_allow_culling,
             "material_editor_materials": material_editor_materials,
-            # VMF settings (using defaults)
-            "vmf_import_lights": True,
-            "vmf_light_factor": 1.0,
-            "vmf_sun_factor": 1.0,
-            "vmf_ambient_factor": 1.0,
-            "vmf_import_sky_camera": True,
-            "vmf_sky_equi_height": 1024,
-            "vmf_import_unknown_entities": False,
-            "vmf_import_brushes": True,
-            "vmf_import_overlays": True,
-            "vmf_epsilon": 0.01,
-            "vmf_cut_threshold": 0.1,
-            "vmf_merge_solids": "MERGE",
-            "vmf_invisible_solids": "SKIP",
-            "vmf_import_props": True,
-            "vmf_import_entities": True,
-            "vmf_import_sky": True,
-            "vmf_scale": 1.0,
             # Asset search settings
             "asset_search_path": asset_search_path,
-            # MDL settings (using defaults)
-            "mdl_target_fps": 30.0,
-            "mdl_remove_animations": False,
-            "mdl_import_animations": True,
-            "mdl_apply_armatures": False,
         }
 
         # Map API parameter names to Rust parameter names
@@ -859,7 +798,7 @@ def import_vtf(
         context = bpy.context
 
     try:
-        import plumber
+        from .. import plumber
 
         callbacks = _create_asset_callbacks(context)
         threads = _get_threads_suggestion(context)
@@ -867,37 +806,10 @@ def import_vtf(
         # Collect all API parameters
         api_params = {
             # Material settings
-            "material_import_materials": True,
-            "material_simple_materials": False,
             "material_texture_format": material_texture_format,
             "material_texture_interpolation": material_texture_interpolation,
-            "material_allow_culling": False,
-            "material_editor_materials": False,
-            # VMF settings (using defaults)
-            "vmf_import_lights": True,
-            "vmf_light_factor": 1.0,
-            "vmf_sun_factor": 1.0,
-            "vmf_ambient_factor": 1.0,
-            "vmf_import_sky_camera": True,
-            "vmf_sky_equi_height": 1024,
-            "vmf_import_unknown_entities": False,
-            "vmf_import_brushes": True,
-            "vmf_import_overlays": True,
-            "vmf_epsilon": 0.01,
-            "vmf_cut_threshold": 0.1,
-            "vmf_merge_solids": "MERGE",
-            "vmf_invisible_solids": "SKIP",
-            "vmf_import_props": True,
-            "vmf_import_entities": True,
-            "vmf_import_sky": True,
-            "vmf_scale": 1.0,
             # Asset search settings
             "asset_search_path": asset_search_path,
-            # MDL settings (using defaults)
-            "mdl_target_fps": 30.0,
-            "mdl_remove_animations": False,
-            "mdl_import_animations": True,
-            "mdl_apply_armatures": False,
         }
 
         # Map API parameter names to Rust parameter names

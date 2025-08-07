@@ -80,7 +80,6 @@ impl PyImporter {
             start.elapsed().as_secs_f32()
         );
 
-        // Extract settings using the new extraction methods
         let settings = Self::extract_importer_wide_settings(kwargs)?;
         Self::handle_special_fs_settings(kwargs, &mut opened)?;
 
@@ -114,7 +113,6 @@ impl PyImporter {
     ) -> PyResult<()> {
         let executor = self.consume()?;
 
-        // Extract VMF settings using the new extraction method
         let vmf_settings = Self::extract_vmf_settings(kwargs)?;
 
         let mut settings = VmfConfig::new(self.material_config);
@@ -253,7 +251,7 @@ impl PyImporter {
 
                 let key_str: &str = key.extract()?;
                 match key_str {
-                    // Material settings (old parameter names for PyImporter compatibility)
+                    // Material settings
                     "import_materials" => settings.material.import_materials = value.extract()?,
                     "simple_materials" => settings.material.simple_materials = value.extract()?,
                     "allow_culling" => settings.material.allow_culling = value.extract()?,
@@ -266,7 +264,7 @@ impl PyImporter {
                         settings.material.texture_interpolation =
                             TextureInterpolation::from_str(value.extract()?)?;
                     }
-                    // General settings (old parameter names for PyImporter compatibility)
+                    // VMF and MDL settings
                     "import_lights" => settings.import_lights = value.extract()?,
                     "light_factor" => settings.light.light_factor = value.extract()?,
                     "sun_factor" => settings.light.sun_factor = value.extract()?,
@@ -351,7 +349,7 @@ impl PyImporter {
         Ok(())
     }
 
-    /// Extract VMF-specific settings with old parameter names
+    /// Extract VMF-specific settings
     pub fn extract_vmf_settings(kwargs: Option<&PyDict>) -> PyResult<VmfSettings> {
         let mut import_brushes = true;
         let mut import_overlays = true;
@@ -427,7 +425,7 @@ impl PyImporter {
         })
     }
 
-    /// Extract MDL-specific settings with old parameter names
+    /// Extract MDL-specific settings
     pub fn extract_mdl_settings(kwargs: Option<&PyDict>) -> PyResult<bool> {
         let mut import_animations = true;
 
@@ -457,7 +455,7 @@ impl PyImporter {
     fn mdl_settings(&self, kwargs: Option<&PyDict>) -> PyResult<MdlConfig<MaterialConfig>> {
         let mut settings = MdlConfig::new(self.material_config);
 
-        // Extract MDL settings using the new extraction method
+        // Extract MDL settings
         let import_animations = Self::extract_mdl_settings(kwargs)?;
         settings.import_animations = import_animations;
 
@@ -551,19 +549,38 @@ pub fn check_unknown_keys(key: &str) -> PyResult<()> {
     // All known keys across all parameter extraction functions
     const KNOWN_KEYS: &[&str] = &[
         // Material settings
-        "import_materials", "simple_materials", "allow_culling", "editor_materials",
-        "texture_format", "texture_interpolation",
-        // General settings
-        "import_lights", "light_factor", "sun_factor", "ambient_factor", 
-        "import_sky_camera", "sky_equi_height", "scale", "target_fps",
-        "remove_animations", "import_unknown_entities",
+        "import_materials",
+        "simple_materials",
+        "allow_culling",
+        "editor_materials",
+        "texture_format",
+        "texture_interpolation",
         // VMF settings
-        "import_brushes", "import_overlays", "epsilon", "cut_threshold",
-        "merge_solids", "invisible_solids", "import_props", "import_entities", "import_sky",
+        "import_brushes",
+        "import_overlays",
+        "epsilon",
+        "cut_threshold",
+        "merge_solids",
+        "invisible_solids",
+        "import_props",
+        "import_entities",
+        "import_sky",
+        "import_lights",
+        "light_factor",
+        "sun_factor",
+        "ambient_factor",
+        "import_sky_camera",
+        "sky_equi_height",
+        "scale",
+        "import_unknown_entities",
         // MDL settings
         "import_animations",
+        "remove_animations",
+        "target_fps",
         // Special filesystem settings
-        "vmf_path", "map_data_path", "root_search",
+        "vmf_path",
+        "map_data_path",
+        "root_search",
     ];
 
     if !KNOWN_KEYS.contains(&key) {

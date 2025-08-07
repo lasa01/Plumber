@@ -2,7 +2,7 @@
 Game definitions and access to Plumber preferences.
 """
 
-from typing import List, Optional, Tuple
+from typing import List, Tuple
 
 from .exceptions import GameNotFoundError
 from .filesystem import GameFileSystem

@@ -138,7 +138,6 @@ impl PyApiImporter {
             start.elapsed().as_secs_f32()
         );
 
-        // Extract settings using regular extraction methods with unprefixed parameter names
         let settings = PyImporter::extract_importer_wide_settings(kwargs)?;
         PyImporter::handle_special_fs_settings(kwargs, &mut opened)?;
         let vmf_settings = PyImporter::extract_vmf_settings(kwargs)?;
@@ -253,7 +252,6 @@ impl PyApiImporter {
         let start = Instant::now();
         info!("executing {} import jobs in parallel...", self.jobs.len());
 
-        // Use single process_each call with unified config
         let unified_config = UnifiedAssetConfig {
             material_config: self.material_config,
         };

@@ -2,8 +2,7 @@
 Game file system interface for browsing and reading files.
 """
 
-from typing import List, Tuple, Optional, Union
-import io
+from typing import List, Tuple
 
 from .exceptions import FileSystemError
 

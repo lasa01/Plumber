@@ -8,8 +8,7 @@ The Plumber API allows you to:
 - Access game definitions from Plumber preferences
 - Create and browse game file systems
 - Import individual Source engine assets (VMF, MDL, VMT, VTF)
-- Perform batch imports of multiple assets
-- Build custom parallel import processes
+- Build custom parallel import processes with automatic deduplication
 
 ## Basic Usage
 
@@ -78,39 +77,29 @@ from plumber.api import import_vmf, import_mdl, import_vmt, import_vtf
 import_vmf(
     fs, 
     "maps/de_dust2.vmf",
-    import_brushes=True,
-    import_props=True,
-    import_materials=True,
-    simple_materials=False,
-    texture_format="Png"
+    vmf_import_brushes=True,
+    vmf_import_props=True,
+    material_import_materials=True,
+    material_simple_materials=False,
+    material_texture_format="Png",
+    # Collection options
+    main_collection=None,  # Uses scene collection if None
+    vmf_brush_collection=None,  # Uses main_collection if None
+    vmf_prop_collection=None,   # Uses main_collection if None
 )
 
 # Import a model
 import_mdl(
     fs,
     "models/player/ct_urban.mdl", 
-    import_animations=True,
-    import_materials=True
+    mdl_import_animations=True,
+    material_import_materials=True,
+    main_collection=None,  # Uses scene collection if None
 )
 
 # Import materials and textures
 import_vmt(fs, "materials/concrete/concrete.vmt")
 import_vtf(fs, "materials/concrete/concrete.vtf")
-```
-
-### Batch Import
-
-```python
-from plumber.api import batch_import
-
-# Define multiple assets to import
-assets = [
-    {'type': 'mdl', 'path': 'models/player.mdl', 'import_animations': False},
-    {'type': 'vmt', 'path': 'materials/concrete.vmt'},
-    {'type': 'vtf', 'path': 'materials/concrete.vtf'},
-]
-
-batch_import(fs, assets)
 ```
 
 ### Parallel Import Builder
@@ -125,8 +114,13 @@ builder = ParallelImportBuilder(
     material_import_materials=True,
     material_simple_materials=False,
     material_texture_format="Png",
+    # VMF settings
+    vmf_import_brushes=True,
+    vmf_import_props=True,
     # MDL settings
     mdl_import_animations=True,
+    # Collection settings
+    main_collection=None,  # Uses scene collection if None
 )
 
 builder.add_mdl("models/player1.mdl") \
@@ -193,6 +187,7 @@ def find_and_import_models():
             # Material settings
             material_import_materials=True,
             material_simple_materials=False,
+            material_texture_format="Png",
             # MDL settings
             mdl_import_animations=True,
         )
@@ -241,10 +236,9 @@ if __name__ == "__main__":
 ### Import Functions
 
 - `import_vmf(fs, path, **options)` - Import VMF map
-- `import_mdl(fs, path, **options)` - Import MDL model
+- `import_mdl(fs, path, **options)` - Import MDL model  
 - `import_vmt(fs, path, **options)` - Import VMT material
 - `import_vtf(fs, path, **options)` - Import VTF texture
-- `batch_import(fs, assets)` - Import multiple assets
 
 ### Parallel Import
 
