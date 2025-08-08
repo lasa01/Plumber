@@ -100,7 +100,7 @@ jobs:
       run: python setup.py build_rust --inplace --release
     - name: Install Blender
       run: |
-        dnf install -y wget libXi
+        dnf install -y wget libXi libxkbcommon-x11
         wget https://download.blender.org/release/Blender4.2/blender-4.2.3-linux-x64.tar.xz
         tar -xf blender-4.2.3-linux-x64.tar.xz
         echo "$PWD/blender-4.2.3-linux-x64" >> $GITHUB_PATH
