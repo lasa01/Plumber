@@ -213,6 +213,10 @@ or alternatively from `File -> Import -> Plumber -> Browse game files`.
 The browser only browser supported file types by default.
 This can be changed to display all files by opening the arrow on the lower left corner of the file list.
 
+### Programmatic API
+
+You can use Plumber from your own Blender Python scripts or other addons/extensions via its programmatic API. See [plumber/api/README.md](plumber/api/README.md) for details and usage examples.
+
 ## Troubleshooting
 The [FAQ](https://github.com/lasa01/Plumber/wiki/FAQ-(Plumber)) has instructions for dealing with some common problems and errors.
 
