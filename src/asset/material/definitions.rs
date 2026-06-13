@@ -87,19 +87,19 @@ pub mod nodes {
         ..NodeType::default()
     };
 
-    pub static SEPARATE_RGB: NodeType = NodeType {
-        blender_id: "ShaderNodeSeparateRGB",
+    pub static SEPARATE_COLOR: NodeType = NodeType {
+        blender_id: "ShaderNodeSeparateColor",
         size: [140.0, 119.0],
-        input_sockets: &[Name("Image")],
-        output_sockets: &[Name("R"), Name("G"), Name("B")],
+        input_sockets: &[Name("Color")],
+        output_sockets: &[Name("Red"), Name("Green"), Name("Blue")],
         ..NodeType::default()
     };
 
-    pub static COMBINE_RGB: NodeType = NodeType {
-        blender_id: "ShaderNodeCombineRGB",
+    pub static COMBINE_COLOR: NodeType = NodeType {
+        blender_id: "ShaderNodeCombineColor",
         size: [140.0, 119.0],
-        input_sockets: &[Name("R"), Name("G"), Name("B")],
-        output_sockets: &[Name("Image")],
+        input_sockets: &[Name("Red"), Name("Green"), Name("Blue")],
+        output_sockets: &[Name("Color")],
         ..NodeType::default()
     };
 
@@ -111,12 +111,12 @@ pub mod nodes {
         properties: &["operation", "use_clamp"],
     };
 
-    pub static MIX_RGB: NodeType = NodeType {
-        blender_id: "ShaderNodeMixRGB",
+    pub static MIX: NodeType = NodeType {
+        blender_id: "ShaderNodeMix",
         size: [140.0, 171.0],
-        input_sockets: &[Name("Fac"), Name("Color1"), Name("Color2")],
-        output_sockets: &[Name("Color")],
-        properties: &["blend_type"],
+        input_sockets: &[Name("Factor"), Name("A"), Name("B")],
+        output_sockets: &[Name("Result")],
+        properties: &["blend_type", "data_type"],
     };
 
     pub static VERTEX_COLOR: NodeType = NodeType {
@@ -236,9 +236,9 @@ pub mod groups {
                 ..Node::default()
             },
             Node {
-                kind: &nodes::SEPARATE_RGB,
+                kind: &nodes::SEPARATE_COLOR,
                 id: "separate",
-                links: &[(Name("Image"), NodeSocketRef::new("texture", Name("Color")))],
+                links: &[(Name("Color"), NodeSocketRef::new("texture", Name("Color")))],
                 ..Node::default()
             },
         ],
@@ -247,9 +247,9 @@ pub mod groups {
             ("interpolation", Ref::new("texture", "interpolation")),
         ],
         outputs: &[
-            ("r", NodeSocketRef::new("separate", Name("R"))),
-            ("g", NodeSocketRef::new("separate", Name("G"))),
-            ("b", NodeSocketRef::new("separate", Name("B"))),
+            ("r", NodeSocketRef::new("separate", Name("Red"))),
+            ("g", NodeSocketRef::new("separate", Name("Green"))),
+            ("b", NodeSocketRef::new("separate", Name("Blue"))),
             ("alpha", NodeSocketRef::new("texture", Name("Alpha"))),
         ],
         ..NodeGroup::default()
@@ -258,7 +258,7 @@ pub mod groups {
     pub static DX_NORMAL_MAP_CONVERTER: NodeGroup = NodeGroup {
         nodes: &[
             Node {
-                kind: &nodes::SEPARATE_RGB,
+                kind: &nodes::SEPARATE_COLOR,
                 id: "separate",
                 ..Node::default()
             },
@@ -267,21 +267,21 @@ pub mod groups {
                 id: "invert",
                 properties: &[("operation", Value::Enum("SUBTRACT"))],
                 values: &[(Position(0), Value::Float(1.0))],
-                links: &[(Position(1), NodeSocketRef::new("separate", Name("G")))],
+                links: &[(Position(1), NodeSocketRef::new("separate", Name("Green")))],
             },
             Node {
-                kind: &nodes::COMBINE_RGB,
+                kind: &nodes::COMBINE_COLOR,
                 id: "combine",
                 links: &[
-                    (Name("R"), NodeSocketRef::new("separate", Name("R"))),
-                    (Name("G"), NodeSocketRef::new("invert", Position(0))),
-                    (Name("B"), NodeSocketRef::new("separate", Name("B"))),
+                    (Name("Red"), NodeSocketRef::new("separate", Name("Red"))),
+                    (Name("Green"), NodeSocketRef::new("invert", Position(0))),
+                    (Name("Blue"), NodeSocketRef::new("separate", Name("Blue"))),
                 ],
                 ..Node::default()
             },
         ],
-        inputs: &[("image", NodeSocketRef::new("separate", Name("Image")))],
-        outputs: &[("image", NodeSocketRef::new("combine", Name("Image")))],
+        inputs: &[("image", NodeSocketRef::new("separate", Name("Color")))],
+        outputs: &[("image", NodeSocketRef::new("combine", Name("Color")))],
         ..NodeGroup::default()
     };
 
@@ -386,55 +386,55 @@ pub mod groups {
     pub static DETAIL_TEXTURE: NodeGroup = NodeGroup {
         nodes: &[
             Node {
-                kind: &nodes::MIX_RGB,
+                kind: &nodes::MIX,
                 id: "mul",
-                properties: &[("blend_type", Value::Enum("MULTIPLY"))],
+                properties: &[("blend_type", Value::Enum("MULTIPLY")), ("data_type", Value::Enum("RGBA"))],
                 values: &[
-                    (Name("Color2"), Value::Color([2.0, 2.0, 2.0, 1.0])),
-                    (Name("Fac"), Value::Float(1.0)),
+                    (Name("B"), Value::Color([2.0, 2.0, 2.0, 1.0])),
+                    (Name("Factor"), Value::Float(1.0)),
                 ],
                 ..Node::default()
             },
             Node {
-                kind: &nodes::MIX_RGB,
+                kind: &nodes::MIX,
                 id: "mix",
-                properties: &[("blend_type", Value::Enum("MULTIPLY"))],
-                links: &[(Name("Color2"), NodeSocketRef::new("mul", Name("Color")))],
+                properties: &[("blend_type", Value::Enum("MULTIPLY")), ("data_type", Value::Enum("RGBA"))],
+                links: &[(Name("B"), NodeSocketRef::new("mul", Name("Result")))],
                 ..Node::default()
             },
         ],
         inputs: &[
-            ("color", NodeSocketRef::new("mix", Name("Color1"))),
-            ("detail", NodeSocketRef::new("mul", Name("Color1"))),
-            ("fac", NodeSocketRef::new("mix", Name("Fac"))),
+            ("color", NodeSocketRef::new("mix", Name("A"))),
+            ("detail", NodeSocketRef::new("mul", Name("A"))),
+            ("fac", NodeSocketRef::new("mix", Name("Factor"))),
         ],
-        outputs: &[("color", NodeSocketRef::new("mix", Name("Color")))],
+        outputs: &[("color", NodeSocketRef::new("mix", Name("Result")))],
         ..NodeGroup::default()
     };
 
     pub static COLOR_TEXTURE: NodeGroup = NodeGroup {
         nodes: &[Node {
-            kind: &nodes::MIX_RGB,
+            kind: &nodes::MIX,
             id: "mul",
-            properties: &[("blend_type", Value::Enum("MULTIPLY"))],
-            values: &[(Name("Fac"), Value::Float(1.0))],
+            properties: &[("blend_type", Value::Enum("MULTIPLY")), ("data_type", Value::Enum("RGBA"))],
+            values: &[(Name("Factor"), Value::Float(1.0))],
             ..Node::default()
         }],
         inputs: &[
-            ("color", NodeSocketRef::new("mul", Name("Color1"))),
-            ("mixin", NodeSocketRef::new("mul", Name("Color2"))),
-            ("fac", NodeSocketRef::new("mul", Name("Fac"))),
+            ("color", NodeSocketRef::new("mul", Name("A"))),
+            ("mixin", NodeSocketRef::new("mul", Name("B"))),
+            ("fac", NodeSocketRef::new("mul", Name("Factor"))),
         ],
-        outputs: &[("color", NodeSocketRef::new("mul", Name("Color")))],
+        outputs: &[("color", NodeSocketRef::new("mul", Name("Result")))],
         ..NodeGroup::default()
     };
 
     pub static BLEND_TEXTURE: NodeGroup = NodeGroup {
         nodes: &[
             Node {
-                kind: &nodes::MIX_RGB,
+                kind: &nodes::MIX,
                 id: "mix_color",
-                properties: &[("blend_type", Value::Enum("MIX"))],
+                properties: &[("blend_type", Value::Enum("MIX")), ("data_type", Value::Enum("RGBA"))],
                 ..Node::default()
             },
             Node {
@@ -449,15 +449,15 @@ pub mod groups {
             },
         ],
         inputs: &[
-            ("color", NodeSocketRef::new("mix_color", Name("Color1"))),
-            ("color2", NodeSocketRef::new("mix_color", Name("Color2"))),
+            ("color", NodeSocketRef::new("mix_color", Name("A"))),
+            ("color2", NodeSocketRef::new("mix_color", Name("B"))),
             ("alpha", NodeSocketRef::new("mix_alpha", Name("To Min"))),
             ("alpha2", NodeSocketRef::new("mix_alpha", Name("To Max"))),
-            ("fac", NodeSocketRef::new("mix_color", Name("Fac"))),
+            ("fac", NodeSocketRef::new("mix_color", Name("Factor"))),
             ("fac", NodeSocketRef::new("mix_alpha", Name("Value"))),
         ],
         outputs: &[
-            ("color", NodeSocketRef::new("mix_color", Name("Color"))),
+            ("color", NodeSocketRef::new("mix_color", Name("Result"))),
             ("alpha", NodeSocketRef::new("mix_alpha", Position(0))),
         ],
         ..NodeGroup::default()
@@ -486,16 +486,16 @@ pub mod groups {
                 ..Node::default()
             },
             Node {
-                kind: &nodes::SEPARATE_RGB,
+                kind: &nodes::SEPARATE_COLOR,
                 id: "separate",
-                links: &[(Name("Image"), NodeSocketRef::new("col", Name("Color")))],
+                links: &[(Name("Color"), NodeSocketRef::new("col", Name("Color")))],
                 ..Node::default()
             },
         ],
         outputs: &[
-            ("r", NodeSocketRef::new("separate", Name("R"))),
-            ("g", NodeSocketRef::new("separate", Name("G"))),
-            ("b", NodeSocketRef::new("separate", Name("B"))),
+            ("r", NodeSocketRef::new("separate", Name("Red"))),
+            ("g", NodeSocketRef::new("separate", Name("Green"))),
+            ("b", NodeSocketRef::new("separate", Name("Blue"))),
             ("alpha", NodeSocketRef::new("col", Name("Alpha"))),
         ],
         ..NodeGroup::default()
@@ -514,7 +514,7 @@ pub mod groups {
     pub static MODULATED_FACTOR: NodeGroup = NodeGroup {
         nodes: &[
             Node {
-                kind: &nodes::SEPARATE_RGB,
+                kind: &nodes::SEPARATE_COLOR,
                 id: "sep",
                 ..Node::default()
             },
@@ -526,8 +526,8 @@ pub mod groups {
                     ("operation", Value::Enum("SUBTRACT")),
                 ],
                 links: &[
-                    (Position(0), NodeSocketRef::new("sep", Name("G"))),
-                    (Position(1), NodeSocketRef::new("sep", Name("R"))),
+                    (Position(0), NodeSocketRef::new("sep", Name("Green"))),
+                    (Position(1), NodeSocketRef::new("sep", Name("Red"))),
                 ],
                 ..Node::default()
             },
@@ -539,8 +539,8 @@ pub mod groups {
                     ("operation", Value::Enum("ADD")),
                 ],
                 links: &[
-                    (Position(0), NodeSocketRef::new("sep", Name("G"))),
-                    (Position(1), NodeSocketRef::new("sep", Name("R"))),
+                    (Position(0), NodeSocketRef::new("sep", Name("Green"))),
+                    (Position(1), NodeSocketRef::new("sep", Name("Red"))),
                 ],
                 ..Node::default()
             },
@@ -562,7 +562,7 @@ pub mod groups {
             },
         ],
         inputs: &[
-            ("modulate", NodeSocketRef::new("sep", Name("Image"))),
+            ("modulate", NodeSocketRef::new("sep", Name("Color"))),
             ("fac", NodeSocketRef::new("map", Name("Value"))),
         ],
         outputs: &[("fac", NodeSocketRef::new("map", Position(0)))],
@@ -866,9 +866,9 @@ pub mod groups {
     pub static MULTIBLEND_TEXTURE: NodeGroup = NodeGroup {
         nodes: &[
             Node {
-                kind: &nodes::MIX_RGB,
+                kind: &nodes::MIX,
                 id: "mix_color1",
-                properties: &[("blend_type", Value::Enum("MIX"))],
+                properties: &[("blend_type", Value::Enum("MIX")), ("data_type", Value::Enum("RGBA"))],
                 ..Node::default()
             },
             Node {
@@ -882,12 +882,12 @@ pub mod groups {
                 ..Node::default()
             },
             Node {
-                kind: &nodes::MIX_RGB,
+                kind: &nodes::MIX,
                 id: "mix_color2",
-                properties: &[("blend_type", Value::Enum("MIX"))],
+                properties: &[("blend_type", Value::Enum("MIX")), ("data_type", Value::Enum("RGBA"))],
                 links: &[(
-                    Name("Color1"),
-                    NodeSocketRef::new("mix_color1", Name("Color")),
+                    Name("A"),
+                    NodeSocketRef::new("mix_color1", Name("Result")),
                 )],
                 ..Node::default()
             },
@@ -905,12 +905,12 @@ pub mod groups {
                 )],
             },
             Node {
-                kind: &nodes::MIX_RGB,
+                kind: &nodes::MIX,
                 id: "mix_color3",
-                properties: &[("blend_type", Value::Enum("MIX"))],
+                properties: &[("blend_type", Value::Enum("MIX")), ("data_type", Value::Enum("RGBA"))],
                 links: &[(
-                    Name("Color1"),
-                    NodeSocketRef::new("mix_color2", Name("Color")),
+                    Name("A"),
+                    NodeSocketRef::new("mix_color2", Name("Result")),
                 )],
                 ..Node::default()
             },
@@ -929,23 +929,23 @@ pub mod groups {
             },
         ],
         inputs: &[
-            ("color", NodeSocketRef::new("mix_color1", Name("Color1"))),
-            ("color2", NodeSocketRef::new("mix_color1", Name("Color2"))),
-            ("color3", NodeSocketRef::new("mix_color2", Name("Color2"))),
-            ("color4", NodeSocketRef::new("mix_color3", Name("Color2"))),
+            ("color", NodeSocketRef::new("mix_color1", Name("A"))),
+            ("color2", NodeSocketRef::new("mix_color1", Name("B"))),
+            ("color3", NodeSocketRef::new("mix_color2", Name("B"))),
+            ("color4", NodeSocketRef::new("mix_color3", Name("B"))),
             ("alpha", NodeSocketRef::new("mix_alpha1", Name("To Min"))),
             ("alpha2", NodeSocketRef::new("mix_alpha1", Name("To Max"))),
             ("alpha3", NodeSocketRef::new("mix_alpha2", Name("To Max"))),
             ("alpha4", NodeSocketRef::new("mix_alpha3", Name("To Max"))),
-            ("fac1", NodeSocketRef::new("mix_color1", Name("Fac"))),
+            ("fac1", NodeSocketRef::new("mix_color1", Name("Factor"))),
             ("fac1", NodeSocketRef::new("mix_alpha1", Name("Value"))),
-            ("fac2", NodeSocketRef::new("mix_color2", Name("Fac"))),
+            ("fac2", NodeSocketRef::new("mix_color2", Name("Factor"))),
             ("fac2", NodeSocketRef::new("mix_alpha2", Name("Value"))),
-            ("fac3", NodeSocketRef::new("mix_color3", Name("Fac"))),
+            ("fac3", NodeSocketRef::new("mix_color3", Name("Factor"))),
             ("fac3", NodeSocketRef::new("mix_alpha3", Name("Value"))),
         ],
         outputs: &[
-            ("color", NodeSocketRef::new("mix_color3", Name("Color"))),
+            ("color", NodeSocketRef::new("mix_color3", Name("Result"))),
             ("alpha", NodeSocketRef::new("mix_alpha3", Position(0))),
         ],
         ..NodeGroup::default()
@@ -1048,17 +1048,17 @@ pub mod groups {
 
     pub static MOD2X: NodeGroup = NodeGroup {
         nodes: &[Node {
-            kind: &nodes::MIX_RGB,
+            kind: &nodes::MIX,
             id: "multiply",
-            properties: &[("blend_type", Value::Enum("MULTIPLY"))],
+            properties: &[("blend_type", Value::Enum("MULTIPLY")), ("data_type", Value::Enum("RGBA"))],
             values: &[
-                (Name("Color2"), Value::Color([2.0, 2.0, 2.0, 1.0])),
-                (Name("Fac"), Value::Float(1.0)),
+                (Name("B"), Value::Color([2.0, 2.0, 2.0, 1.0])),
+                (Name("Factor"), Value::Float(1.0)),
             ],
             ..Node::default()
         }],
-        inputs: &[("color", NodeSocketRef::new("multiply", Name("Color1")))],
-        outputs: &[("color", NodeSocketRef::new("multiply", Name("Color")))],
+        inputs: &[("color", NodeSocketRef::new("multiply", Name("A")))],
+        outputs: &[("color", NodeSocketRef::new("multiply", Name("Result")))],
         ..NodeGroup::default()
     };
 }
@@ -1079,10 +1079,10 @@ mod tests {
         &nodes::TEX_COORD,
         &nodes::MAPPING,
         &nodes::NORMAL_MAP,
-        &nodes::SEPARATE_RGB,
-        &nodes::COMBINE_RGB,
+        &nodes::SEPARATE_COLOR,
+        &nodes::COMBINE_COLOR,
         &nodes::MATH,
-        &nodes::MIX_RGB,
+        &nodes::MIX,
         &nodes::VERTEX_COLOR,
         &nodes::OBJECT_INFO,
         &nodes::MAP_RANGE,
