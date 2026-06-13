@@ -323,6 +323,7 @@ class DetectGameinfoOperator(Operator):
         name="Path",
         maxlen=1024,
         options={"HIDDEN"},
+        subtype="FILE_PATH",
     )
 
     filename_ext = ".txt"
