@@ -56,7 +56,8 @@ def import_env_light(light: EnvLight, context: Context, collection: Collection) 
     if context.scene.world is None:
         context.scene.world = bpy.data.worlds.new("World")
 
-    context.scene.world.use_nodes = True
+    if bpy.app.version < (5, 0, 0):
+        context.scene.world.use_nodes = True
     nt = context.scene.world.node_tree
     if nt.nodes:
         # don't override imported skybox or a previous material with this

@@ -42,7 +42,8 @@ def import_material(material: Material) -> None:
         material_data = bpy.data.materials.new(material_name)
         material_data["path_id"] = material.name()
 
-    material_data.use_nodes = True
+    if bpy.app.version < (5, 0, 0):
+        material_data.use_nodes = True
     nt = material_data.node_tree
     nt.nodes.clear()
 

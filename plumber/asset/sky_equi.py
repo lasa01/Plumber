@@ -25,7 +25,8 @@ def import_sky_equi(sky_equi: SkyEqui, context: Context) -> None:
     if context.scene.world is None:
         context.scene.world = bpy.data.worlds.new("World")
 
-    context.scene.world.use_nodes = True
+    if bpy.app.version < (5, 0, 0):
+        context.scene.world.use_nodes = True
     nt = context.scene.world.node_tree
     nt.nodes.clear()
     out_node: ShaderNode = nt.nodes.new("ShaderNodeOutputWorld")
