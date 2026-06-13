@@ -30,9 +30,9 @@ jobs:
   build:
     strategy:
       matrix:
-        os: [macos-13, macos-latest, windows-latest]
+        os: [macos-15-intel, macos-latest, windows-latest]
         include:
-          - os: macos-13
+          - os: macos-15-intel
             blender-install: |
               brew update
               brew install --cask blender

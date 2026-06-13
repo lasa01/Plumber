@@ -25,7 +25,7 @@ jobs:
   build:
     strategy:
       matrix:
-        os: [macos-13, macos-latest, windows-latest]
+        os: [macos-15-intel, macos-latest, windows-latest]
       fail-fast: false
     runs-on: ${{ matrix.os }}
     
