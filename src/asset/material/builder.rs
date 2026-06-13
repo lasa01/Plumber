@@ -24,7 +24,9 @@ use super::{
 };
 
 #[derive(Debug, Clone, Copy)]
+#[derive(Default)]
 pub enum TextureInterpolation {
+    #[default]
     Linear,
     Closest,
     Cubic,
@@ -45,11 +47,6 @@ impl FromStr for TextureInterpolation {
     }
 }
 
-impl Default for TextureInterpolation {
-    fn default() -> Self {
-        Self::Linear
-    }
-}
 
 impl TextureInterpolation {
     fn to_str(self) -> &'static str {
@@ -63,7 +60,9 @@ impl TextureInterpolation {
 }
 
 #[derive(Debug, Clone, Copy)]
+#[derive(Default)]
 pub enum TextureFormat {
+    #[default]
     Tga,
     Png,
 }
@@ -77,12 +76,6 @@ impl FromStr for TextureFormat {
             "Png" => Ok(Self::Png),
             _ => Err(PyValueError::new_err("invalid texture format")),
         }
-    }
-}
-
-impl Default for TextureFormat {
-    fn default() -> Self {
-        Self::Tga
     }
 }
 
