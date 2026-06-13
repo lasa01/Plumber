@@ -328,7 +328,7 @@ fn build_water_material(
         if let Some(color) = vmt.extract_param::<RGB<f32>>("$fogcolor") {
             builder.socket_value(
                 NodeSocketId::Name("Color"),
-                Value::Color(color.alpha(1.0).into()),
+                Value::Color(color.with_alpha(1.0).into()),
             );
         }
     }
@@ -495,7 +495,7 @@ impl<'a, 'b, 'c, 'd> NormalMaterialBuilder<'a, 'b, 'c, 'd> {
 
     fn handle_color(&mut self) -> bool {
         if let Some(color) = self.vmt.extract_param::<RGB<f32>>("$color") {
-            let color = color.alpha(1.0).into();
+            let color = color.with_alpha(1.0).into();
             self.builder.socket_value("Base Color", Value::Color(color));
 
             true
@@ -647,7 +647,7 @@ impl NormalMaterialBuilder<'_, '_, '_, '_> {
         );
 
         if let Some(color) = self.vmt.extract_param::<RGB<f32>>("$layertint1") {
-            let color = color.alpha(1.0).into();
+            let color = color.with_alpha(1.0).into();
 
             self.builder
                 .input("$basetexture")
@@ -691,7 +691,7 @@ impl NormalMaterialBuilder<'_, '_, '_, '_> {
         );
 
         if let Some(color) = self.vmt.extract_param::<RGB<f32>>("$layertint2") {
-            let color = color.alpha(1.0).into();
+            let color = color.with_alpha(1.0).into();
 
             self.builder
                 .input("$basetexture2")
@@ -750,7 +750,7 @@ impl NormalMaterialBuilder<'_, '_, '_, '_> {
             && !self.vmt.extract_param_or_default::<bool>("$notint")
         {
             let color = if let Some(color) = self.vmt.extract_param::<RGB<f32>>("$color2") {
-                let color = color.alpha(1.0).into();
+                let color = color.with_alpha(1.0).into();
                 InputLink::Value(Value::Color(color))
             } else {
                 let input = self
@@ -771,7 +771,7 @@ impl NormalMaterialBuilder<'_, '_, '_, '_> {
 
             Some((color, factor))
         } else if let Some(color) = self.vmt.extract_param::<RGB<f32>>("$color") {
-            let color = color.alpha(1.0).into();
+            let color = color.with_alpha(1.0).into();
 
             Some((Value::Color(color).into(), Value::Float(1.0).into()))
         } else {

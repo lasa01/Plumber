@@ -2,7 +2,7 @@ use std::{collections::BTreeMap, f32::consts::FRAC_PI_2, mem};
 
 use glam::{EulerRot, Quat};
 use pyo3::prelude::*;
-use rgb::ComponentMap;
+use rgb::{ColorComponentMap, ComponentMap};
 
 use plumber_core::{
     asset_vmf::prop::LoadedProp,
@@ -86,7 +86,7 @@ impl PyLoadedProp {
             color: prop
                 .color
                 .map_alpha(|a| f32::from(a) / 255.)
-                .map_rgb(|c| srgb_to_linear(f32::from(c) / 255.))
+                .map_colors(|c| srgb_to_linear(f32::from(c) / 255.))
                 .into(),
             properties,
         }
@@ -372,7 +372,7 @@ impl PyEnvLight {
             sun_energy: sun_brightness * settings.sun_factor,
             ambient_color: ambient_color
                 .map(|c| srgb_to_linear(f32::from(c) / 255.))
-                .alpha(1.0)
+                .with_alpha(1.0)
                 .into(),
             ambient_strength: ambient_brightness * settings.ambient_factor,
             angle,
