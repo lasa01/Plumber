@@ -15,7 +15,7 @@ pyo3 = { version = "0.15.1", features = [
     "abi3",
     "abi3-py36",
 ] }
-crossbeam-channel = "0.5.1"
+crossbeam-channel = "0.5.15"
 ndarray = "0.15.1"
 itertools = "0.10.1"
 image = { version = "0.24.6", default-features = false, features = [
