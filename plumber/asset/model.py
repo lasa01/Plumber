@@ -1,4 +1,4 @@
-from typing import Dict, List, Optional
+from typing import Dict, List, Optional, Union, TYPE_CHECKING
 
 import bpy
 from bpy.types import (
@@ -23,6 +23,10 @@ from ..plumber import (
     VectorData,
 )
 
+if bpy.app.version >= (4, 4, 0) or TYPE_CHECKING:
+    from bpy.types import ActionChannelbag
+
+ActionOrChannelbag = Union[Action, "ActionChannelbag"]
 
 class ModelState:
     def __init__(
@@ -269,6 +273,20 @@ def import_animation(
     action = bpy.data.actions.new(name)
     animation_data.action = action
 
+    action_or_channelbag: ActionOrChannelbag
+
+    if bpy.app.version >= (4, 4, 0):
+        slot = action.slots.new(id_type="OBJECT", name=armature_obj.name)
+        animation_data.action_slot = slot
+
+        layer = action.layers.new("Layer")
+        strip = layer.strips.new(type="KEYFRAME")
+        channelbag = strip.channelbag(slot, ensure=True)
+
+        action_or_channelbag = channelbag
+    else:
+        action_or_channelbag = action
+
     data = animation.data()
     looping = animation.looping()
 
@@ -280,27 +298,27 @@ def import_animation(
 
         if isinstance(rotation, QuaternionData):
             curve_name = f"{curve_basename}.rotation_quaternion"
-            import_quaternions(action, rotation, curve_name, looping)
+            import_quaternions(action_or_channelbag, rotation, curve_name, looping)
             armature_obj.pose.bones[bone_name].rotation_mode = "QUATERNION"
         elif rotation is not None:
             curve_name = f"{curve_basename}.rotation_quaternion"
-            import_quaternion(action, rotation, curve_name)
+            import_quaternion(action_or_channelbag, rotation, curve_name)
             armature_obj.pose.bones[bone_name].rotation_mode = "QUATERNION"
 
         position = bone_data.position()
 
         if isinstance(position, VectorData):
             curve_name = f"{curve_basename}.location"
-            import_vectors(action, position, curve_name, looping)
+            import_vectors(action_or_channelbag, position, curve_name, looping)
         elif position is not None:
             curve_name = f"{curve_basename}.location"
-            import_vector(action, position, curve_name)
+            import_vector(action_or_channelbag, position, curve_name)
 
 
 def import_quaternions(
-    action: Action, data: QuaternionData, curve_name: str, looping: bool
+    action_or_channelbag: ActionOrChannelbag, data: QuaternionData, curve_name: str, looping: bool
 ) -> None:
-    curves = [action.fcurves.new(curve_name, index=i) for i in range(4)]
+    curves = [action_or_channelbag.fcurves.new(curve_name, index=i) for i in range(4)]
 
     w_curve = curves[0]
     w_values = data.w_points()
@@ -328,21 +346,21 @@ def import_quaternions(
         curve.update()
 
 
-def import_quaternion(action: Action, data: List[float], curve_name: str) -> None:
-    w_curve = action.fcurves.new(curve_name, index=0)
+def import_quaternion(action_or_channelbag: ActionOrChannelbag, data: List[float], curve_name: str) -> None:
+    w_curve = action_or_channelbag.fcurves.new(curve_name, index=0)
     w_curve.keyframe_points.insert(0.0, data[3])
-    x_curve = action.fcurves.new(curve_name, index=1)
+    x_curve = action_or_channelbag.fcurves.new(curve_name, index=1)
     x_curve.keyframe_points.insert(0.0, data[0])
-    y_curve = action.fcurves.new(curve_name, index=2)
+    y_curve = action_or_channelbag.fcurves.new(curve_name, index=2)
     y_curve.keyframe_points.insert(0.0, data[1])
-    z_curve = action.fcurves.new(curve_name, index=3)
+    z_curve = action_or_channelbag.fcurves.new(curve_name, index=3)
     z_curve.keyframe_points.insert(0.0, data[2])
 
 
 def import_vectors(
-    action: Action, data: VectorData, curve_name: str, looping: bool
+    action_or_channelbag: ActionOrChannelbag, data: VectorData, curve_name: str, looping: bool
 ) -> None:
-    curves = [action.fcurves.new(curve_name, index=i) for i in range(3)]
+    curves = [action_or_channelbag.fcurves.new(curve_name, index=i) for i in range(3)]
 
     x_curve = curves[0]
     x_values = data.x_points()
@@ -365,10 +383,10 @@ def import_vectors(
         curve.update()
 
 
-def import_vector(action: Action, data: List[float], curve_name: str) -> None:
-    x_curve = action.fcurves.new(curve_name, index=0)
+def import_vector(action_or_channelbag: ActionOrChannelbag, data: List[float], curve_name: str) -> None:
+    x_curve = action_or_channelbag.fcurves.new(curve_name, index=0)
     x_curve.keyframe_points.insert(0.0, data[0])
-    y_curve = action.fcurves.new(curve_name, index=1)
+    y_curve = action_or_channelbag.fcurves.new(curve_name, index=1)
     y_curve.keyframe_points.insert(0.0, data[1])
-    z_curve = action.fcurves.new(curve_name, index=2)
+    z_curve = action_or_channelbag.fcurves.new(curve_name, index=2)
     z_curve.keyframe_points.insert(0.0, data[2])

@@ -1,4 +1,4 @@
-fake-bpy-module-4.2
+fake-bpy-module-5.0
 setuptools
 setuptools-rust
 black
