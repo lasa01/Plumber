@@ -15,7 +15,7 @@ def import_prop(
     armatures_to_apply: List[Object],
 ) -> None:
     model_name = prop.model()
-    obj = model_tracker.get_model_copy(model_name, collection)
+    obj = model_tracker.get_model_copy(model_name, collection, prop.skin())
     obj["path_id"] = model_name
     obj["props"] = prop.properties()
 

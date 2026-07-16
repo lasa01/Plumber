@@ -21,6 +21,8 @@ pub struct PyModel {
     bones: Vec<PyLoadedBone>,
     animations: Vec<PyLoadedAnimation>,
     rest_positions: BTreeMap<usize, PyBoneRestData>,
+    material_groups: Vec<Vec<Option<String>>>,
+    material_groups_pointers: Vec<Vec<i16>>,
 }
 
 #[pymethods]
@@ -47,6 +49,14 @@ impl PyModel {
 
     fn rest_positions(&mut self) -> BTreeMap<usize, PyBoneRestData> {
         mem::take(&mut self.rest_positions)
+    }
+
+    fn material_groups(&mut self) -> Vec<Vec<Option<String>>> {
+        mem::take(&mut self.material_groups)
+    }
+
+    fn material_groups_pointers(&mut self) -> Vec<Vec<i16>> {
+        mem::take(&mut self.material_groups_pointers)
     }
 }
 
@@ -118,6 +128,17 @@ impl PyModel {
             bones,
             animations,
             rest_positions,
+            material_groups: m
+                .skin_families
+                .into_iter()
+                .map(|skinfam| 
+                    skinfam
+                    .into_iter()
+                    .map(|mat| mat.map(GamePathBuf::into_string))
+                    .collect()
+                )
+                .collect(),
+            material_groups_pointers: m.skin_families_raw,
         }
     }
 }
@@ -172,7 +193,7 @@ impl PyLoadedMesh {
     }
 
     fn vertices(&mut self) -> Vec<f32> {
-        mem::take(&mut self.flat_vertices)
+        mem::take(&mut self.flat_vertices.clone())
     }
 
     fn loops_len(&self) -> usize {
@@ -192,7 +213,7 @@ impl PyLoadedMesh {
     }
 
     fn polygon_vertices(&mut self) -> Vec<usize> {
-        mem::take(&mut self.flat_polygon_vertice_indices)
+        mem::take(&mut self.flat_polygon_vertice_indices.clone())
     }
 
     fn polygon_material_indices<'p>(&self, py: Python<'p>) -> &'p PyList {
@@ -200,7 +221,7 @@ impl PyLoadedMesh {
     }
 
     fn loop_uvs(&mut self) -> Vec<f32> {
-        mem::take(&mut self.flat_loop_uvs)
+        mem::take(&mut self.flat_loop_uvs.clone())
     }
 
     fn normals<'p>(&mut self, py: Python<'p>) -> &'p PyList {
@@ -208,7 +229,7 @@ impl PyLoadedMesh {
     }
 
     fn weight_groups(&mut self) -> BTreeMap<u8, BTreeMap<usize, f32>> {
-        mem::take(&mut self.weight_groups)
+        mem::take(&mut self.weight_groups.clone())
     }
 }
 

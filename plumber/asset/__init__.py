@@ -95,3 +95,4 @@ class AssetCallbacks:
 
     def finish(self) -> None:
         apply_armatures(self.armatures_to_apply)
+        self.model_tracker.cleanup_skin_objs()

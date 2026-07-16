@@ -47,16 +47,18 @@ class ModelTracker:
     def import_model(self, model: Model, collection: Collection) -> None:
         original_name = model.name()
         model_name = truncate_name(original_name)
+        skin = 0
 
         parent_obj = None
         children = []
 
         bones = model.bones()
+        animations = None
         if bones:
             rest_positions = model.rest_positions()
             bone_names = []
             parent_obj = import_armature(
-                collection, model_name, bones, rest_positions, bone_names
+                collection, model_name + "+s" + str(skin), bones, rest_positions, bone_names
             )
 
             animations = model.animations()
@@ -76,15 +78,21 @@ class ModelTracker:
                     material_data["path_id"] = material_original_name
             bl_materials.append(material_data)
 
+        mat_group = []
+        for i, material_g in enumerate(model.material_groups_pointers()):
+            mat_group.append(list(bl_materials))
+            for s, key in enumerate(material_g):
+                mat_group[i][s] = bl_materials[key]
+
         meshes = model.meshes()
 
         if len(meshes) > 1 and parent_obj is None:
-            parent_obj = bpy.data.objects.new(model_name, object_data=None)
+            parent_obj = bpy.data.objects.new(model_name + "+s" + str(skin), object_data=None)
             collection.objects.link(parent_obj)
 
         for mesh in meshes:
             mesh_obj = import_mesh(
-                collection, model_name, bl_materials, mesh, bones if bones else None
+                collection, model_name, mat_group[skin], mesh, bones if bones else None, skin
             )
             if parent_obj is not None:
                 mesh_obj.parent = parent_obj
@@ -99,7 +107,65 @@ class ModelTracker:
                 parent_obj = mesh_obj
 
         model_state = ModelState(parent_obj, children, collection)
-        self.imported_objects[original_name.lower()] = model_state
+        self.imported_objects[original_name.lower() + "+s" + str(skin)] = model_state
+
+        if len(mat_group) < 2:
+            return
+
+        for si in range(1,len(mat_group)):
+            self.reimport_model(
+                model,
+                collection,
+                si,
+                original_name,
+                mat_group[si],
+                meshes,
+                bones if bones else None,
+                animations if animations else None
+            )
+
+    def reimport_model(
+        self,
+        model: Model,
+        collection: Collection,
+        skin: int,
+        original_name: str,
+        bl_materials: List[Material],
+        meshes: List[LoadedMesh],
+        bones: Optional[List[LoadedBone]],
+        animations: Optional[List[LoadedAnimation]]
+    ) -> None:
+        model_name = truncate_name(original_name)
+
+        parent_obj = None
+        children = []
+
+        if animations is not None:
+            for animation in animations:
+                import_animation(parent_obj, bone_names, animation)
+
+        if len(meshes) > 1 and parent_obj is None:
+            parent_obj = bpy.data.objects.new(model_name + "+s" + str(skin), object_data=None)
+            collection.objects.link(parent_obj)
+
+        for mesh in meshes:
+            mesh_obj = import_mesh(
+                collection, model_name, bl_materials, mesh, bones if bones else None, skin
+            )
+            if parent_obj is not None:
+                mesh_obj.parent = parent_obj
+                if parent_obj.type == "ARMATURE":
+                    armature_mod: ArmatureModifier = mesh_obj.modifiers.new(
+                        "Armature", "ARMATURE"
+                    )
+                    armature_mod.object = parent_obj
+                children.append(mesh_obj)
+            else:
+                # this only gets called if there is 1 mesh
+                parent_obj = mesh_obj
+
+        model_state = ModelState(parent_obj, children, collection)
+        self.imported_objects[original_name.lower() + "+s" + str(skin)] = model_state
 
     def apply_scale_to_batch(self, scale: float) -> None:
         """Apply scale to all models imported in the current batch"""
@@ -108,12 +174,14 @@ class ModelTracker:
                 model_state.object.scale = (scale, scale, scale)
 
     def get_model_copy(
-        self, model_name: str, collection: Collection
+        self, model_name: str, collection: Collection, skin: int
     ) -> Optional[Object]:
-        model_state = self.imported_objects.get(model_name.lower())
+        model_state = self.imported_objects.get(model_name.lower() + "+s" + str(skin))
 
         if model_state is None:
-            return None
+            model_state = self.imported_objects.get(model_name.lower() + "+s0")
+            if model_state is None:
+                return None
 
         if not model_state.used:
             model_state.used = True
@@ -128,7 +196,6 @@ class ModelTracker:
 
             return model_state.object
 
-        # if the original object is already used, create a copy
         parent_copy = model_state.object.copy()
         collection.objects.link(parent_copy)
 
@@ -153,6 +220,11 @@ class ModelTracker:
 
         return last.object
 
+    def cleanup_skin_objs(self) -> None:
+        # Quite expensive but better than just letting those objects sit there doing nothing...
+        for skin_name, skin_state in self.imported_objects.items():
+            if not skin_state.used:
+                bpy.data.objects.remove(skin_state.object)
 
 def import_mesh(
     collection: Collection,
@@ -160,12 +232,13 @@ def import_mesh(
     bl_materials: List[Material],
     mesh: LoadedMesh,
     bones: Optional[List[LoadedBone]],
+    skin: int = 0
 ) -> Object:
     mesh_name = truncate_name(f"{model_name}/{mesh.name()}")
 
-    mesh_data = bpy.data.meshes.get(mesh_name)
+    mesh_data = bpy.data.meshes.get(mesh_name + "+s" + str(skin))
     if mesh_data is None:
-        mesh_data = bpy.data.meshes.new(mesh_name)
+        mesh_data = bpy.data.meshes.new(mesh_name + "+s" + str(skin))
     else:
         mesh_data.clear_geometry()
         mesh_data.materials.clear()
@@ -194,7 +267,7 @@ def import_mesh(
     for bl_material in bl_materials:
         mesh_data.materials.append(bl_material)
 
-    mesh_obj = bpy.data.objects.new(mesh_name, object_data=mesh_data)
+    mesh_obj = bpy.data.objects.new(mesh_name + "+s" + str(skin), object_data=mesh_data)
     collection.objects.link(mesh_obj)
 
     if bones is not None:

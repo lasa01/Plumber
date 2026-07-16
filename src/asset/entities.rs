@@ -24,6 +24,7 @@ pub struct PyLoadedProp {
     scale: [f32; 3],
     color: [f32; 4],
     properties: BTreeMap<String, String>,
+    skin: i32,
 }
 
 #[pymethods]
@@ -59,6 +60,10 @@ impl PyLoadedProp {
     fn properties(&mut self) -> BTreeMap<String, String> {
         mem::take(&mut self.properties)
     }
+
+    fn skin(&self) -> i32 {
+        self.skin
+    }
 }
 
 impl PyLoadedProp {
@@ -89,6 +94,7 @@ impl PyLoadedProp {
                 .map_colors(|c| srgb_to_linear(f32::from(c) / 255.))
                 .into(),
             properties,
+            skin: prop.skin,
         }
     }
 }
