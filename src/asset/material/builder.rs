@@ -23,8 +23,7 @@ use super::{
     BuiltMaterialData,
 };
 
-#[derive(Debug, Clone, Copy)]
-#[derive(Default)]
+#[derive(Debug, Clone, Copy, Default)]
 pub enum TextureInterpolation {
     #[default]
     Linear,
@@ -47,7 +46,6 @@ impl FromStr for TextureInterpolation {
     }
 }
 
-
 impl TextureInterpolation {
     fn to_str(self) -> &'static str {
         match self {
@@ -59,8 +57,7 @@ impl TextureInterpolation {
     }
 }
 
-#[derive(Debug, Clone, Copy)]
-#[derive(Default)]
+#[derive(Debug, Clone, Copy, Default)]
 pub enum TextureFormat {
     #[default]
     Tga,

@@ -28,6 +28,7 @@ if bpy.app.version >= (4, 4, 0) or TYPE_CHECKING:
 
 ActionOrChannelbag = Union[Action, "ActionChannelbag"]
 
+
 class ModelState:
     def __init__(
         self, model_obj: Object, children: List[Object], collection: Collection
@@ -316,7 +317,10 @@ def import_animation(
 
 
 def import_quaternions(
-    action_or_channelbag: ActionOrChannelbag, data: QuaternionData, curve_name: str, looping: bool
+    action_or_channelbag: ActionOrChannelbag,
+    data: QuaternionData,
+    curve_name: str,
+    looping: bool,
 ) -> None:
     curves = [action_or_channelbag.fcurves.new(curve_name, index=i) for i in range(4)]
 
@@ -346,7 +350,9 @@ def import_quaternions(
         curve.update()
 
 
-def import_quaternion(action_or_channelbag: ActionOrChannelbag, data: List[float], curve_name: str) -> None:
+def import_quaternion(
+    action_or_channelbag: ActionOrChannelbag, data: List[float], curve_name: str
+) -> None:
     w_curve = action_or_channelbag.fcurves.new(curve_name, index=0)
     w_curve.keyframe_points.insert(0.0, data[3])
     x_curve = action_or_channelbag.fcurves.new(curve_name, index=1)
@@ -358,7 +364,10 @@ def import_quaternion(action_or_channelbag: ActionOrChannelbag, data: List[float
 
 
 def import_vectors(
-    action_or_channelbag: ActionOrChannelbag, data: VectorData, curve_name: str, looping: bool
+    action_or_channelbag: ActionOrChannelbag,
+    data: VectorData,
+    curve_name: str,
+    looping: bool,
 ) -> None:
     curves = [action_or_channelbag.fcurves.new(curve_name, index=i) for i in range(3)]
 
@@ -383,7 +392,9 @@ def import_vectors(
         curve.update()
 
 
-def import_vector(action_or_channelbag: ActionOrChannelbag, data: List[float], curve_name: str) -> None:
+def import_vector(
+    action_or_channelbag: ActionOrChannelbag, data: List[float], curve_name: str
+) -> None:
     x_curve = action_or_channelbag.fcurves.new(curve_name, index=0)
     x_curve.keyframe_points.insert(0.0, data[0])
     y_curve = action_or_channelbag.fcurves.new(curve_name, index=1)

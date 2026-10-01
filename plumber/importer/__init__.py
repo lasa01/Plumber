@@ -273,7 +273,6 @@ from .mdl import ImportMdl, PLUMBER_PT_mdl_main
 from .vmt import ImportVmt, PLUMBER_PT_vmt_main
 from .vtf import ImportVtf
 
-
 CLASSES = [
     PLUMBER_PT_importer_common,
     PLUMBER_PT_vmf_map_data,
