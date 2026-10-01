@@ -388,7 +388,10 @@ pub mod groups {
             Node {
                 kind: &nodes::MIX,
                 id: "mul",
-                properties: &[("blend_type", Value::Enum("MULTIPLY")), ("data_type", Value::Enum("RGBA"))],
+                properties: &[
+                    ("blend_type", Value::Enum("MULTIPLY")),
+                    ("data_type", Value::Enum("RGBA")),
+                ],
                 values: &[
                     (Name("B"), Value::Color([2.0, 2.0, 2.0, 1.0])),
                     (Name("Factor"), Value::Float(1.0)),
@@ -398,7 +401,10 @@ pub mod groups {
             Node {
                 kind: &nodes::MIX,
                 id: "mix",
-                properties: &[("blend_type", Value::Enum("MULTIPLY")), ("data_type", Value::Enum("RGBA"))],
+                properties: &[
+                    ("blend_type", Value::Enum("MULTIPLY")),
+                    ("data_type", Value::Enum("RGBA")),
+                ],
                 links: &[(Name("B"), NodeSocketRef::new("mul", Name("Result")))],
                 ..Node::default()
             },
@@ -416,7 +422,10 @@ pub mod groups {
         nodes: &[Node {
             kind: &nodes::MIX,
             id: "mul",
-            properties: &[("blend_type", Value::Enum("MULTIPLY")), ("data_type", Value::Enum("RGBA"))],
+            properties: &[
+                ("blend_type", Value::Enum("MULTIPLY")),
+                ("data_type", Value::Enum("RGBA")),
+            ],
             values: &[(Name("Factor"), Value::Float(1.0))],
             ..Node::default()
         }],
@@ -434,7 +443,10 @@ pub mod groups {
             Node {
                 kind: &nodes::MIX,
                 id: "mix_color",
-                properties: &[("blend_type", Value::Enum("MIX")), ("data_type", Value::Enum("RGBA"))],
+                properties: &[
+                    ("blend_type", Value::Enum("MIX")),
+                    ("data_type", Value::Enum("RGBA")),
+                ],
                 ..Node::default()
             },
             Node {
@@ -868,7 +880,10 @@ pub mod groups {
             Node {
                 kind: &nodes::MIX,
                 id: "mix_color1",
-                properties: &[("blend_type", Value::Enum("MIX")), ("data_type", Value::Enum("RGBA"))],
+                properties: &[
+                    ("blend_type", Value::Enum("MIX")),
+                    ("data_type", Value::Enum("RGBA")),
+                ],
                 ..Node::default()
             },
             Node {
@@ -884,11 +899,11 @@ pub mod groups {
             Node {
                 kind: &nodes::MIX,
                 id: "mix_color2",
-                properties: &[("blend_type", Value::Enum("MIX")), ("data_type", Value::Enum("RGBA"))],
-                links: &[(
-                    Name("A"),
-                    NodeSocketRef::new("mix_color1", Name("Result")),
-                )],
+                properties: &[
+                    ("blend_type", Value::Enum("MIX")),
+                    ("data_type", Value::Enum("RGBA")),
+                ],
+                links: &[(Name("A"), NodeSocketRef::new("mix_color1", Name("Result")))],
                 ..Node::default()
             },
             Node {
@@ -907,11 +922,11 @@ pub mod groups {
             Node {
                 kind: &nodes::MIX,
                 id: "mix_color3",
-                properties: &[("blend_type", Value::Enum("MIX")), ("data_type", Value::Enum("RGBA"))],
-                links: &[(
-                    Name("A"),
-                    NodeSocketRef::new("mix_color2", Name("Result")),
-                )],
+                properties: &[
+                    ("blend_type", Value::Enum("MIX")),
+                    ("data_type", Value::Enum("RGBA")),
+                ],
+                links: &[(Name("A"), NodeSocketRef::new("mix_color2", Name("Result")))],
                 ..Node::default()
             },
             Node {
@@ -1050,7 +1065,10 @@ pub mod groups {
         nodes: &[Node {
             kind: &nodes::MIX,
             id: "multiply",
-            properties: &[("blend_type", Value::Enum("MULTIPLY")), ("data_type", Value::Enum("RGBA"))],
+            properties: &[
+                ("blend_type", Value::Enum("MULTIPLY")),
+                ("data_type", Value::Enum("RGBA")),
+            ],
             values: &[
                 (Name("B"), Value::Color([2.0, 2.0, 2.0, 1.0])),
                 (Name("Factor"), Value::Float(1.0)),

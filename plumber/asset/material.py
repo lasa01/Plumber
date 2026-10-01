@@ -6,7 +6,6 @@ from bpy.types import ShaderNode
 from .utils import truncate_name
 from ..plumber import Material, Texture, TextureRef
 
-
 FORMAT_MAP = {
     ".tga": "TARGA_RAW",
     ".png": "PNG",

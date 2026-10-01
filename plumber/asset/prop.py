@@ -16,8 +16,6 @@ def import_prop(
 ) -> None:
     model_name = prop.model()
     obj = model_tracker.get_model_copy(model_name, collection)
-    obj["path_id"] = model_name
-    obj["props"] = prop.properties()
 
     name = f"{prop.class_name()}_{prop.id()}"
 
@@ -26,6 +24,9 @@ def import_prop(
         collection.objects.link(obj)
     else:
         obj.name = name
+
+    obj["path_id"] = model_name
+    obj["props"] = prop.properties()
 
     obj.location = prop.position()
     obj.rotation_euler = prop.rotation()

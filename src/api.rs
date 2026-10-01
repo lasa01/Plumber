@@ -257,7 +257,7 @@ impl PyApiImporter {
             material_config: self.material_config,
         };
 
-        let jobs: Vec<AssetImportJob> = self.jobs.drain(..).collect();
+        let jobs: Vec<AssetImportJob> = std::mem::take(&mut self.jobs);
         executor.process_each(unified_config, jobs, || self.process_assets(py));
 
         info!("jobs executed in {:.2} s", start.elapsed().as_secs_f32());

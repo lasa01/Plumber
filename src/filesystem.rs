@@ -233,6 +233,7 @@ fn extract_directory_recursive(read_dir: ReadDir, target_dir: &StdPath) -> PyRes
                         entry.name(),
                         err
                     );
+                    return Err(err);
                 }
             }
             DirEntryType::Directory => {
@@ -246,6 +247,7 @@ fn extract_directory_recursive(read_dir: ReadDir, target_dir: &StdPath) -> PyRes
                         entry.name(),
                         err
                     );
+                    return Err(err);
                 }
             }
         }
@@ -308,6 +310,41 @@ pub fn from_gameinfo(path: &str) -> PyResult<PyFileSystem> {
         .map_err(|e| PyIOError::new_err(e.to_string()))?;
 
     Ok(file_system.into())
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use std::{env, time::UNIX_EPOCH};
+
+    #[test]
+    fn directory_extraction_reports_file_write_errors() {
+        let test_dir = env::temp_dir().join(format!(
+            "plumber-extract-{}-{}",
+            std::process::id(),
+            std::time::SystemTime::now()
+                .duration_since(UNIX_EPOCH)
+                .unwrap()
+                .as_nanos()
+        ));
+        let source_dir = test_dir.join("source");
+        let target_dir = test_dir.join("target");
+
+        fs::create_dir_all(&source_dir).unwrap();
+        fs::write(source_dir.join("item"), b"source").unwrap();
+        fs::create_dir_all(target_dir.join("item")).unwrap();
+
+        let file_system = FileSystem {
+            name: "test".to_owned(),
+            search_paths: vec![SearchPath::Directory(source_dir)],
+        };
+        let opened = file_system.open().unwrap();
+        let result =
+            extract_directory_recursive(opened.read_dir(&GamePathBuf::from("")), &target_dir);
+
+        fs::remove_dir_all(test_dir).unwrap();
+        assert!(result.is_err());
+    }
 }
 
 #[pyclass(module = "plumber", name = "FileBrowser")]
