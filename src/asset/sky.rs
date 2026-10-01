@@ -44,11 +44,11 @@ impl PySkyEqui {
         let equi = to_equi(skybox.data, out_height);
 
         let mut data = Vec::new();
-        let format;
+
         let width;
         let height;
 
-        match equi {
+        let format = match equi {
             Equi::Hdr(image) => {
                 width = image.width();
                 height = image.height();
@@ -56,7 +56,7 @@ impl PySkyEqui {
                 image
                     .write_to(&mut Cursor::new(&mut data), ImageOutputFormat::OpenExr)
                     .unwrap();
-                format = "exr";
+                "exr"
             }
             Equi::Sdr(image) => {
                 width = image.width();
@@ -65,9 +65,9 @@ impl PySkyEqui {
                 image
                     .write_to(&mut Cursor::new(&mut data), ImageOutputFormat::Tga)
                     .unwrap();
-                format = "tga";
+                "tga"
             }
-        }
+        };
 
         Self {
             name: skybox.name.into_string(),

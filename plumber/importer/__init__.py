@@ -52,7 +52,7 @@ class ImporterOperator(Operator, ImporterOperatorProps):
     def get_threads_suggestion(self, context: Context) -> int:
         preferences = context.preferences.addons[ADDON_NAME].preferences
         # leave room for blender's thread
-        return preferences.threads - 1
+        return max(1, preferences.threads - 1)
 
     def get_target_fps(self, context: Context) -> float:
         scene = context.scene
@@ -272,7 +272,6 @@ from .vmf import (
 from .mdl import ImportMdl, PLUMBER_PT_mdl_main
 from .vmt import ImportVmt, PLUMBER_PT_vmt_main
 from .vtf import ImportVtf
-
 
 CLASSES = [
     PLUMBER_PT_importer_common,
